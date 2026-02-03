@@ -1,0 +1,116 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+// Initialize Anthropic client
+// API key should be set in environment variable ANTHROPIC_API_KEY
+const anthropic = new Anthropic();
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function complete(
+  systemPrompt: string,
+  userPrompt: string,
+  options: {
+    maxTokens?: number;
+    temperature?: number;
+    model?: string;
+  } = {}
+): Promise<string> {
+  const {
+    maxTokens = 8192,
+    temperature = 0.7,
+    model = 'claude-sonnet-4-20250514'
+  } = options;
+
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt }
+    ],
+    temperature,
+  });
+
+  // Extract text from response
+  const textContent = response.content.find(c => c.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text content in response');
+  }
+  
+  return textContent.text;
+}
+
+export async function completeWithHistory(
+  systemPrompt: string,
+  messages: Message[],
+  options: {
+    maxTokens?: number;
+    temperature?: number;
+    model?: string;
+  } = {}
+): Promise<string> {
+  const {
+    maxTokens = 8192,
+    temperature = 0.7,
+    model = 'claude-sonnet-4-20250514'
+  } = options;
+
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: messages.map(m => ({
+      role: m.role,
+      content: m.content
+    })),
+    temperature,
+  });
+
+  const textContent = response.content.find(c => c.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text content in response');
+  }
+  
+  return textContent.text;
+}
+
+// For longer generation tasks that need extended thinking
+export async function completeExtended(
+  systemPrompt: string,
+  userPrompt: string,
+  options: {
+    maxTokens?: number;
+    budgetTokens?: number;
+  } = {}
+): Promise<string> {
+  const {
+    maxTokens = 16000,
+    budgetTokens = 10000
+  } = options;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    thinking: {
+      type: 'enabled',
+      budget_tokens: budgetTokens
+    },
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt }
+    ],
+  });
+
+  // Extract text from response (skip thinking blocks)
+  const textContent = response.content.find(c => c.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text content in response');
+  }
+  
+  return textContent.text;
+}
+
+export default anthropic;

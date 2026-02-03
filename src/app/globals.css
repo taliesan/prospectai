@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #171717;
+  --background: #fafafa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground: #fafafa;
+    --background: #0a0a0a;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Markdown rendering */
+.prose h1 { @apply text-2xl font-bold mt-8 mb-4; }
+.prose h2 { @apply text-xl font-semibold mt-6 mb-3; }
+.prose h3 { @apply text-lg font-medium mt-4 mb-2; }
+.prose p { @apply my-3 leading-relaxed; }
+.prose ul { @apply my-3 ml-6 list-disc; }
+.prose ol { @apply my-3 ml-6 list-decimal; }
+.prose li { @apply my-1; }
+.prose strong { @apply font-semibold; }
+.prose blockquote { @apply border-l-4 border-gray-300 pl-4 italic my-4; }
+.prose code { @apply bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm; }
+.prose pre { @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4; }
+.prose table { @apply w-full my-4 border-collapse; }
+.prose th { @apply border border-gray-300 dark:border-gray-700 px-3 py-2 bg-gray-50 dark:bg-gray-800 text-left; }
+.prose td { @apply border border-gray-300 dark:border-gray-700 px-3 py-2; }
