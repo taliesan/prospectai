@@ -125,10 +125,39 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Helper to send SSE events
+      // Track whether the controller is still open
+      let isControllerClosed = false;
+
+      // Helper to safely send SSE events
       const sendEvent = (event: ProgressEvent) => {
-        const data = JSON.stringify(event);
-        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        if (isControllerClosed) {
+          console.warn('[SSE] Attempted to send event after controller closed:', event.type);
+          return;
+        }
+        try {
+          const data = JSON.stringify(event);
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        } catch (err) {
+          // Controller may have been closed by the client disconnecting
+          console.warn('[SSE] Failed to enqueue event (controller may be closed):', err);
+          isControllerClosed = true;
+        }
+      };
+
+      // Helper to safely close the controller
+      const safeClose = () => {
+        if (isControllerClosed) {
+          console.log('[SSE] Controller already closed, skipping close()');
+          return;
+        }
+        try {
+          controller.close();
+          isControllerClosed = true;
+          console.log('[SSE] Controller closed successfully');
+        } catch (err) {
+          console.warn('[SSE] Failed to close controller:', err);
+          isControllerClosed = true;
+        }
       };
 
       // Set up progress callback
@@ -156,12 +185,14 @@ export async function POST(request: NextRequest) {
 
         STATUS.pipelineComplete();
 
-        // Send the final result
+        // Send the final result - this is the critical event that must reach the client
+        console.log('[SSE] Sending final complete event with profile data...');
         sendEvent({
           type: 'complete',
           message: 'Profile generation complete',
           detail: JSON.stringify(result)
         });
+        console.log('[SSE] Final complete event sent successfully');
 
       } catch (error) {
         console.error('[API] Pipeline error:', error);
@@ -173,9 +204,10 @@ export async function POST(request: NextRequest) {
           message: `Error: ${errorMessage}`
         });
       } finally {
-        // Clear progress callback
+        // Clear progress callback first
         setProgressCallback(null);
-        controller.close();
+        // Then safely close the controller
+        safeClose();
       }
     }
   });

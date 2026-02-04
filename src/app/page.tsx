@@ -53,7 +53,31 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader.read();
 
-        if (done) break;
+        if (done) {
+          // Stream ended - process any remaining data in buffer
+          if (buffer.trim()) {
+            console.log('[SSE] Processing remaining buffer after stream end:', buffer);
+            // Process the remaining buffer as a final message
+            if (buffer.startsWith('data: ')) {
+              try {
+                const event: ProgressEvent = JSON.parse(buffer.slice(6));
+                if (event.type === 'complete' && event.detail) {
+                  const result = JSON.parse(event.detail);
+                  localStorage.setItem('lastProfile', JSON.stringify(result));
+                  router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+                  return;
+                } else if (event.type === 'error') {
+                  setProgressMessages(prev => [...prev, event]);
+                  setIsLoading(false);
+                  return;
+                }
+              } catch (parseErr) {
+                console.error('Failed to parse final SSE event from buffer:', parseErr);
+              }
+            }
+          }
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
 
@@ -74,6 +98,7 @@ export default function Home() {
                 }
               } else if (event.type === 'complete' && event.detail) {
                 // Parse and store the final result
+                console.log('[SSE] Received complete event with profile data');
                 const result = JSON.parse(event.detail);
                 localStorage.setItem('lastProfile', JSON.stringify(result));
                 router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
@@ -89,6 +114,14 @@ export default function Home() {
           }
         }
       }
+
+      // If we get here, stream ended without a complete event
+      console.error('[SSE] Stream ended without receiving complete event');
+      setProgressMessages(prev => [...prev, {
+        type: 'error',
+        message: 'Error: Stream ended unexpectedly. Please try again.'
+      }]);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error:', error);
       setProgressMessages(prev => [...prev, {
