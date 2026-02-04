@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runFullPipeline } from '@/lib/pipeline';
+import { sanitizeForClaude } from '@/lib/sanitize';
 
 // This would be loaded from files in production
 const EXEMPLAR_PROFILES = `
@@ -129,7 +130,8 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
         if (extractResponse.ok) {
           const extractData: TavilyExtractResponse = await extractResponse.json();
           extractedContent = extractData.results.reduce((acc, item) => {
-            acc[item.url] = item.raw_content;
+            // Strip images from raw_content to prevent Claude API from parsing them as media
+            acc[item.url] = sanitizeForClaude(item.raw_content);
             return acc;
           }, {} as Record<string, string>);
         }

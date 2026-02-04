@@ -2,20 +2,21 @@
 // This orchestrates the three steps: Research → Dossier → Profile
 
 import { complete, completeExtended } from './anthropic';
-import { 
-  IDENTITY_RESOLUTION_PROMPT, 
+import { sanitizeForClaude } from './sanitize';
+import {
+  IDENTITY_RESOLUTION_PROMPT,
   generateResearchQueries,
-  SOURCE_CLASSIFICATION_PROMPT 
+  SOURCE_CLASSIFICATION_PROMPT
 } from './prompts/research';
-import { 
-  createExtractionPrompt, 
-  SYNTHESIS_PROMPT, 
+import {
+  createExtractionPrompt,
+  SYNTHESIS_PROMPT,
   CROSS_CUTTING_PROMPT,
-  DIMENSIONS 
+  DIMENSIONS
 } from './prompts/extraction';
-import { 
-  createProfilePrompt, 
-  createRegenerationPrompt 
+import {
+  createProfilePrompt,
+  createRegenerationPrompt
 } from './prompts/profile';
 import { createValidationPrompt } from './prompts/validation';
 import { CANON_SUMMARY, PROFILE_QUALITY_CHECKLIST, selectExemplars } from './canon/loader';
@@ -159,6 +160,16 @@ function generateResearchMarkdown(
   return sections.join('\n');
 }
 
+// Helper: Promise with timeout
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ]);
+}
+
 // Step 2: Dossier Extraction
 export async function extractDossier(
   donorName: string,
@@ -166,40 +177,64 @@ export async function extractDossier(
   canonDocs: { exemplars: string }
 ): Promise<DossierResult> {
   console.log(`[Dossier] Starting extraction for: ${donorName}`);
-  console.log(`[Dossier] Processing ${sources.length} sources`);
-  
+  console.log(`[Dossier] Total sources available: ${sources.length}`);
+
+  // Cap at 100 sources maximum to prevent timeouts
+  const MAX_SOURCES = 100;
+  const sourcesToProcess = sources.slice(0, MAX_SOURCES);
+  console.log(`[Dossier] Processing ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
+
   // 1. Extract from each source
   const allEvidence: any[] = [];
-  
-  for (const source of sources.slice(0, 40)) { // Cap at 40 sources
+  let processed = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const source of sourcesToProcess) {
+    // Skip sources without meaningful content
     if (!source.content && source.snippet.length < 100) {
-      continue; // Skip sources without meaningful content
+      skipped++;
+      continue;
     }
-    
-    const content = source.content || source.snippet;
+
+    processed++;
+    const sourceIndex = processed;
+    console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] Extracting: ${source.title?.slice(0, 50) || source.url.slice(0, 50)}...`);
+
+    // Sanitize content to remove images before sending to Claude
+    const rawContent = source.content || source.snippet;
+    const content = sanitizeForClaude(rawContent);
     const extractionPrompt = createExtractionPrompt(
       donorName,
       { title: source.title, url: source.url, type: 'UNKNOWN' },
       content
     );
-    
+
     try {
-      const extraction = await complete(
-        'You are extracting behavioral evidence for donor profiling.',
-        extractionPrompt,
-        { maxTokens: 4096 }
+      // 30 second timeout per source extraction
+      const extraction = await withTimeout(
+        complete(
+          'You are extracting behavioral evidence for donor profiling.',
+          extractionPrompt,
+          { maxTokens: 4096 }
+        ),
+        30000,
+        `Timeout extracting from ${source.url}`
       );
-      
+
       allEvidence.push({
         source: source.url,
         extraction
       });
+      console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] ✓ Success`);
     } catch (err) {
-      console.error(`[Dossier] Extraction failed for: ${source.url}`, err);
+      failed++;
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] ✗ Failed: ${errorMessage.slice(0, 100)}`);
     }
   }
-  
-  console.log(`[Dossier] Extracted from ${allEvidence.length} sources`);
+
+  console.log(`[Dossier] Extraction complete: ${allEvidence.length} succeeded, ${failed} failed, ${skipped} skipped`);
   
   // 2. Synthesize by dimension
   console.log('[Dossier] Synthesizing dimensions...');
