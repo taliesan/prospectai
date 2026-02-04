@@ -175,6 +175,109 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Source ranking by behavioral signal value
+// TIER 1: Interviews, podcasts, personal writing (highest behavioral signal)
+// TIER 2: Speeches, talks, in-depth profiles
+// TIER 3: News coverage, press releases
+// TIER 4: Wikipedia, bio pages, LinkedIn (lowest signal)
+function rankSourceByBehavioralValue(source: { url: string; title: string; snippet: string }): number {
+  const url = source.url.toLowerCase();
+  const title = (source.title || '').toLowerCase();
+  const snippet = (source.snippet || '').toLowerCase();
+  const combined = `${url} ${title} ${snippet}`;
+
+  // TIER 1 (score 1): Video/podcast interviews, personal writing
+  const tier1Patterns = [
+    /youtube\.com/,
+    /youtu\.be/,
+    /podcast/,
+    /\binterview\b/,
+    /medium\.com/,
+    /substack/,
+    /\bop-ed\b/,
+    /\bi think\b/,
+    /\bmy view\b/,
+    /\bi believe\b/,
+    /personal\s*(essay|blog|writing)/,
+  ];
+  for (const pattern of tier1Patterns) {
+    if (pattern.test(combined)) return 1;
+  }
+
+  // TIER 2 (score 2): Speeches, talks, in-depth profiles
+  const tier2Patterns = [
+    /\bspeech\b/,
+    /\bkeynote\b/,
+    /\bremarks\b/,
+    /\btalk at\b/,
+    /\btalks at\b/,
+    /\bprofile\b/,
+    /\bfeature\b/,
+    /longform/,
+    /newyorker\.com/,
+    /theatlantic\.com/,
+    /wired\.com/,
+    /vanityfair\.com/,
+  ];
+  for (const pattern of tier2Patterns) {
+    if (pattern.test(combined)) return 2;
+  }
+
+  // TIER 4 (score 4): Wikipedia, bio pages, LinkedIn (check before tier 3)
+  const tier4Patterns = [
+    /wikipedia\.org/,
+    /linkedin\.com/,
+    /crunchbase\.com/,
+    /bloomberg\.com\/profile/,
+    /forbes\.com\/profile/,
+    /\/bio\b/,
+    /\/about\b/,
+  ];
+  for (const pattern of tier4Patterns) {
+    if (pattern.test(combined)) return 4;
+  }
+
+  // TIER 3 (score 3): News coverage, press releases (default for news sites)
+  const tier3Patterns = [
+    /\bannounces\b/,
+    /\bsays\b/,
+    /press\s*release/,
+    /news/,
+    /\.com\/(article|story|news)/,
+    /reuters\.com/,
+    /bloomberg\.com/,
+    /wsj\.com/,
+    /nytimes\.com/,
+    /washingtonpost\.com/,
+  ];
+  for (const pattern of tier3Patterns) {
+    if (pattern.test(combined)) return 3;
+  }
+
+  // Default to tier 3 if no patterns match
+  return 3;
+}
+
+function rankAndSortSources(
+  sources: { url: string; title: string; snippet: string; content?: string }[]
+): { url: string; title: string; snippet: string; content?: string; tier: number }[] {
+  const ranked = sources.map(source => ({
+    ...source,
+    tier: rankSourceByBehavioralValue(source)
+  }));
+
+  // Sort by tier (lower = better), then by content availability
+  ranked.sort((a, b) => {
+    if (a.tier !== b.tier) return a.tier - b.tier;
+    // Prefer sources with full content
+    if (a.content && !b.content) return -1;
+    if (!a.content && b.content) return 1;
+    return 0;
+  });
+
+  return ranked;
+}
+
 // Step 2: Dossier Extraction
 export async function extractDossier(
   donorName: string,
@@ -184,10 +287,20 @@ export async function extractDossier(
   console.log(`[Dossier] Starting extraction for: ${donorName}`);
   console.log(`[Dossier] Total sources available: ${sources.length}`);
 
+  // Rank sources by behavioral signal value before processing
+  const rankedSources = rankAndSortSources(sources);
+
+  // Log tier distribution
+  const tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const s of rankedSources) {
+    tierCounts[s.tier as keyof typeof tierCounts]++;
+  }
+  console.log(`[Dossier] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
+
   // Cap at 50 sources maximum to prevent timeouts and rate limits
   const MAX_SOURCES = 50;
-  const sourcesToProcess = sources.slice(0, MAX_SOURCES);
-  console.log(`[Dossier] Processing ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
+  const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
+  console.log(`[Dossier] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
 
   // 1. Extract from each source
   const allEvidence: any[] = [];
@@ -204,7 +317,8 @@ export async function extractDossier(
 
     processed++;
     const sourceIndex = processed;
-    console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] Extracting: ${source.title?.slice(0, 50) || source.url.slice(0, 50)}...`);
+    const tierLabel = `T${source.tier}`;
+    console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] [${tierLabel}] Extracting: ${source.title?.slice(0, 50) || source.url.slice(0, 50)}...`);
 
     // Sanitize content to remove images before sending to Claude
     const rawContent = source.content || source.snippet;
