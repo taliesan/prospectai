@@ -77,39 +77,33 @@ export async function completeWithHistory(
   return textContent.text;
 }
 
-// For longer generation tasks that need extended thinking
+// For longer generation tasks
 export async function completeExtended(
   systemPrompt: string,
   userPrompt: string,
   options: {
     maxTokens?: number;
-    budgetTokens?: number;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
-    budgetTokens = 10000
   } = options;
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
-    thinking: {
-      type: 'enabled',
-      budget_tokens: budgetTokens
-    },
     system: systemPrompt,
     messages: [
       { role: 'user', content: userPrompt }
     ],
   });
 
-  // Extract text from response (skip thinking blocks)
+  // Extract text from response
   const textContent = response.content.find(c => c.type === 'text');
   if (!textContent || textContent.type !== 'text') {
     throw new Error('No text content in response');
   }
-  
+
   return textContent.text;
 }
 
