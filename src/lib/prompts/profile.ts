@@ -79,7 +79,59 @@ No generic advice that could apply to anyone.
 OUTPUT:
 
 Generate a complete 7-section profile. Each section should have 3-6 bullets.
-The profile should feel like it was written by someone who has sat in rooms with this donor.`;
+The profile should feel like it was written by someone who has sat in rooms with this donor.
+
+---
+
+EXAMPLES OF WHAT TO AVOID (these will fail validation):
+
+❌ TRAIT-BASED (fails Behavioral Validator):
+"She is thoughtful, strategic, and values-driven."
+→ Describes WHO she is, not WHAT she does
+
+✅ BEHAVIOR-BASED:
+"When someone presents a polished narrative, she probes for the messy parts. If they can't name them, she classifies the pitch as unserious and shifts to exit mode."
+→ Describes observable behavior in specific situations
+
+---
+
+❌ GENERIC (fails Name-Swap Test):
+"Cares deeply about social justice and wants to make an impact."
+→ Could describe any philanthropist
+
+✅ SPECIFIC:
+"His theory of change centers on proving that worker-owned structures can outcompete traditional models. He's not funding charity; he's funding evidence for an argument."
+→ Could only describe this donor
+
+---
+
+❌ MISSING CONTRADICTION (fails Contradiction Validator):
+[Profile with no tension surfaced — donor sounds coherent and consistent]
+
+✅ HAS CONTRADICTION:
+"His core contradiction: he built wealth in systems he now funds movements to dismantle. He navigates this by distinguishing 'legacy wealth' (tainted, must be redistributed) from 'active choices' (his current decisions). When you acknowledge this tension directly, he relaxes. When you treat him as simply generous, he becomes wary of being used for reputation laundering."
+
+---
+
+❌ NO RETREAT PATTERNS (fails Retreat Validator):
+"May become disengaged if the conversation doesn't resonate."
+→ Vague, no triggers, no tells, no recovery
+
+✅ HAS RETREAT PATTERNS:
+"Retreat signal: His questions become narrower and more procedural ('What's the timeline?' 'Who else is involved?'). This means he's exiting the creative space. Recovery: Acknowledge the shift directly ('I sense we've moved to logistics — should we go back to the core problem?'). He respects meta-awareness."
+
+---
+
+❌ NOT ACTIONABLE (fails Actionability Validator):
+"Has complex views on the relationship between technology and labor."
+→ Observational, doesn't tell asker what to DO
+
+✅ ACTIONABLE:
+"Frame technology as a tool for worker leverage, not efficiency. If you lead with productivity gains, he'll categorize you as a 'tech solutionist' and disengage. If you lead with how technology shifts bargaining power, he'll treat you as a serious interlocutor."
+
+---
+
+These examples show exactly what the 6 validators check. Write every bullet to pass all 6.`;
 
 export function createProfilePrompt(donorName: string, dossier: string, exemplars: string): string {
   return `${PROFILE_GENERATION_PROMPT}
