@@ -184,8 +184,8 @@ export async function extractDossier(
   console.log(`[Dossier] Starting extraction for: ${donorName}`);
   console.log(`[Dossier] Total sources available: ${sources.length}`);
 
-  // Cap at 100 sources maximum to prevent timeouts
-  const MAX_SOURCES = 100;
+  // Cap at 50 sources maximum to prevent timeouts and rate limits
+  const MAX_SOURCES = 50;
   const sourcesToProcess = sources.slice(0, MAX_SOURCES);
   console.log(`[Dossier] Processing ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
 
