@@ -500,6 +500,7 @@ ${evidence.map((e, i) => `### Source ${i + 1}: ${e.source}\n\n${e.extraction}`).
 }
 
 // Step 3: Profile Generation with Validation Loop
+// Profile ALWAYS ships - validation is informational, never blocks
 export async function generateProfile(
   donorName: string,
   dossier: string,
@@ -514,60 +515,85 @@ ${PROFILE_QUALITY_CHECKLIST}`;
 
   // Initial generation
   console.log('[Profile] Generating initial draft...');
-  const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
-  let profile = await completeExtended(systemPrompt, profilePrompt, { maxTokens: 10000 });
+  let profile: string;
+  try {
+    const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
+    profile = await completeExtended(systemPrompt, profilePrompt, { maxTokens: 10000 });
+  } catch (err) {
+    console.error('[Profile] Initial generation failed:', err);
+    return {
+      donorName,
+      profile: `# Profile Generation Failed\n\nError: ${String(err)}\n\nPlease try again.`,
+      validationPasses: 0,
+      status: 'validation_failed'
+    };
+  }
 
-  // Validation loop with 6 parallel validators
+  // Validation loop - wrapped in try/catch so it never blocks shipping
   const maxAttempts = 3;
+  let validationResults: string[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    console.log(`[Profile] Validation attempt ${attempt}...`);
+    try {
+      console.log(`[Profile] Validation attempt ${attempt}/${maxAttempts}...`);
 
-    // Run all 6 validators in parallel
-    const validation = await runAllValidators(profile, dossier);
+      const validation = await runAllValidators(profile, dossier);
 
-    if (validation.allPassed) {
-      console.log('[Profile] All 6 validators PASSED');
-      return {
-        donorName,
-        profile,
-        validationPasses: attempt,
-        status: 'complete'
-      };
-    }
+      if (validation.allPassed) {
+        console.log('[Profile] All 6 validators PASSED');
+        return {
+          donorName,
+          profile,
+          validationPasses: attempt,
+          status: 'complete'
+        };
+      }
 
-    // Log which validators failed
-    const failedValidators = validation.results
-      .filter(r => !r.passed)
-      .map(r => r.agent);
-    console.log(`[Profile] Failed validators: ${failedValidators.join(', ')}`);
+      // Log which validators failed
+      const failedValidators = validation.results
+        .filter(r => !r.passed)
+        .map(r => r.agent);
+      const passedValidators = validation.results
+        .filter(r => r.passed)
+        .map(r => r.agent);
 
-    if (attempt < maxAttempts) {
-      // Regenerate with specific feedback from all validators
-      console.log('[Profile] Regenerating with validator feedback...');
-      const regenPrompt = createRegenerationPrompt(
-        donorName,
-        dossier,
-        exemplars,
-        profile,
-        validation.aggregatedFeedback
-      );
-      profile = await completeExtended(systemPrompt, regenPrompt, { maxTokens: 10000 });
+      console.log(`[Profile] Passed: ${passedValidators.join(', ') || 'none'}`);
+      console.log(`[Profile] Failed: ${failedValidators.join(', ')}`);
+      validationResults = failedValidators;
+
+      if (attempt < maxAttempts) {
+        // Regenerate with specific feedback from validators
+        console.log('[Profile] Regenerating with validator feedback...');
+        try {
+          const regenPrompt = createRegenerationPrompt(
+            donorName,
+            dossier,
+            exemplars,
+            profile,
+            validation.aggregatedFeedback
+          );
+          profile = await completeExtended(systemPrompt, regenPrompt, { maxTokens: 10000 });
+        } catch (regenErr) {
+          console.error('[Profile] Regeneration failed:', regenErr);
+          // Keep the current profile and continue to next attempt or exit
+        }
+      }
+    } catch (validationErr) {
+      console.error(`[Profile] Validation attempt ${attempt} error:`, validationErr);
+      // Continue to next attempt or exit loop
     }
   }
 
-  // Max attempts reached - run final validation to report what's still failing
-  console.log('[Profile] Max attempts reached, checking final state...');
-  const finalValidation = await runAllValidators(profile, dossier);
-  const stillFailing = finalValidation.results
-    .filter(r => !r.passed)
-    .map(r => r.agent);
+  // Always ship the profile, even if validation didn't fully pass
+  console.log('[Profile] Shipping profile (validation incomplete or failed)');
 
-  console.log(`[Profile] Still failing: ${stillFailing.join(', ')}`);
+  const validationNote = validationResults.length > 0
+    ? `\n\n---\n\n*Validation: Some checks did not pass (${validationResults.join(', ')}). Profile may need manual review.*`
+    : '';
 
   return {
     donorName,
-    profile: profile + `\n\n---\n\n*Validation incomplete after 3 attempts. Still failing: ${stillFailing.join(', ')}*`,
+    profile: profile + validationNote,
     validationPasses: 0,
     status: 'validation_failed'
   };

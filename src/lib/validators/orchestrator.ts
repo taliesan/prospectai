@@ -1,5 +1,5 @@
 // Validator Orchestrator
-// Runs all 6 validators in parallel, aggregates results, determines if regeneration is needed
+// Runs all 6 validators sequentially, aggregates results, determines if regeneration is needed
 
 import { validateBehavioral } from './behavioral';
 import { validateSpecificity } from './specificity';
@@ -24,53 +24,79 @@ export async function runAllValidators(
   profile: string,
   dossier: string
 ): Promise<OrchestratorResult> {
-  console.log('[Validators] Running all 6 validators in parallel...');
+  console.log('[Validators] Running 6 validators sequentially...');
 
-  // Run all 6 validators in parallel (they're independent)
-  const [
-    behavioralResult,
-    specificityResult,
-    contradictionResult,
-    retreatResult,
-    evidenceResult,
-    actionabilityResult
-  ] = await Promise.all([
-    validateBehavioral(profile),
-    validateSpecificity(profile),
-    validateContradiction(profile),
-    validateRetreat(profile),
-    validateEvidence(profile, dossier),
-    validateActionability(profile),
-  ]);
+  const results: ValidationResult[] = [];
 
-  // Package results with agent names
-  const results: ValidationResult[] = [
-    { agent: 'Behavioral Focus', ...behavioralResult },
-    { agent: 'Name-Swap Test (Specificity)', ...specificityResult },
-    { agent: 'Contradiction', ...contradictionResult },
-    { agent: 'Retreat Patterns', ...retreatResult },
-    { agent: 'Evidence Grounding', ...evidenceResult },
-    { agent: 'Actionability', ...actionabilityResult },
-  ];
+  try {
+    console.log('[Validators] 1/6 Behavioral Focus...');
+    const behavioralResult = await validateBehavioral(profile);
+    results.push({ agent: 'Behavioral Focus', ...behavioralResult });
+    console.log(`[Validators] Behavioral Focus: ${behavioralResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Behavioral Focus error:', err);
+    results.push({ agent: 'Behavioral Focus', passed: false, failures: ['Validator error: ' + String(err)] });
+  }
 
-  // Log results
-  for (const r of results) {
-    const status = r.passed ? '✓ PASS' : '✗ FAIL';
-    console.log(`[Validators] ${r.agent}: ${status}`);
-    if (!r.passed && r.failures.length > 0) {
-      console.log(`[Validators]   Failures: ${r.failures.length}`);
-    }
+  try {
+    console.log('[Validators] 2/6 Name-Swap Test...');
+    const specificityResult = await validateSpecificity(profile);
+    results.push({ agent: 'Name-Swap Test (Specificity)', ...specificityResult });
+    console.log(`[Validators] Specificity: ${specificityResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Specificity error:', err);
+    results.push({ agent: 'Name-Swap Test (Specificity)', passed: false, failures: ['Validator error: ' + String(err)] });
+  }
+
+  try {
+    console.log('[Validators] 3/6 Contradiction...');
+    const contradictionResult = await validateContradiction(profile);
+    results.push({ agent: 'Contradiction', ...contradictionResult });
+    console.log(`[Validators] Contradiction: ${contradictionResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Contradiction error:', err);
+    results.push({ agent: 'Contradiction', passed: false, failures: ['Validator error: ' + String(err)] });
+  }
+
+  try {
+    console.log('[Validators] 4/6 Retreat Patterns...');
+    const retreatResult = await validateRetreat(profile);
+    results.push({ agent: 'Retreat Patterns', ...retreatResult });
+    console.log(`[Validators] Retreat: ${retreatResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Retreat Patterns error:', err);
+    results.push({ agent: 'Retreat Patterns', passed: false, failures: ['Validator error: ' + String(err)] });
+  }
+
+  try {
+    console.log('[Validators] 5/6 Evidence Grounding...');
+    const evidenceResult = await validateEvidence(profile, dossier);
+    results.push({ agent: 'Evidence Grounding', ...evidenceResult });
+    console.log(`[Validators] Evidence: ${evidenceResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Evidence Grounding error:', err);
+    results.push({ agent: 'Evidence Grounding', passed: false, failures: ['Validator error: ' + String(err)] });
+  }
+
+  try {
+    console.log('[Validators] 6/6 Actionability...');
+    const actionabilityResult = await validateActionability(profile);
+    results.push({ agent: 'Actionability', ...actionabilityResult });
+    console.log(`[Validators] Actionability: ${actionabilityResult.passed ? '✓ PASS' : '✗ FAIL'}`);
+  } catch (err) {
+    console.error('[Validators] Actionability error:', err);
+    results.push({ agent: 'Actionability', passed: false, failures: ['Validator error: ' + String(err)] });
   }
 
   const allPassed = results.every(r => r.passed);
 
-  // Aggregate failures into regeneration prompt
   const aggregatedFeedback = results
     .filter(r => !r.passed)
     .map(r => `## ${r.agent.toUpperCase()} FAILED:\n${r.failures.join('\n')}`)
     .join('\n\n');
 
-  console.log(`[Validators] Overall: ${allPassed ? 'ALL PASSED' : 'SOME FAILED'}`);
+  const passCount = results.filter(r => r.passed).length;
+  console.log(`[Validators] Complete: ${passCount}/6 passed`);
 
   return { allPassed, results, aggregatedFeedback };
 }
