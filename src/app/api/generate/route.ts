@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
@@ -178,10 +179,25 @@ export async function POST(request: NextRequest) {
           { exemplars }
         );
 
-        // Log full outputs for Railway logs
-        console.log(`[OUTPUT:RESEARCH]\n${result.research.rawMarkdown}\n[/OUTPUT:RESEARCH]`);
-        console.log(`[OUTPUT:DOSSIER]\n${result.dossier.rawMarkdown}\n[/OUTPUT:DOSSIER]`);
-        console.log(`[OUTPUT:PROFILE]\n${result.profile.profile}\n[/OUTPUT:PROFILE]`);
+        // Save full outputs to files instead of logging (avoids Railway rate limits)
+        const outputDir = '/tmp/prospectai-outputs';
+        if (!existsSync(outputDir)) {
+          mkdirSync(outputDir, { recursive: true });
+        }
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+
+        const researchPath = `${outputDir}/${timestamp}-${safeName}-research.md`;
+        const dossierPath = `${outputDir}/${timestamp}-${safeName}-dossier.md`;
+        const profilePath = `${outputDir}/${timestamp}-${safeName}-profile.md`;
+
+        writeFileSync(researchPath, result.research.rawMarkdown);
+        writeFileSync(dossierPath, result.dossier.rawMarkdown);
+        writeFileSync(profilePath, result.profile.profile);
+
+        console.log(`[OUTPUT] Research saved to ${researchPath} (${result.research.rawMarkdown.length} chars)`);
+        console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${result.dossier.rawMarkdown.length} chars)`);
+        console.log(`[OUTPUT] Profile saved to ${profilePath} (${result.profile.profile.length} chars)`);
 
         STATUS.pipelineComplete();
 
