@@ -3,6 +3,7 @@
 
 import { complete, completeExtended } from './anthropic';
 import { sanitizeForClaude } from './sanitize';
+import { STATUS } from './progress';
 import {
   IDENTITY_RESOLUTION_PROMPT,
   generateResearchQueries,
@@ -52,9 +53,10 @@ export async function conductResearch(
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
-  
+
   // 1. Resolve identity
   console.log('[Research] Resolving identity...');
+  STATUS.identityResolving(donorName);
   const identityPrompt = `${IDENTITY_RESOLUTION_PROMPT}
 
 Donor Name: ${donorName}
@@ -95,6 +97,7 @@ Resolve the identity of this donor.`;
   }
   
   console.log(`[Research] Generated ${queries.length} queries`);
+  STATUS.queriesGenerated(queries.length);
   
   // 3. Execute searches
   console.log('[Research] Executing searches...');
@@ -117,6 +120,7 @@ Resolve the identity of this donor.`;
   );
   
   console.log(`[Research] Collected ${uniqueSources.length} unique sources`);
+  STATUS.sourcesCollected(uniqueSources.length);
   
   // 4. Generate raw research document
   const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, uniqueSources);
@@ -297,6 +301,7 @@ export async function extractDossier(
     tierCounts[s.tier as keyof typeof tierCounts]++;
   }
   console.log(`[Dossier] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
+  STATUS.tiersPrioritized(tierCounts[1], tierCounts[2], tierCounts[3], tierCounts[4]);
 
   // Log top 5 sources to verify ranking
   console.log(`[Dossier] Top 5 sources by behavioral value:`);
@@ -308,6 +313,7 @@ export async function extractDossier(
   const MAX_SOURCES = 50;
   const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
   console.log(`[Dossier] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
+  STATUS.processingTop(sourcesToProcess.length);
 
   // Filter sources with meaningful content
   const validSources = sourcesToProcess.filter(source =>
@@ -329,6 +335,7 @@ export async function extractDossier(
     const batchEnd = Math.min(i + BATCH_SIZE, validSources.length);
 
     console.log(`[Dossier] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
+    STATUS.batchStarted(batchNumber, i + 1, batchEnd);
 
     // Prepare batch sources with sanitized content
     const batchSources = batch.map(source => ({
@@ -396,6 +403,7 @@ export async function extractDossier(
         }
 
         console.log(`[Dossier] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
+        STATUS.batchComplete(batchNumber, i + 1, batchEnd);
       } catch (parseErr) {
         // If JSON parsing fails, use raw response as single extraction
         console.warn(`[Dossier] Batch ${batchNumber}: JSON parse failed, using raw response`);
@@ -411,6 +419,7 @@ export async function extractDossier(
       failed += batch.length;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error(`[Dossier] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
+      STATUS.batchFailed(batchNumber, errorMessage);
     }
 
     // Rate limiting: 3 second delay between batch API calls
@@ -423,6 +432,7 @@ export async function extractDossier(
   
   // 2. Synthesize by dimension
   console.log('[Dossier] Synthesizing dimensions...');
+  STATUS.synthesizing();
   const combinedEvidence = allEvidence.map(e => e.extraction).join('\n\n---\n\n');
   
   const synthesisPrompt = `${SYNTHESIS_PROMPT}
@@ -442,6 +452,7 @@ Synthesize the evidence across all 17 dimensions. For each dimension, provide th
   
   // 3. Cross-cutting analysis
   console.log('[Dossier] Generating cross-cutting analysis...');
+  STATUS.crossCutting();
   const crossCuttingPrompt = `${CROSS_CUTTING_PROMPT}
 
 DONOR: ${donorName}
@@ -515,6 +526,7 @@ ${PROFILE_QUALITY_CHECKLIST}`;
 
   // Initial generation
   console.log('[Profile] Generating initial draft...');
+  STATUS.generatingDraft();
   let profile: string;
   try {
     const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
@@ -536,11 +548,13 @@ ${PROFILE_QUALITY_CHECKLIST}`;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       console.log(`[Profile] Validation attempt ${attempt}/${maxAttempts}...`);
+      STATUS.validationAttempt(attempt, maxAttempts);
 
       const validation = await runAllValidators(profile, dossier);
 
       if (validation.allPassed) {
         console.log('[Profile] All 6 validators PASSED');
+        STATUS.profileComplete();
         return {
           donorName,
           profile,
@@ -564,6 +578,7 @@ ${PROFILE_QUALITY_CHECKLIST}`;
       if (attempt < maxAttempts) {
         // Regenerate with specific feedback from validators
         console.log('[Profile] Regenerating with validator feedback...');
+        STATUS.regenerating();
         try {
           const regenPrompt = createRegenerationPrompt(
             donorName,
@@ -586,6 +601,7 @@ ${PROFILE_QUALITY_CHECKLIST}`;
 
   // Always ship the profile, even if validation didn't fully pass
   console.log('[Profile] Shipping profile (validation incomplete or failed)');
+  STATUS.profileShipping();
 
   const validationNote = validationResults.length > 0
     ? `\n\n---\n\n*Validation: Some checks did not pass (${validationResults.join(', ')}). Profile may need manual review.*`
@@ -617,10 +633,12 @@ export async function runFullPipeline(
   // Step 1: Research
   const research = await conductResearch(donorName, seedUrls, searchFunction);
   console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
+  STATUS.researchComplete(research.sources.length);
   
   // Step 2: Dossier
   const dossier = await extractDossier(donorName, research.sources, canonDocs);
   console.log(`\n[Pipeline] Dossier complete\n`);
+  STATUS.dossierComplete();
   
   // Step 3: Profile
   const profile = await generateProfile(donorName, dossier.rawMarkdown, canonDocs);

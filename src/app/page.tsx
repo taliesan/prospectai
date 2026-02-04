@@ -3,11 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+interface ProgressEvent {
+  type: 'status' | 'complete' | 'error';
+  message: string;
+  stage?: 'research' | 'dossier' | 'profile';
+  detail?: string;
+}
+
 export default function Home() {
   const [donorName, setDonorName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState('');
+  const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
+  const [currentStage, setCurrentStage] = useState<string>('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -15,7 +23,8 @@ export default function Home() {
     if (!donorName.trim()) return;
 
     setIsLoading(true);
-    setStatus('Starting research...');
+    setProgressMessages([]);
+    setCurrentStage('Starting...');
 
     try {
       const response = await fetch('/api/generate', {
@@ -31,14 +40,61 @@ export default function Home() {
         throw new Error('Generation failed');
       }
 
-      const data = await response.json();
-      
-      // Store results and redirect
-      localStorage.setItem('lastProfile', JSON.stringify(data));
-      router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+      // Handle SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE messages
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || ''; // Keep incomplete message in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event: ProgressEvent = JSON.parse(line.slice(6));
+
+              // Update UI based on event type
+              if (event.type === 'status') {
+                setProgressMessages(prev => [...prev, event]);
+                if (event.stage) {
+                  setCurrentStage(event.stage.charAt(0).toUpperCase() + event.stage.slice(1));
+                }
+              } else if (event.type === 'complete' && event.detail) {
+                // Parse and store the final result
+                const result = JSON.parse(event.detail);
+                localStorage.setItem('lastProfile', JSON.stringify(result));
+                router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+                return;
+              } else if (event.type === 'error') {
+                setProgressMessages(prev => [...prev, event]);
+                setIsLoading(false);
+                return;
+              }
+            } catch (parseErr) {
+              console.error('Failed to parse SSE event:', parseErr);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
-      setStatus('Error: Generation failed. Please try again.');
+      setProgressMessages(prev => [...prev, {
+        type: 'error',
+        message: 'Error: Generation failed. Please try again.'
+      }]);
       setIsLoading(false);
     }
   };
@@ -57,8 +113,8 @@ export default function Home() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label 
-              htmlFor="donorName" 
+            <label
+              htmlFor="donorName"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
               Donor Name
@@ -69,7 +125,7 @@ export default function Home() {
               value={donorName}
               onChange={(e) => setDonorName(e.target.value)}
               placeholder="e.g., Craig Newmark"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          placeholder-gray-400"
@@ -78,8 +134,8 @@ export default function Home() {
           </div>
 
           <div>
-            <label 
-              htmlFor="seedUrls" 
+            <label
+              htmlFor="seedUrls"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
               Seed URLs (optional)
@@ -90,7 +146,7 @@ export default function Home() {
               onChange={(e) => setSeedUrls(e.target.value)}
               placeholder="Add URLs you know about this donor (one per line)"
               rows={3}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent
                          placeholder-gray-400 resize-none"
@@ -105,20 +161,46 @@ export default function Home() {
             type="submit"
             disabled={isLoading || !donorName.trim()}
             className="w-full py-4 px-6 rounded-lg font-medium text-white
-                       bg-blue-600 hover:bg-blue-700 
+                       bg-blue-600 hover:bg-blue-700
                        disabled:bg-gray-400 disabled:cursor-not-allowed
                        transition-colors duration-200"
           >
-            {isLoading ? 'Generating Profile...' : 'Generate Profile'}
+            {isLoading ? `Generating Profile... (${currentStage})` : 'Generate Profile'}
           </button>
 
-          {status && (
-            <div className={`p-4 rounded-lg text-center ${
-              status.includes('Error') 
-                ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-            }`}>
-              {status}
+          {/* Progress Feed */}
+          {isLoading && progressMessages.length > 0 && (
+            <div className="mt-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 max-h-64 overflow-y-auto">
+              <div className="space-y-1 font-mono text-sm">
+                {progressMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`${
+                      msg.type === 'error'
+                        ? 'text-red-600 dark:text-red-400'
+                        : msg.message.startsWith('✓')
+                          ? 'text-green-600 dark:text-green-400'
+                          : msg.message.startsWith('⚠')
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-gray-600 dark:text-gray-400'
+                    }`}
+                  >
+                    {msg.stage && (
+                      <span className="text-gray-400 dark:text-gray-500 mr-2">
+                        [{msg.stage}]
+                      </span>
+                    )}
+                    {msg.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Error Display (when not loading) */}
+          {!isLoading && progressMessages.some(m => m.type === 'error') && (
+            <div className="p-4 rounded-lg bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+              {progressMessages.find(m => m.type === 'error')?.message}
             </div>
           )}
         </form>
@@ -134,7 +216,7 @@ export default function Home() {
 
         <div className="mt-8 p-6 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <h2 className="font-semibold text-gray-900 dark:text-white mb-3">
-            What you'll get:
+            What you&apos;ll get:
           </h2>
           <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li className="flex items-start">

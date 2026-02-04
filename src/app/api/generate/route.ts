@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
+import { setProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 
 // Tavily API configuration
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -105,37 +106,85 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
   }
 }
 
+// SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { donorName, seedUrls = [] } = body;
+  const body = await request.json();
+  const { donorName, seedUrls = [] } = body;
 
-    if (!donorName || typeof donorName !== 'string') {
-      return NextResponse.json(
-        { error: 'Donor name is required' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`[API] Starting profile generation for: ${donorName}`);
-
-    // Load all 11 exemplar profiles from file
-    const exemplars = loadExemplars();
-    console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
-
-    const result = await runFullPipeline(
-      donorName,
-      seedUrls,
-      webSearch,
-      { exemplars }
-    );
-
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('[API] Error:', error);
-    return NextResponse.json(
-      { error: 'Profile generation failed' },
-      { status: 500 }
+  if (!donorName || typeof donorName !== 'string') {
+    return new Response(
+      JSON.stringify({ error: 'Donor name is required' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  console.log(`[API] Starting SSE profile generation for: ${donorName}`);
+
+  // Create a readable stream for SSE
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      // Helper to send SSE events
+      const sendEvent = (event: ProgressEvent) => {
+        const data = JSON.stringify(event);
+        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+      };
+
+      // Set up progress callback
+      setProgressCallback(sendEvent);
+
+      try {
+        // Load exemplars
+        const exemplars = loadExemplars();
+        console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
+
+        STATUS.pipelineStarted(donorName);
+
+        // Run the full pipeline
+        const result = await runFullPipeline(
+          donorName,
+          seedUrls,
+          webSearch,
+          { exemplars }
+        );
+
+        // Log full outputs for Railway logs
+        console.log(`[OUTPUT:RESEARCH]\n${result.research.rawMarkdown}\n[/OUTPUT:RESEARCH]`);
+        console.log(`[OUTPUT:DOSSIER]\n${result.dossier.rawMarkdown}\n[/OUTPUT:DOSSIER]`);
+        console.log(`[OUTPUT:PROFILE]\n${result.profile.profile}\n[/OUTPUT:PROFILE]`);
+
+        STATUS.pipelineComplete();
+
+        // Send the final result
+        sendEvent({
+          type: 'complete',
+          message: 'Profile generation complete',
+          detail: JSON.stringify(result)
+        });
+
+      } catch (error) {
+        console.error('[API] Pipeline error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        STATUS.pipelineError(errorMessage);
+
+        sendEvent({
+          type: 'error',
+          message: `Error: ${errorMessage}`
+        });
+      } finally {
+        // Clear progress callback
+        setProgressCallback(null);
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
