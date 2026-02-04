@@ -132,15 +132,17 @@ export async function POST(request: NextRequest) {
       // Helper to safely send SSE events
       const sendEvent = (event: ProgressEvent) => {
         if (isControllerClosed) {
-          console.warn('[SSE] Attempted to send event after controller closed:', event.type);
+          console.warn(`[SSE] Attempted to send event after controller closed: ${event.type}`);
           return;
         }
         try {
           const data = JSON.stringify(event);
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          const encoded = encoder.encode(`data: ${data}\n\n`);
+          console.log(`[SSE] Enqueueing event: ${event.type} (${encoded.length} bytes)`);
+          controller.enqueue(encoded);
         } catch (err) {
           // Controller may have been closed by the client disconnecting
-          console.warn('[SSE] Failed to enqueue event (controller may be closed):', err);
+          console.error(`[SSE] Failed to enqueue event '${event.type}':`, err);
           isControllerClosed = true;
         }
       };

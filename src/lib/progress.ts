@@ -137,8 +137,8 @@ export const STATUS = {
     message: `Starting profile generation for ${name}...`
   }),
   pipelineComplete: () => emitProgress({
-    type: 'complete',
-    message: `Profile generation complete`
+    type: 'status',
+    message: `✓ Pipeline complete, preparing results...`
   }),
   pipelineError: (error: string) => emitProgress({
     type: 'error',
