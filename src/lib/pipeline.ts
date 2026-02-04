@@ -333,7 +333,7 @@ export async function extractDossier(
     }));
 
     try {
-      // 60 second timeout for batch extraction (longer than single source)
+      // 5 minute timeout for batch extraction - this is an intensive task
       const batchPrompt = createBatchExtractionPrompt(donorName, batchSources);
       const batchExtraction = await withTimeout(
         complete(
@@ -341,7 +341,7 @@ export async function extractDossier(
           batchPrompt,
           { maxTokens: 8192 }
         ),
-        60000,
+        300000,
         `Timeout extracting batch ${batchNumber}`
       );
 
