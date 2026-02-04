@@ -170,6 +170,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): 
   ]);
 }
 
+// Helper: Delay for rate limiting
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // Step 2: Dossier Extraction
 export async function extractDossier(
   donorName: string,
@@ -232,6 +237,9 @@ export async function extractDossier(
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] ✗ Failed: ${errorMessage.slice(0, 100)}`);
     }
+
+    // Rate limiting: 2 second delay between API calls to avoid hitting 30k tokens/min limit
+    await delay(2000);
   }
 
   console.log(`[Dossier] Extraction complete: ${allEvidence.length} succeeded, ${failed} failed, ${skipped} skipped`);
