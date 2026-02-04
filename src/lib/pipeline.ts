@@ -19,8 +19,8 @@ import {
   createProfilePrompt,
   createRegenerationPrompt
 } from './prompts/profile';
-import { createValidationPrompt } from './prompts/validation';
-import { CANON_SUMMARY, PROFILE_QUALITY_CHECKLIST, selectExemplars } from './canon/loader';
+import { runAllValidators } from './validators';
+import { PROFILE_QUALITY_CHECKLIST, selectExemplars } from './canon/loader';
 
 // Types
 interface ResearchResult {
@@ -500,59 +500,68 @@ export async function generateProfile(
   canonDocs: { exemplars: string }
 ): Promise<ProfileResult> {
   console.log(`[Profile] Starting generation for: ${donorName}`);
-  
-  const exemplars = selectExemplars(dossier, canonDocs.exemplars);
-  const systemPrompt = `You are a world-class donor profiler following the DTW canon.
 
-${CANON_SUMMARY}
+  const exemplars = selectExemplars(dossier, canonDocs.exemplars);
+  const systemPrompt = `You are a world-class donor profiler. Your profiles must be behavioral, specific, and actionable.
 
 ${PROFILE_QUALITY_CHECKLIST}`;
-  
+
   // Initial generation
   console.log('[Profile] Generating initial draft...');
   const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
   let profile = await completeExtended(systemPrompt, profilePrompt, { maxTokens: 10000 });
-  
-  // Validation loop
+
+  // Validation loop with 6 parallel validators
   const maxAttempts = 3;
-  let attempts = 0;
-  let validationPasses = 0;
-  
-  while (attempts < maxAttempts) {
-    attempts++;
-    console.log(`[Profile] Validation attempt ${attempts}...`);
-    
-    const validationPrompt = createValidationPrompt(donorName, dossier, exemplars, profile);
-    const validation = await complete(
-      'You are a rigorous quality validator for donor profiles.',
-      validationPrompt,
-      { maxTokens: 2000 }
-    );
-    
-    if (validation.trim().toUpperCase().startsWith('PASS')) {
-      console.log('[Profile] Validation PASSED');
-      validationPasses = attempts;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`[Profile] Validation attempt ${attempt}...`);
+
+    // Run all 6 validators in parallel
+    const validation = await runAllValidators(profile, dossier);
+
+    if (validation.allPassed) {
+      console.log('[Profile] All 6 validators PASSED');
       return {
         donorName,
         profile,
-        validationPasses,
+        validationPasses: attempt,
         status: 'complete'
       };
     }
-    
-    console.log(`[Profile] Validation failed: ${validation.slice(0, 200)}...`);
-    
-    if (attempts < maxAttempts) {
-      console.log('[Profile] Regenerating with feedback...');
-      const regenPrompt = createRegenerationPrompt(donorName, dossier, exemplars, profile, validation);
+
+    // Log which validators failed
+    const failedValidators = validation.results
+      .filter(r => !r.passed)
+      .map(r => r.agent);
+    console.log(`[Profile] Failed validators: ${failedValidators.join(', ')}`);
+
+    if (attempt < maxAttempts) {
+      // Regenerate with specific feedback from all validators
+      console.log('[Profile] Regenerating with validator feedback...');
+      const regenPrompt = createRegenerationPrompt(
+        donorName,
+        dossier,
+        exemplars,
+        profile,
+        validation.aggregatedFeedback
+      );
       profile = await completeExtended(systemPrompt, regenPrompt, { maxTokens: 10000 });
     }
   }
-  
-  console.log('[Profile] Max attempts reached, returning best effort');
+
+  // Max attempts reached - run final validation to report what's still failing
+  console.log('[Profile] Max attempts reached, checking final state...');
+  const finalValidation = await runAllValidators(profile, dossier);
+  const stillFailing = finalValidation.results
+    .filter(r => !r.passed)
+    .map(r => r.agent);
+
+  console.log(`[Profile] Still failing: ${stillFailing.join(', ')}`);
+
   return {
     donorName,
-    profile: profile + '\n\n---\n\n*Note: This profile did not fully pass validation after 3 attempts.*',
+    profile: profile + `\n\n---\n\n*Validation incomplete after 3 attempts. Still failing: ${stillFailing.join(', ')}*`,
     validationPasses: 0,
     status: 'validation_failed'
   };

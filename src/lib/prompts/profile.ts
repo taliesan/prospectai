@@ -110,7 +110,13 @@ The profile must:
 Begin with "## 1. Donor Identity & Background" and continue through all seven sections.`;
 }
 
-export function createRegenerationPrompt(donorName: string, dossier: string, exemplars: string, previousDraft: string, critique: string): string {
+export function createRegenerationPrompt(
+  donorName: string,
+  dossier: string,
+  exemplars: string,
+  previousDraft: string,
+  validationFeedback: string
+): string {
   return `${PROFILE_GENERATION_PROMPT}
 
 ---
@@ -132,14 +138,28 @@ ${previousDraft}
 
 ---
 
-VALIDATION CRITIQUE:
-${critique}
+VALIDATION FAILURES (must fix ALL):
+
+${validationFeedback}
 
 ---
 
-The previous draft failed validation. The critique above identifies what was wrong.
+The previous draft failed validation. The failures above are from 6 independent validators that check specific quality criteria.
 
-Regenerate the profile, specifically addressing the critique. The new version must fix the identified issues while maintaining everything that was working.
+CRITICAL: You must fix EVERY failure listed above. For each FAIL item:
+1. Find the specific bullet or section mentioned
+2. Rewrite it to address the exact critique
+3. Ensure the fix doesn't break other validators
+
+Common fixes:
+- "describes a trait, not behavior" → Rewrite as "When X happens, they do Y"
+- "too generic / fails name-swap test" → Add specific details unique to THIS donor
+- "missing contradiction" → Surface tension between stated values and revealed behavior
+- "missing retreat patterns" → Add triggers, tells, and recovery guidance
+- "ungrounded claim" → Remove or ground in dossier evidence
+- "not actionable" → Tell the asker what to DO differently
+
+The new profile must pass all 6 validators. Be specific. Be behavioral. Be actionable.
 
 Begin with "## 1. Donor Identity & Background" and continue through all seven sections.`;
 }
