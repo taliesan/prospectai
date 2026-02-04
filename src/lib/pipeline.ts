@@ -298,6 +298,12 @@ export async function extractDossier(
   }
   console.log(`[Dossier] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
 
+  // Log top 5 sources to verify ranking
+  console.log(`[Dossier] Top 5 sources by behavioral value:`);
+  for (const s of rankedSources.slice(0, 5)) {
+    console.log(`[Dossier]   [T${s.tier}] ${s.title?.slice(0, 60) || s.url}`);
+  }
+
   // Cap at 50 sources maximum to prevent timeouts and rate limits
   const MAX_SOURCES = 50;
   const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
