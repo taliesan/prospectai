@@ -10,6 +10,7 @@ import {
 } from './prompts/research';
 import {
   createExtractionPrompt,
+  createBatchExtractionPrompt,
   SYNTHESIS_PROMPT,
   CROSS_CUTTING_PROMPT,
   DIMENSIONS
@@ -302,61 +303,117 @@ export async function extractDossier(
   const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
   console.log(`[Dossier] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
 
-  // 1. Extract from each source
+  // Filter sources with meaningful content
+  const validSources = sourcesToProcess.filter(source =>
+    source.content || source.snippet.length >= 100
+  );
+  const skipped = sourcesToProcess.length - validSources.length;
+  console.log(`[Dossier] ${validSources.length} sources with content, ${skipped} skipped`);
+
+  // 1. Batch extract from sources (10 sources per batch = ~5 API calls for 50 sources)
+  const BATCH_SIZE = 10;
   const allEvidence: any[] = [];
-  let processed = 0;
-  let skipped = 0;
+  let batchNumber = 0;
+  let totalProcessed = 0;
   let failed = 0;
 
-  for (const source of sourcesToProcess) {
-    // Skip sources without meaningful content
-    if (!source.content && source.snippet.length < 100) {
-      skipped++;
-      continue;
-    }
+  for (let i = 0; i < validSources.length; i += BATCH_SIZE) {
+    batchNumber++;
+    const batch = validSources.slice(i, i + BATCH_SIZE);
+    const batchEnd = Math.min(i + BATCH_SIZE, validSources.length);
 
-    processed++;
-    const sourceIndex = processed;
-    const tierLabel = `T${source.tier}`;
-    console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] [${tierLabel}] Extracting: ${source.title?.slice(0, 50) || source.url.slice(0, 50)}...`);
+    console.log(`[Dossier] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
 
-    // Sanitize content to remove images before sending to Claude
-    const rawContent = source.content || source.snippet;
-    const content = sanitizeForClaude(rawContent);
-    const extractionPrompt = createExtractionPrompt(
-      donorName,
-      { title: source.title, url: source.url, type: 'UNKNOWN' },
-      content
-    );
+    // Prepare batch sources with sanitized content
+    const batchSources = batch.map(source => ({
+      title: source.title || 'Untitled',
+      url: source.url,
+      type: `TIER_${source.tier}`,
+      content: sanitizeForClaude(source.content || source.snippet)
+    }));
 
     try {
-      // 30 second timeout per source extraction
-      const extraction = await withTimeout(
+      // 60 second timeout for batch extraction (longer than single source)
+      const batchPrompt = createBatchExtractionPrompt(donorName, batchSources);
+      const batchExtraction = await withTimeout(
         complete(
-          'You are extracting behavioral evidence for donor profiling.',
-          extractionPrompt,
-          { maxTokens: 4096 }
+          'You are extracting behavioral evidence for donor profiling. Return valid JSON only.',
+          batchPrompt,
+          { maxTokens: 8192 }
         ),
-        30000,
-        `Timeout extracting from ${source.url}`
+        60000,
+        `Timeout extracting batch ${batchNumber}`
       );
 
-      allEvidence.push({
-        source: source.url,
-        extraction
-      });
-      console.log(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] ✓ Success`);
+      // Parse JSON response
+      try {
+        // Extract JSON from response (may have markdown code blocks)
+        let jsonStr = batchExtraction;
+        const jsonMatch = batchExtraction.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0];
+        }
+
+        const parsedResults = JSON.parse(jsonStr);
+
+        // Convert parsed results to evidence format
+        for (const result of parsedResults) {
+          const sourceUrl = result.url || batchSources[result.source_index - 1]?.url || `batch_${batchNumber}_source_${result.source_index}`;
+
+          // Convert JSON extractions back to markdown format for synthesis
+          let extractionMarkdown = '';
+          if (result.extractions && Array.isArray(result.extractions)) {
+            for (const ext of result.extractions) {
+              if (ext.type === 'ABSENCE') {
+                extractionMarkdown += `\n## ${ext.dimension} — ABSENCE\n`;
+                extractionMarkdown += `**Notable Silence:** ${ext.notable_silence || 'N/A'}\n`;
+                extractionMarkdown += `**Significance:** ${ext.significance || 'N/A'}\n`;
+              } else {
+                extractionMarkdown += `\n## ${ext.dimension}\n`;
+                extractionMarkdown += `**Pattern:** ${ext.pattern || 'N/A'}\n`;
+                extractionMarkdown += `**Trigger:** ${ext.trigger || 'N/A'}\n`;
+                extractionMarkdown += `**Response:** ${ext.response || 'N/A'}\n`;
+                extractionMarkdown += `**Tell:** ${ext.tell || 'N/A'}\n`;
+                extractionMarkdown += `**Evidence:** ${ext.evidence || 'N/A'}\n`;
+                extractionMarkdown += `**Confidence:** ${ext.confidence || 'N/A'}\n`;
+                extractionMarkdown += `**Confidence Reason:** ${ext.confidence_reason || 'N/A'}\n`;
+                extractionMarkdown += `**Meeting Implication:** ${ext.meeting_implication || 'N/A'}\n`;
+              }
+            }
+          }
+
+          allEvidence.push({
+            source: sourceUrl,
+            extraction: extractionMarkdown || batchExtraction
+          });
+          totalProcessed++;
+        }
+
+        console.log(`[Dossier] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
+      } catch (parseErr) {
+        // If JSON parsing fails, use raw response as single extraction
+        console.warn(`[Dossier] Batch ${batchNumber}: JSON parse failed, using raw response`);
+        for (const source of batchSources) {
+          allEvidence.push({
+            source: source.url,
+            extraction: batchExtraction
+          });
+          totalProcessed++;
+        }
+      }
     } catch (err) {
-      failed++;
+      failed += batch.length;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`[Dossier] [${sourceIndex}/${sourcesToProcess.length}] ✗ Failed: ${errorMessage.slice(0, 100)}`);
+      console.error(`[Dossier] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
     }
 
-    // Rate limiting: 2 second delay between API calls to avoid hitting 30k tokens/min limit
-    await delay(2000);
+    // Rate limiting: 3 second delay between batch API calls
+    if (i + BATCH_SIZE < validSources.length) {
+      await delay(3000);
+    }
   }
 
-  console.log(`[Dossier] Extraction complete: ${allEvidence.length} succeeded, ${failed} failed, ${skipped} skipped`);
+  console.log(`[Dossier] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
   
   // 2. Synthesize by dimension
   console.log('[Dossier] Synthesizing dimensions...');

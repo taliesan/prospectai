@@ -114,6 +114,115 @@ ${content.slice(0, 12000)} ${content.length > 12000 ? '\n[Content truncated...]'
 Extract behavioral evidence across all applicable dimensions. Output in the format specified above.`;
 }
 
+// Batch extraction prompt for processing multiple sources in one API call
+export const BATCH_EXTRACTION_PROMPT = `You are extracting BEHAVIORAL EVIDENCE for donor profiling from MULTIPLE SOURCES.
+
+CRITICAL: This is NOT biographical extraction. You're looking for PATTERNS that predict how this person will behave in a meeting.
+
+THE GOAL: For EACH source, identify evidence that answers:
+1. What triggers their engagement?
+2. What causes their withdrawal?
+3. How do they signal these shifts?
+4. What contradictions create leverage?
+5. What do they conspicuously NOT talk about?
+
+THE 17 DIMENSIONS:
+
+FORMATION (Who They Became):
+1. IDENTITY_FORMATION - Formative experiences, mentors, failures, the story they tell
+2. BIO_CONTEXT - Class origin, geography, education, cultural identity
+3. CAREER_ARC - Role patterns, transitions, what kind of power they seek
+
+ORIENTATION (How They See the World):
+4. WORLDVIEW_ENGINE - Theory of change, what they think causes outcomes
+5. POLITICS_PUBLIC_POSITIONS - Political posture, public vs. private stances
+6. POWER_THEORY - How they think about leverage and change-making
+
+BEHAVIOR (How They Move):
+7. MEETING_DYNAMICS - Tempo, testing, evaluation→collaboration shift
+8. SOCIAL_PRESENCE - Informal settings, what animates or drains them
+9. RETREAT_PATTERNS - How they disengage, signals of withdrawal
+10. NETWORK_DYNAMICS - Who they trust, validators, gatekeepers
+
+INVESTMENT (How They Give):
+11. GIVING_HISTORY - Patterns in what, how, and why they give
+12. FUNDRAISING_ORIENTATION - If they fundraise: their philosophy
+13. RISK_POSTURE - Comfort with controversy and exposure
+
+LEVERAGE (Where Persuasion Lives):
+14. CONTRADICTIONS - Tensions between stated values and behavior (MOST IMPORTANT)
+15. SYSTEMS_FEAR - Civic-scale anxiety driving their engagement
+16. IDIOSYNCRATIC_CUES - Quirks, hobbies, personal details
+17. LOGISTICAL_PREFERENCES - Timing, format, communication preferences
+
+---
+
+OUTPUT FORMAT:
+Return a JSON array with one object per source. Each object must have:
+- "source_index": The source number (1, 2, 3, etc.)
+- "url": The source URL
+- "extractions": An array of dimension extractions
+
+Each extraction in the "extractions" array should have:
+- "dimension": The dimension name (e.g., "IDENTITY_FORMATION")
+- "pattern": One-sentence behavioral pattern
+- "trigger": What activates this
+- "response": How they behave
+- "tell": Observable signal
+- "evidence": Direct quote or specific action with context
+- "confidence": "HIGH", "MEDIUM", or "LOW"
+- "confidence_reason": Why this rating
+- "meeting_implication": How this changes approach
+
+If a dimension shows notable absence, use:
+- "dimension": The dimension name
+- "type": "ABSENCE"
+- "notable_silence": What they don't discuss despite relevance
+- "significance": Why this might matter
+
+---
+
+RULES:
+- Process EACH source independently
+- Only extract what's IN EACH SOURCE
+- Include direct quotes when available
+- If a dimension has no evidence in a source, skip it for that source
+- Flag conspicuous silences
+- Focus on MEETING IMPLICATIONS
+- Behavior > beliefs > facts
+- Return VALID JSON only`;
+
+export function createBatchExtractionPrompt(
+  donorName: string,
+  sources: { title: string; url: string; type: string; content: string }[]
+): string {
+  const sourcesText = sources.map((source, index) => {
+    const truncatedContent = source.content.slice(0, 8000);
+    const isTruncated = source.content.length > 8000;
+    return `
+=== SOURCE ${index + 1} ===
+Title: ${source.title}
+URL: ${source.url}
+Type: ${source.type}
+
+CONTENT:
+${truncatedContent}${isTruncated ? '\n[Content truncated...]' : ''}
+`;
+  }).join('\n---\n');
+
+  return `${BATCH_EXTRACTION_PROMPT}
+
+---
+
+DONOR: ${donorName}
+
+${sourcesText}
+
+---
+
+Extract behavioral evidence from ALL ${sources.length} sources above. Return a JSON array with extractions for each source.`;
+}
+
 export const SYNTHESIS_PROMPT = `You are synthesizing behavioral patterns from extracted evidence.
 
 For each dimension with evidence, produce:
