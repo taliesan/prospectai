@@ -1,23 +1,23 @@
 // Prompts for Step 2: Behavioral Dossier Extraction
 
 export const DIMENSIONS = [
-  { id: 'IDENTITY_FORMATION', name: 'Identity Formation', description: 'Formative experiences, mentors, failures, self-narrative' },
-  { id: 'BIO_CONTEXT', name: 'Biographical Context', description: 'Class origin, geography, education, cultural identity' },
-  { id: 'CAREER_ARC', name: 'Career Arc', description: 'Role patterns, transitions, power orientation' },
-  { id: 'WORLDVIEW_ENGINE', name: 'Worldview Engine', description: 'Theory of change, what causes outcomes' },
-  { id: 'POLITICS_PUBLIC_POSITIONS', name: 'Politics & Public Positions', description: 'Political posture, public vs. private stances' },
-  { id: 'POWER_THEORY', name: 'Power Theory', description: 'How they think about leverage and change' },
-  { id: 'MEETING_DYNAMICS', name: 'Meeting Dynamics', description: 'Tempo, testing, evaluation→collaboration shift' },
-  { id: 'SOCIAL_PRESENCE', name: 'Social Presence', description: 'Informal settings, what animates or drains them' },
-  { id: 'RETREAT_PATTERNS', name: 'Retreat Patterns', description: 'How they disengage, withdrawal signals' },
-  { id: 'NETWORK_DYNAMICS', name: 'Network Dynamics', description: 'Who they trust, validators, gatekeepers' },
-  { id: 'GIVING_HISTORY', name: 'Giving History', description: 'Patterns in what, how, and why they give' },
-  { id: 'FUNDRAISING_ORIENTATION', name: 'Fundraising Orientation', description: 'If they fundraise: their philosophy' },
-  { id: 'RISK_POSTURE', name: 'Risk Posture', description: 'Comfort with controversy and exposure' },
-  { id: 'CONTRADICTIONS', name: 'Contradictions', description: 'Tensions between stated values and behavior - MOST IMPORTANT' },
-  { id: 'SYSTEMS_FEAR', name: 'Systems Fear', description: 'Civic-scale anxiety driving engagement' },
-  { id: 'IDIOSYNCRATIC_CUES', name: 'Idiosyncratic Cues', description: 'Quirks, hobbies, personal connection points' },
-  { id: 'LOGISTICAL_PREFERENCES', name: 'Logistical Preferences', description: 'Timing, format, communication preferences' },
+  { id: 'DECISION_MAKING', name: 'Decision-Making Patterns', description: 'How they evaluate proposals, what triggers yes/no, deliberation style' },
+  { id: 'TRUST_CALIBRATION', name: 'Trust Calibration', description: 'What builds/breaks credibility, trust signals, verification behavior' },
+  { id: 'COMMUNICATION_STYLE', name: 'Communication Style', description: 'Language patterns, what resonates, preferred framing' },
+  { id: 'RESOURCE_PHILOSOPHY', name: 'Resource Philosophy', description: 'How they think about money, time, leverage, ROI' },
+  { id: 'IDENTITY_SELF_CONCEPT', name: 'Identity & Self-Concept', description: 'How they see themselves, self-narrative, identity markers' },
+  { id: 'EMOTIONAL_TRIGGERS', name: 'Emotional Triggers', description: 'What excites them, what irritates, emotional hot buttons' },
+  { id: 'RELATIONSHIP_PATTERNS', name: 'Relationship Patterns', description: 'How they engage with people, loyalty dynamics, social orientation' },
+  { id: 'RISK_TOLERANCE', name: 'Risk Tolerance', description: 'Attitude toward uncertainty, comfort with ambiguity, failure response' },
+  { id: 'TIME_ORIENTATION', name: 'Time Orientation', description: 'Past/present/future focus, urgency, patience, timeline preferences' },
+  { id: 'VALUES_HIERARCHY', name: 'Values Hierarchy', description: 'What they prioritize when values conflict, non-negotiables' },
+  { id: 'KNOWLEDGE_AREAS', name: 'Knowledge Areas', description: 'Domains of expertise/interest, intellectual passions, blind spots' },
+  { id: 'INFLUENCE_SUSCEPTIBILITY', name: 'Influence Susceptibility', description: 'What persuades them, who they defer to, resistance patterns' },
+  { id: 'CONTRADICTION_PATTERNS', name: 'Contradiction Patterns', description: 'Inconsistencies in stated vs revealed preferences - MOST IMPORTANT' },
+  { id: 'STATUS_RECOGNITION', name: 'Status & Recognition', description: 'How they relate to prestige, credit-seeking, visibility preferences' },
+  { id: 'LEARNING_STYLE', name: 'Learning Style', description: 'How they take in new information, processing preferences' },
+  { id: 'COMMITMENT_PATTERNS', name: 'Commitment Patterns', description: 'How they make and keep commitments, follow-through behavior' },
+  { id: 'BOUNDARY_CONDITIONS', name: 'Boundary Conditions', description: 'Hard limits, non-negotiables, dealbreakers, red lines' },
 ];
 
 export const EXTRACTION_PROMPT = `You are extracting BEHAVIORAL EVIDENCE for donor profiling.
@@ -31,34 +31,82 @@ THE GOAL: Identify evidence that answers:
 4. What contradictions create leverage?
 5. What do they conspicuously NOT talk about?
 
-THE 17 DIMENSIONS:
+THE 17 BEHAVIORAL DIMENSIONS:
 
-FORMATION (Who They Became):
-1. IDENTITY_FORMATION - Formative experiences, mentors, failures, the story they tell
-2. BIO_CONTEXT - Class origin, geography, education, cultural identity
-3. CAREER_ARC - Role patterns, transitions, what kind of power they seek
+DECISION & EVALUATION:
+1. DECISION_MAKING - How they evaluate proposals and opportunities
+   Look for: Speed of decisions, need for consensus, data requirements, gut vs analysis, what triggers immediate yes/no, deliberation patterns
+   Example signals: "I need to see the numbers" / "Let me sleep on it" / "I knew in the first 5 minutes"
 
-ORIENTATION (How They See the World):
-4. WORLDVIEW_ENGINE - Theory of change, what they think causes outcomes
-5. POLITICS_PUBLIC_POSITIONS - Political posture, public vs. private stances
-6. POWER_THEORY - How they think about leverage and change-making
+2. TRUST_CALIBRATION - What builds or breaks their credibility assessment
+   Look for: Credential weight, track record emphasis, referral importance, verification behavior, skepticism triggers
+   Example signals: Who they cite approvingly, what due diligence they mention, red flags they've called out
 
-BEHAVIOR (How They Move):
-7. MEETING_DYNAMICS - Tempo, testing, evaluation→collaboration shift
-8. SOCIAL_PRESENCE - Informal settings, what animates or drains them
-9. RETREAT_PATTERNS - How they disengage, signals of withdrawal
-10. NETWORK_DYNAMICS - Who they trust, validators, gatekeepers
+3. INFLUENCE_SUSCEPTIBILITY - What persuades them and who they defer to
+   Look for: Authority figures they respect, peer influence, data vs story preference, resistance patterns, contrarian tendencies
+   Example signals: Mentions of advisors, "X convinced me", pushback patterns, independent streak
 
-INVESTMENT (How They Give):
-11. GIVING_HISTORY - Patterns in what, how, and why they give
-12. FUNDRAISING_ORIENTATION - If they fundraise: their philosophy
-13. RISK_POSTURE - Comfort with controversy and exposure
+COMMUNICATION & STYLE:
+4. COMMUNICATION_STYLE - Language patterns and preferred framing
+   Look for: Technical vs accessible language, storytelling, directness, humor use, formality level, metaphors they use
+   Example signals: Jargon comfort, narrative structures, how they explain complex ideas
 
-LEVERAGE (Where Persuasion Lives):
-14. CONTRADICTIONS - Tensions between stated values and behavior (MOST IMPORTANT)
-15. SYSTEMS_FEAR - Civic-scale anxiety driving their engagement
-16. IDIOSYNCRATIC_CUES - Quirks, hobbies, personal details
-17. LOGISTICAL_PREFERENCES - Timing, format, communication preferences
+5. LEARNING_STYLE - How they take in new information
+   Look for: Reading vs conversation preference, visual vs verbal, deep dive vs summary, question patterns
+   Example signals: "Send me the deck" vs "Let's walk through it" / asks for examples vs principles
+
+6. TIME_ORIENTATION - Temporal focus and urgency patterns
+   Look for: Past/present/future emphasis, patience level, deadline behavior, legacy thinking, urgency triggers
+   Example signals: Historical references, "in 10 years" framing, impatience signals, long-term vs quick wins
+
+IDENTITY & VALUES:
+7. IDENTITY_SELF_CONCEPT - How they see and present themselves
+   Look for: Self-narrative, origin story, identity markers, what they're proud of, what they downplay
+   Example signals: Titles they use, stories they repeat, humble-brags, identity corrections
+
+8. VALUES_HIERARCHY - What they prioritize when values conflict
+   Look for: Trade-off decisions, principled stands, flexibility areas, core vs negotiable values
+   Example signals: "I'll never compromise on X" / sacrifices they've made / what they've walked away from
+
+9. STATUS_RECOGNITION - How they relate to prestige and credit
+   Look for: Credit-sharing vs claiming, visibility preference, title sensitivity, recognition needs
+   Example signals: Name-dropping patterns, anonymity preference, board seat interest, award mentions
+
+10. BOUNDARY_CONDITIONS - Hard limits and non-negotiables
+    Look for: Explicit red lines, dealbreakers, categorical refusals, ethical limits
+    Example signals: "I don't do X" / past walk-aways / industries/causes they avoid
+
+EMOTIONAL & RELATIONAL:
+11. EMOTIONAL_TRIGGERS - What excites or irritates them
+    Look for: Enthusiasm spikes, frustration sources, passion topics, pet peeves, energy shifts
+    Example signals: Animated language, criticism patterns, what makes them lean in or check out
+
+12. RELATIONSHIP_PATTERNS - How they engage with people
+    Look for: Loyalty dynamics, network maintenance, collaboration style, conflict approach
+    Example signals: Long-term relationships mentioned, partnership language, solo vs team orientation
+
+13. RISK_TOLERANCE - Attitude toward uncertainty and failure
+    Look for: Bet-sizing, failure stories, hedging behavior, comfort with ambiguity, recovery patterns
+    Example signals: "Calculated risk" vs "swing for fences" / how they discuss losses / insurance behavior
+
+RESOURCES & COMMITMENT:
+14. RESOURCE_PHILOSOPHY - How they think about money, time, leverage
+    Look for: ROI thinking, abundance vs scarcity mindset, leverage preferences, efficiency focus
+    Example signals: Investment framing, time allocation, "bang for buck" language, scaling thinking
+
+15. COMMITMENT_PATTERNS - How they make and keep commitments
+    Look for: Promise-making style, follow-through evidence, commitment escalation, exit patterns
+    Example signals: Multi-year vs annual giving, deepening involvement, graceful exits, ghosting
+
+16. KNOWLEDGE_AREAS - Domains of expertise and intellectual passion
+    Look for: Deep knowledge areas, amateur interests, blind spots, curiosity patterns
+    Example signals: Technical depth, reading habits, conference attendance, questions they ask
+
+LEVERAGE (MOST IMPORTANT):
+17. CONTRADICTION_PATTERNS - Inconsistencies between stated and revealed preferences
+    Look for: Say/do gaps, public vs private positions, aspirational vs actual behavior, rationalization patterns
+    Example signals: Espoused values contradicted by actions, defensive topics, cognitive dissonance moments
+    WHY THIS MATTERS: Contradictions reveal where persuasion has maximum leverage
 
 ---
 
@@ -126,34 +174,65 @@ THE GOAL: For EACH source, identify evidence that answers:
 4. What contradictions create leverage?
 5. What do they conspicuously NOT talk about?
 
-THE 17 DIMENSIONS:
+THE 17 BEHAVIORAL DIMENSIONS:
 
-FORMATION (Who They Became):
-1. IDENTITY_FORMATION - Formative experiences, mentors, failures, the story they tell
-2. BIO_CONTEXT - Class origin, geography, education, cultural identity
-3. CAREER_ARC - Role patterns, transitions, what kind of power they seek
+DECISION & EVALUATION:
+1. DECISION_MAKING - How they evaluate proposals and opportunities
+   Look for: Speed of decisions, need for consensus, data requirements, gut vs analysis, what triggers immediate yes/no
 
-ORIENTATION (How They See the World):
-4. WORLDVIEW_ENGINE - Theory of change, what they think causes outcomes
-5. POLITICS_PUBLIC_POSITIONS - Political posture, public vs. private stances
-6. POWER_THEORY - How they think about leverage and change-making
+2. TRUST_CALIBRATION - What builds or breaks their credibility assessment
+   Look for: Credential weight, track record emphasis, referral importance, verification behavior, skepticism triggers
 
-BEHAVIOR (How They Move):
-7. MEETING_DYNAMICS - Tempo, testing, evaluation→collaboration shift
-8. SOCIAL_PRESENCE - Informal settings, what animates or drains them
-9. RETREAT_PATTERNS - How they disengage, signals of withdrawal
-10. NETWORK_DYNAMICS - Who they trust, validators, gatekeepers
+3. INFLUENCE_SUSCEPTIBILITY - What persuades them and who they defer to
+   Look for: Authority figures they respect, peer influence, data vs story preference, resistance patterns
 
-INVESTMENT (How They Give):
-11. GIVING_HISTORY - Patterns in what, how, and why they give
-12. FUNDRAISING_ORIENTATION - If they fundraise: their philosophy
-13. RISK_POSTURE - Comfort with controversy and exposure
+COMMUNICATION & STYLE:
+4. COMMUNICATION_STYLE - Language patterns and preferred framing
+   Look for: Technical vs accessible language, storytelling, directness, humor use, formality level
 
-LEVERAGE (Where Persuasion Lives):
-14. CONTRADICTIONS - Tensions between stated values and behavior (MOST IMPORTANT)
-15. SYSTEMS_FEAR - Civic-scale anxiety driving their engagement
-16. IDIOSYNCRATIC_CUES - Quirks, hobbies, personal details
-17. LOGISTICAL_PREFERENCES - Timing, format, communication preferences
+5. LEARNING_STYLE - How they take in new information
+   Look for: Reading vs conversation preference, visual vs verbal, deep dive vs summary, question patterns
+
+6. TIME_ORIENTATION - Temporal focus and urgency patterns
+   Look for: Past/present/future emphasis, patience level, deadline behavior, legacy thinking
+
+IDENTITY & VALUES:
+7. IDENTITY_SELF_CONCEPT - How they see and present themselves
+   Look for: Self-narrative, origin story, identity markers, what they're proud of, what they downplay
+
+8. VALUES_HIERARCHY - What they prioritize when values conflict
+   Look for: Trade-off decisions, principled stands, flexibility areas, core vs negotiable values
+
+9. STATUS_RECOGNITION - How they relate to prestige and credit
+   Look for: Credit-sharing vs claiming, visibility preference, title sensitivity, recognition needs
+
+10. BOUNDARY_CONDITIONS - Hard limits and non-negotiables
+    Look for: Explicit red lines, dealbreakers, categorical refusals, ethical limits
+
+EMOTIONAL & RELATIONAL:
+11. EMOTIONAL_TRIGGERS - What excites or irritates them
+    Look for: Enthusiasm spikes, frustration sources, passion topics, pet peeves, energy shifts
+
+12. RELATIONSHIP_PATTERNS - How they engage with people
+    Look for: Loyalty dynamics, network maintenance, collaboration style, conflict approach
+
+13. RISK_TOLERANCE - Attitude toward uncertainty and failure
+    Look for: Bet-sizing, failure stories, hedging behavior, comfort with ambiguity
+
+RESOURCES & COMMITMENT:
+14. RESOURCE_PHILOSOPHY - How they think about money, time, leverage
+    Look for: ROI thinking, abundance vs scarcity mindset, leverage preferences, efficiency focus
+
+15. COMMITMENT_PATTERNS - How they make and keep commitments
+    Look for: Promise-making style, follow-through evidence, commitment escalation, exit patterns
+
+16. KNOWLEDGE_AREAS - Domains of expertise and intellectual passion
+    Look for: Deep knowledge areas, amateur interests, blind spots, curiosity patterns
+
+LEVERAGE (MOST IMPORTANT):
+17. CONTRADICTION_PATTERNS - Inconsistencies between stated and revealed preferences
+    Look for: Say/do gaps, public vs private positions, aspirational vs actual behavior
+    WHY THIS MATTERS: Contradictions reveal where persuasion has maximum leverage
 
 ---
 
