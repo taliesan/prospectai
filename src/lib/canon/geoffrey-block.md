@@ -109,9 +109,26 @@ Seven sections. Each one load-bearing — if a section doesn't change how the re
 6. **Tactical Approach to the Meeting** — Emotional opener, mid-pitch pivot, authorship trigger, follow-up path. Include actual sentences the reader could say. The reader can run the entire meeting from this section alone.
 7. **Dinner Party Test** — Unmoderated cognition. What excites, what bores, what triggers trust. Include actual lines that would land or fail. Written for informal but politically meaningful rooms.
 
-Section headers are behavioral claims, not labels. Each header should advance the argument.
+The seven numbered section headers (1. Donor Identity & Background, 2. Core Motivations, Values & Triggers, etc.) are fixed structural labels. They appear exactly as written in every profile. Do not rephrase or replace them.
 
-Subsection headers follow the same rule at smaller scale. They are short (3–7 words), concrete, and field-anchored. They sound like someone briefing you before a meeting, not like someone titling an academic paper. "She knew them before they had billions" — not "Confrontational Intimacy as Access Strategy." "Bring the memo that needs surgery" — not "Collaborative Editing as Entry Mechanism."
+Subsection headers within each section are generated. They must be short (3–7 words), concrete, and field-anchored. They sound like someone briefing you before a meeting, not like someone titling an academic paper.
+
+**Subsection headers sound like these:**
+- "He uses 'messiness' as both shield and signal"
+- "Governance strategist operating through accountability and oversight"
+- "Heiress turned structural actor"
+- "Tech-built, justice-oriented"
+- "She knew them before they had billions"
+- "Bring the memo that needs surgery"
+
+**Not like these:**
+- "Confrontational Intimacy as Access Strategy"
+- "Formation Through Loss, Not Achievement"
+- "Tech Industry Superego Without Institutional Capture"
+- "Anti-Performance Performance as Brand Architecture"
+- "Collaborative Editing as Entry Mechanism"
+
+No colons. No "X as Y" constructions. No "Not X" constructions. If the header reads like a journal article subheading, rewrite it until it reads like something someone would say in a briefing.
 
 ---
 

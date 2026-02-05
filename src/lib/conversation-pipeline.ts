@@ -169,7 +169,19 @@ ${dossier}
 
 ---
 
-Write a complete 7-section donor persuasion profile for ${donorName}. Compress the dossier into the profile format demonstrated by the exemplars. Every sentence must pass the register rules in the Geoffrey Block. Every section must be load-bearing.`;
+Write a complete 7-section donor persuasion profile for ${donorName}. Compress the dossier into the profile format demonstrated by the exemplars. Every sentence must pass the register rules in the Geoffrey Block. Every section must be load-bearing.
+
+CRITICAL: The seven numbered section headers are fixed structural labels. Use them exactly as written:
+
+1. Donor Identity & Background
+2. Core Motivations, Values & Triggers
+3. Ideal Engagement Style
+4. Challenges & Risk Factors
+5. Strategic Opportunities for Alignment
+6. Tactical Approach to the Meeting
+7. Dinner Party Test
+
+You generate subsection headers and all content within each section. You do NOT rephrase or replace the numbered section headers. They are identical across every profile.`;
 }
 
 /**
