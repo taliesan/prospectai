@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { runFullPipeline } from '@/lib/pipeline';
+import { runConversationPipeline } from '@/lib/conversation-pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { setProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
@@ -110,7 +111,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, seedUrls = [] } = body;
+  const { donorName, seedUrls = [], mode = 'standard' } = body;
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(
@@ -119,7 +120,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log(`[API] Starting SSE profile generation for: ${donorName}`);
+  const isConversationMode = mode === 'conversation';
+  console.log(`[API] Starting SSE profile generation for: ${donorName} (mode: ${mode})`);
 
   // Create a readable stream for SSE
   const encoder = new TextEncoder();
@@ -167,39 +169,93 @@ export async function POST(request: NextRequest) {
       setProgressCallback(sendEvent);
 
       try {
-        // Load exemplars
-        const exemplars = loadExemplars();
-        console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
-
         STATUS.pipelineStarted(donorName);
 
-        // Run the full pipeline
-        const result = await runFullPipeline(
-          donorName,
-          seedUrls,
-          webSearch,
-          { exemplars }
-        );
+        // Save outputs helper
+        const saveOutputs = (research: any, profile: string, dossier?: string) => {
+          const outputDir = '/tmp/prospectai-outputs';
+          if (!existsSync(outputDir)) {
+            mkdirSync(outputDir, { recursive: true });
+          }
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
 
-        // Save full outputs to files instead of logging (avoids Railway rate limits)
-        const outputDir = '/tmp/prospectai-outputs';
-        if (!existsSync(outputDir)) {
-          mkdirSync(outputDir, { recursive: true });
+          const researchPath = `${outputDir}/${timestamp}-${safeName}-research.md`;
+          const profilePath = `${outputDir}/${timestamp}-${safeName}-profile.md`;
+
+          writeFileSync(researchPath, research.rawMarkdown);
+          writeFileSync(profilePath, profile);
+
+          console.log(`[OUTPUT] Research saved to ${researchPath} (${research.rawMarkdown.length} chars)`);
+          console.log(`[OUTPUT] Profile saved to ${profilePath} (${profile.length} chars)`);
+
+          if (dossier) {
+            const dossierPath = `${outputDir}/${timestamp}-${safeName}-dossier.md`;
+            writeFileSync(dossierPath, dossier);
+            console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
+          }
+        };
+
+        let result: any;
+
+        if (isConversationMode) {
+          // Conversation mode: 3-turn conversation pipeline
+          console.log('[API] Running conversation mode pipeline...');
+
+          const conversationResult = await runConversationPipeline(
+            donorName,
+            seedUrls,
+            webSearch,
+            (message: string, stage?: string) => {
+              sendEvent({
+                type: 'status',
+                stage: stage as any,
+                message
+              });
+            }
+          );
+
+          // Save outputs (no dossier in conversation mode)
+          saveOutputs(conversationResult.research, conversationResult.profile);
+
+          // Also save draft and critique for debugging
+          const outputDir = '/tmp/prospectai-outputs';
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+          writeFileSync(`${outputDir}/${timestamp}-${safeName}-draft.md`, conversationResult.draft);
+          writeFileSync(`${outputDir}/${timestamp}-${safeName}-critique.md`, conversationResult.critique);
+          console.log(`[OUTPUT] Draft and critique saved`);
+
+          // Format result for frontend compatibility
+          result = {
+            research: conversationResult.research,
+            dossier: { rawMarkdown: `# Conversation Mode\n\nNo dossier in conversation mode.\n\n## Draft\n\n${conversationResult.draft}\n\n## Critique\n\n${conversationResult.critique}` },
+            profile: {
+              donorName,
+              profile: conversationResult.profile,
+              validationPasses: 0,
+              status: 'complete'
+            }
+          };
+
+        } else {
+          // Standard mode: existing multi-stage pipeline
+          console.log('[API] Running standard pipeline...');
+
+          // Load exemplars
+          const exemplars = loadExemplars();
+          console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
+
+          result = await runFullPipeline(
+            donorName,
+            seedUrls,
+            webSearch,
+            { exemplars }
+          );
+
+          // Save outputs
+          saveOutputs(result.research, result.profile.profile, result.dossier.rawMarkdown);
         }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-
-        const researchPath = `${outputDir}/${timestamp}-${safeName}-research.md`;
-        const dossierPath = `${outputDir}/${timestamp}-${safeName}-dossier.md`;
-        const profilePath = `${outputDir}/${timestamp}-${safeName}-profile.md`;
-
-        writeFileSync(researchPath, result.research.rawMarkdown);
-        writeFileSync(dossierPath, result.dossier.rawMarkdown);
-        writeFileSync(profilePath, result.profile.profile);
-
-        console.log(`[OUTPUT] Research saved to ${researchPath} (${result.research.rawMarkdown.length} chars)`);
-        console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${result.dossier.rawMarkdown.length} chars)`);
-        console.log(`[OUTPUT] Profile saved to ${profilePath} (${result.profile.profile.length} chars)`);
 
         STATUS.pipelineComplete();
 

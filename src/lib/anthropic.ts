@@ -107,4 +107,36 @@ export async function completeExtended(
   return textContent.text;
 }
 
+/**
+ * Multi-turn conversation for the conversation-mode pipeline.
+ * Uses a minimal system prompt - the exemplars and Geoffrey corrections do the real work.
+ */
+export async function conversationTurn(
+  messages: Message[],
+  options: {
+    maxTokens?: number;
+  } = {}
+): Promise<string> {
+  const {
+    maxTokens = 16000,
+  } = options;
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    system: 'You are a world-class donor profiler. Your profiles must read like they were written by someone who has sat in rooms with the donor.',
+    messages: messages.map(m => ({
+      role: m.role,
+      content: m.content
+    })),
+  });
+
+  const textContent = response.content.find(c => c.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text content in response');
+  }
+
+  return textContent.text;
+}
+
 export default anthropic;

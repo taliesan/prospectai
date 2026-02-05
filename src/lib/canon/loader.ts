@@ -4,6 +4,7 @@ import * as path from 'path';
 
 // Cache for exemplars (loaded once at runtime)
 let exemplarsCache: string | null = null;
+let geoffreyCritiqueCache: string | null = null;
 
 /**
  * Load exemplar profiles from the exemplars.md file.
@@ -32,6 +33,26 @@ export function loadExemplars(): string {
 export function selectExemplars(_dossier: string, allExemplars: string): string {
   // Return all exemplars - the model needs to see the full range of what A+++ looks like
   return allExemplars;
+}
+
+/**
+ * Load Geoffrey's critique examples from geoffrey-critique.md.
+ * These are used in conversation mode to teach the model how to self-critique.
+ */
+export function loadGeoffreyCritique(): string {
+  if (geoffreyCritiqueCache !== null) {
+    return geoffreyCritiqueCache;
+  }
+
+  try {
+    const critiquePath = path.join(process.cwd(), 'src/lib/canon/geoffrey-critique.md');
+    geoffreyCritiqueCache = fs.readFileSync(critiquePath, 'utf-8');
+    console.log(`[Canon] Loaded Geoffrey critique: ${geoffreyCritiqueCache.length} characters`);
+    return geoffreyCritiqueCache;
+  } catch (error) {
+    console.error('[Canon] Failed to load geoffrey-critique.md:', error);
+    return '';
+  }
 }
 
 export const PROFILE_QUALITY_CHECKLIST = `

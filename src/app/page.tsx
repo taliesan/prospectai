@@ -6,13 +6,16 @@ import { useRouter } from 'next/navigation';
 interface ProgressEvent {
   type: 'status' | 'complete' | 'error';
   message: string;
-  stage?: 'research' | 'dossier' | 'profile';
+  stage?: 'research' | 'dossier' | 'profile' | 'critique' | 'revision';
   detail?: string;
 }
+
+type PipelineMode = 'standard' | 'conversation';
 
 export default function Home() {
   const [donorName, setDonorName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
+  const [mode, setMode] = useState<PipelineMode>('standard');
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
   const [currentStage, setCurrentStage] = useState<string>('');
@@ -32,7 +35,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           donorName: donorName.trim(),
-          seedUrls: seedUrls.split('\n').filter(u => u.trim())
+          seedUrls: seedUrls.split('\n').filter(u => u.trim()),
+          mode
         })
       });
 
@@ -187,6 +191,49 @@ export default function Home() {
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Providing seed URLs helps ensure we research the right person
+            </p>
+          </div>
+
+          {/* Pipeline Mode Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Pipeline Mode
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="standard"
+                  checked={mode === 'standard'}
+                  onChange={() => setMode('standard')}
+                  disabled={isLoading}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Standard Pipeline
+                </span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="conversation"
+                  checked={mode === 'conversation'}
+                  onChange={() => setMode('conversation')}
+                  disabled={isLoading}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Conversation Mode
+                  <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">(experimental)</span>
+                </span>
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {mode === 'standard'
+                ? 'Multi-stage pipeline with extraction, synthesis, and validation'
+                : '3-turn conversation: write → critique → revise. Faster, often higher quality.'}
             </p>
           </div>
 
