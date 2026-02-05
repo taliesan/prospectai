@@ -10,12 +10,10 @@ interface ProgressEvent {
   detail?: string;
 }
 
-type PipelineMode = 'standard' | 'conversation';
-
 export default function Home() {
   const [donorName, setDonorName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
-  const [mode, setMode] = useState<PipelineMode>('standard');
+  const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
   const [currentStage, setCurrentStage] = useState<string>('');
@@ -194,49 +192,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Pipeline Mode Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Pipeline Mode
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="mode"
-                  value="standard"
-                  checked={mode === 'standard'}
-                  onChange={() => setMode('standard')}
-                  disabled={isLoading}
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Standard Pipeline
-                </span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="mode"
-                  value="conversation"
-                  checked={mode === 'conversation'}
-                  onChange={() => setMode('conversation')}
-                  disabled={isLoading}
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Conversation Mode
-                  <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">(experimental)</span>
-                </span>
-              </label>
-            </div>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              {mode === 'standard'
-                ? 'Multi-stage pipeline with extraction, synthesis, and validation'
-                : '3-turn conversation: write → critique → revise. Faster, often higher quality.'}
-            </p>
-          </div>
-
           <button
             type="submit"
             disabled={isLoading || !donorName.trim()}
@@ -290,7 +245,7 @@ export default function Home() {
             ProspectAI generates behavioral intelligence — not just facts.
           </p>
           <p>
-            Each profile includes raw research, behavioral dossier, and meeting prep guide.
+            Each profile includes a persuasion profile, meeting guide, and traceable sources.
           </p>
         </div>
 
@@ -300,16 +255,16 @@ export default function Home() {
           </h2>
           <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <li className="flex items-start">
-              <span className="mr-2">📚</span>
-              <span><strong>Raw Research</strong> — All sources, fully traceable</span>
-            </li>
-            <li className="flex items-start">
               <span className="mr-2">🔍</span>
-              <span><strong>Behavioral Dossier</strong> — 17-dimension analysis of how they think and decide</span>
+              <span><strong>Persuasion Profile</strong> — Behavioral analysis of how they think and decide</span>
             </li>
             <li className="flex items-start">
               <span className="mr-2">🎯</span>
-              <span><strong>Persuasion Profile</strong> — Tactical guide for your meeting</span>
+              <span><strong>Meeting Guide</strong> — Tactical prep for your conversation</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">📚</span>
+              <span><strong>Sources</strong> — All references, fully traceable</span>
             </li>
           </ul>
         </div>
