@@ -1,9 +1,9 @@
 // Conversation-mode pipeline for donor profiling
-// Uses a 3-turn conversation instead of a multi-stage pipeline
+// Single API call: exemplars + sources → profile
 
 import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
-import { loadExemplars, loadGeoffreyCritique } from './canon/loader';
+import { loadExemplars } from './canon/loader';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -85,7 +85,7 @@ function rankAndSortSources(
 }
 
 /**
- * Build the Turn 1 prompt: write the initial profile draft
+ * Build the prompt: exemplars first, then sources, then minimal instruction
  */
 function buildTurn1Prompt(
   donorName: string,
@@ -96,98 +96,23 @@ function buildTurn1Prompt(
     `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}${s.content ? `\nContent: ${s.content}` : ''}`
   ).join('\n\n');
 
-  return `Here are ${sources.length} raw research sources about ${donorName}:
-
-${sourcesText}
-
----
-
-Here are exemplar profiles that represent the quality standard. Your output must match this quality:
+  return `Here are exemplar donor persuasion profiles. Your output must match this quality, voice, and register exactly:
 
 ${exemplars}
 
 ---
 
-Write a complete 7-section donor persuasion profile for ${donorName}.
+Here are ${sources.length} raw research sources about ${donorName}:
 
-The 7 sections are:
-1. Donor Identity & Background
-2. Core Motivations, Values & Triggers
-3. Ideal Engagement Style
-4. Challenges & Risk Factors
-5. Strategic Opportunities for Alignment
-6. Tactical Approach to the Meeting
-7. Dinner Party Test
-
-Use ● bullets, 3-6 per section, each 2-5 sentences.
-Write directly from the source material. Do not summarize first.
-Every bullet must describe behavior, not traits.
-Every bullet must contain conditional logic: when X, they do Y.
-Surface at least one core contradiction.
-Make retreat patterns explicit.
-
-WRITING RULES:
-
-Evidence discipline:
-- Interiority claims require convergence from at least three independent signals — behavioral pattern, incentive structure, and worldview consistency. If you can't name three things that point there, soften or remove the claim.
-- When evidence is thin in a domain, say so. "Evidence for how she behaves under direct challenge is limited — the asker should watch for it in the first meeting" is more useful than inventing architecture.
-- When behavioral signals contradict, don't smooth them into coherence. Name the tension. Conflicting evidence is almost always the most useful signal in the profile.
-
-Structural standards:
-- When Section 1 has more than 3 bullets, ask whether they're really separate behaviors or one behavior seen from multiple angles. Collapse into narrative clusters.
-- Lead with the dangerous truth, not the category label. The reader should feel the behavioral consequence in the first sentence.
-- Every behavioral pattern has a power function. Don't just describe what they do — name what it lets them control, avoid, or protect. "Prefers" is never an explanation.
-- Section 7 needs a one-sentence governing frame before any scenarios. What is the donor testing? The scenarios are evidence — the frame is the verdict.
-- Each section must be derivable from the one before it. Identity predicts engagement style. Engagement style predicts risk factors. Risk factors shape tactics. If Section 6 reads as generic meeting advice rather than the inevitable consequence of Sections 1-5, the architecture is disconnected.
-
-Language standards:
-- Replace psychological framing with operational consequences. Don't tell the reader what the donor feels — tell them what the donor does when the feeling hits, and what the reader should do about it.
-- Scripts must sound like sentences a person would actually say in a room. Read it aloud. If it sounds like a pitch deck, rewrite until it sounds like a person thinking out loud.
-- If the contradiction could describe any donor in the same wealth bracket, it's class-level, not individual. Dig deeper.
-- A contradiction is only correct if it predicts what the donor does when forced to choose. "Values bold action and stability" is a preference set. "Protects access over impact when forced to choose" predicts a room.
-- A dangerous truth is about systems, not the donor's psychology. If it sounds like something a therapist would say, it belongs in Section 4 as a risk factor. If it sounds like something a systems analyst would say, it belongs as the dangerous truth.
-- Distinguish interest from authorization. Interest asks about the landscape. Authorization asks about the architecture. If the donor's questions are about "who else" rather than "what breaks," they haven't crossed the threshold.`;
-}
-
-/**
- * Build the Turn 2 prompt: Geoffrey critique
- */
-function buildCritiquePrompt(geoffreyExamples: string): string {
-  return `You are now Geoffrey, the person who designed these donor profiles. You have exacting standards. You are reviewing the draft you just wrote.
-
-Here are examples of the kinds of corrections you make, organized by type. Each shows a bad bullet and what it should become:
-
-${geoffreyExamples}
+${sourcesText}
 
 ---
 
-Now critique the profile you just wrote for this donor. Be specific and brutal:
-
-1. Go bullet by bullet through each section
-2. For every bullet that is flat, generic, biographical, or could apply to any donor, flag it
-3. For each flagged bullet, write what it SHOULD say instead - a specific rewrite
-4. If any section is missing contradictions, retreat patterns, or actionable guidance, call it out
-5. If any bullet uses language like "cares about", "believes in", "supports", "is passionate about" - flag it and rewrite it
-
-Do NOT give vague feedback like "section 3 needs work." Give exact bullet-level rewrites.`;
+Write a complete 7-section donor persuasion profile for ${donorName} at the quality level of the exemplars above.`;
 }
 
 /**
- * Build the Turn 3 prompt: revision
- */
-function buildRevisionPrompt(): string {
-  return `Now rewrite the complete profile incorporating all of your critique. Every bullet you flagged should be rewritten. Keep everything you didn't flag. Output the full 7-section profile.
-
-Remember:
-- Every bullet must describe BEHAVIOR, not traits
-- Every bullet must have conditional logic (when/if/under pressure)
-- No bullet could apply to a different donor (name-swap test)
-- Make the dangerous truth visible
-- Retreat patterns must be explicit`;
-}
-
-/**
- * Main conversation pipeline
+ * Main conversation pipeline - single API call
  */
 export async function runConversationPipeline(
   donorName: string,
@@ -205,17 +130,16 @@ export async function runConversationPipeline(
   onProgress(`✓ Research complete: ${research.sources.length} sources`, 'research');
   console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
 
-  // Step 2: Load canon documents
+  // Step 2: Load exemplars
   const exemplars = loadExemplars();
-  const geoffreyExamples = loadGeoffreyCritique();
-  console.log(`[Conversation] Loaded exemplars (${exemplars.length} chars) and Geoffrey critique (${geoffreyExamples.length} chars)`);
+  console.log(`[Conversation] Loaded exemplars (${exemplars.length} chars)`);
 
   // Step 3: Prepare sources with token budget management
   const rankedSources = rankAndSortSources(research.sources);
 
-  // Build initial prompt to estimate tokens
-  let turn1Prompt = buildTurn1Prompt(donorName, rankedSources, exemplars);
-  let estimatedTokens = estimateTokens(turn1Prompt);
+  // Build prompt to estimate tokens
+  let prompt = buildTurn1Prompt(donorName, rankedSources, exemplars);
+  let estimatedTokens = estimateTokens(prompt);
   const MAX_TOKENS = 180000;
 
   console.log(`[Conversation] Initial token estimate: ${estimatedTokens} (max: ${MAX_TOKENS})`);
@@ -228,50 +152,23 @@ export async function runConversationPipeline(
     // Progressively remove sources until under budget
     while (estimatedTokens > MAX_TOKENS && sourcesToUse.length > 10) {
       sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      turn1Prompt = buildTurn1Prompt(donorName, sourcesToUse, exemplars);
-      estimatedTokens = estimateTokens(turn1Prompt);
+      prompt = buildTurn1Prompt(donorName, sourcesToUse, exemplars);
+      estimatedTokens = estimateTokens(prompt);
     }
 
     console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${estimatedTokens} tokens`);
     onProgress(`Using top ${sourcesToUse.length} sources (token budget)`, 'research');
   }
 
-  // Initialize conversation
-  const messages: Message[] = [];
+  // Single API call
+  onProgress('Generating profile...', 'profile');
+  console.log('[Conversation] Generating profile...');
 
-  // Turn 1: Write the profile
-  onProgress('Generating profile from raw sources...', 'profile');
-  console.log('[Conversation] Turn 1: Writing initial draft...');
+  const messages: Message[] = [{ role: 'user', content: prompt }];
+  const profile = await conversationTurn(messages, { maxTokens: 16000 });
 
-  messages.push({ role: 'user', content: turn1Prompt });
-  const draft = await conversationTurn(messages, { maxTokens: 16000 });
-  messages.push({ role: 'assistant', content: draft });
-
-  onProgress('✓ First draft complete', 'profile');
-  console.log(`[Conversation] Turn 1 complete: ${draft.length} chars`);
-
-  // Turn 2: Geoffrey critique
-  onProgress('Geoffrey reviewing draft...', 'critique');
-  console.log('[Conversation] Turn 2: Geoffrey critique...');
-
-  const critiquePrompt = buildCritiquePrompt(geoffreyExamples);
-  messages.push({ role: 'user', content: critiquePrompt });
-  const critique = await conversationTurn(messages, { maxTokens: 8000 });
-  messages.push({ role: 'assistant', content: critique });
-
-  onProgress('✓ Critique complete', 'critique');
-  console.log(`[Conversation] Turn 2 complete: ${critique.length} chars`);
-
-  // Turn 3: Revise
-  onProgress('Revising profile based on critique...', 'revision');
-  console.log('[Conversation] Turn 3: Revising...');
-
-  const revisionPrompt = buildRevisionPrompt();
-  messages.push({ role: 'user', content: revisionPrompt });
-  const finalProfile = await conversationTurn(messages, { maxTokens: 16000 });
-
-  onProgress('✓ Final profile complete', 'revision');
-  console.log(`[Conversation] Turn 3 complete: ${finalProfile.length} chars`);
+  onProgress('✓ Profile complete', 'profile');
+  console.log(`[Conversation] Profile complete: ${profile.length} chars`);
 
   console.log(`${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE: Complete`);
@@ -279,8 +176,8 @@ export async function runConversationPipeline(
 
   return {
     research,
-    profile: finalProfile,
-    draft,
-    critique
+    profile,
+    draft: profile,
+    critique: ''
   };
 }
