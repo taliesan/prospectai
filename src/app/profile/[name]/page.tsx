@@ -150,10 +150,30 @@ export default function ProfilePage() {
     switch (activeTab) {
       case 'persuasion-profile':
         // Show dossier content (now the primary asset)
+        // Swap LLM-facing headings for user-friendly display headings
+        const headingMap: Record<string, string> = {
+          "The Exit Pattern and Institutional Allergies": "When They Move",
+          "Authority Calibration and Access Architecture": "Power & Influence",
+          "The Question as Weapon System": "How They Test You",
+          "Loyalty Architecture and Relationship Durability": "Who They Protect",
+          "Power Recognition and Status Games": "How They Read Power",
+          "Truth-Telling as Identity Architecture": "What They Can't Fake",
+          "Risk Calibration and Boundary Testing": "What They'll Risk",
+          "Learning Style and Information Processing": "How They Take In Information",
+          "Authority Relationship and Institutional Positioning": "Who They Answer To",
+          "Communication Strategy and Audience Architecture": "How They Hold Attention",
+          "The Contradiction Matrix: Where Leverage Lives": "Where to Start",
+        };
+
+        let displayMarkdown = data.dossier.rawMarkdown;
+        for (const [original, replacement] of Object.entries(headingMap)) {
+          displayMarkdown = displayMarkdown.replace(original, replacement);
+        }
+
         return (
           <article className="prose dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {data.dossier.rawMarkdown}
+              {displayMarkdown}
             </ReactMarkdown>
           </article>
         );
