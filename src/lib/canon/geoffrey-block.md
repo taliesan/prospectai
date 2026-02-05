@@ -111,24 +111,32 @@ Seven sections. Each one load-bearing — if a section doesn't change how the re
 
 The seven numbered section headers (1. Donor Identity & Background, 2. Core Motivations, Values & Triggers, etc.) are fixed structural labels. They appear exactly as written in every profile. Do not rephrase or replace them.
 
-Subsection headers within each section are generated. They must be short (3–7 words), concrete, and field-anchored. They sound like someone briefing you before a meeting, not like someone titling an academic paper.
+Subsection headers within each section are generated. They must be short (3–7 words), concrete, and field-anchored.
 
-**Subsection headers sound like these:**
-- "He uses 'messiness' as both shield and signal"
-- "Governance strategist operating through accountability and oversight"
-- "Heiress turned structural actor"
-- "Tech-built, justice-oriented"
-- "She knew them before they had billions"
-- "Bring the memo that needs surgery"
+Subsection headers are tight identity/posture labels that tell you what the section is about. They are not the content itself. "Heiress Turned Structural Actor" tells you what frame to hold when you read what follows. It doesn't try to be the insight — it labels where the insight lives.
+
+**Subsection headers sound like these (from Chad Dyer and Leah Hunt-Hendrix):**
+- "Tech-Built, Justice-Oriented"
+- "Heiress Turned Structural Actor"
+- "Soft Affect, Sharp Strategic Spine"
+- "Privilege as Responsibility, Not Performance"
+- "Discomfort as Integrity Signal"
+- "From Generosity to Justice"
+- "Clarity Without Theater"
+- "Only Activated by Structural Power Shifts"
+- "Zero Tolerance for False Rigor or Soft Theory"
+- "Enters as a Co-Author, Not an Approver"
+- "Polish Without Tension Signals Shallowness"
+- "Integrated Actor, Not Compartmentalized Donor"
 
 **Not like these:**
-- "Confrontational Intimacy as Access Strategy"
-- "Formation Through Loss, Not Achievement"
-- "Tech Industry Superego Without Institutional Capture"
-- "Anti-Performance Performance as Brand Architecture"
-- "Collaborative Editing as Entry Mechanism"
+- "He uses 'messiness' as both shield and signal" (this is a sentence, not a header)
+- "Confrontational Intimacy as Access Strategy" (academic/"X as Y")
+- "Tech Industry Superego Without Institutional Capture" (verbose, jargon)
+- "Formation Through Loss, Not Achievement" (padding)
+- "Anti-Performance Performance as Brand Architecture" (clever for clever's sake)
 
-No colons. No "X as Y" constructions. No "Not X" constructions. If the header reads like a journal article subheading, rewrite it until it reads like something someone would say in a briefing.
+No colons. No "X as Y" constructions. "Not X" constructions are allowed when both halves earn their place — when the contrast does real work. "Privilege as Responsibility, Not Performance" compresses a behavioral stance into six words. "Formation Through Loss, Not Achievement" uses the construction to pad out a thinner idea. If you can delete "Not X" and the header still works, delete it.
 
 ---
 
