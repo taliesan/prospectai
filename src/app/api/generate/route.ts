@@ -199,8 +199,8 @@ export async function POST(request: NextRequest) {
         let result: any;
 
         if (isConversationMode) {
-          // Conversation mode: 3-turn conversation pipeline
-          console.log('[API] Running conversation mode pipeline...');
+          // Conversation mode: two-step pipeline (sources → dossier → profile)
+          console.log('[API] Running conversation mode pipeline (two-step)...');
 
           const conversationResult = await runConversationPipeline(
             donorName,
@@ -215,21 +215,13 @@ export async function POST(request: NextRequest) {
             }
           );
 
-          // Save outputs (no dossier in conversation mode)
-          saveOutputs(conversationResult.research, conversationResult.profile);
-
-          // Also save draft and critique for debugging
-          const outputDir = '/tmp/prospectai-outputs';
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-          writeFileSync(`${outputDir}/${timestamp}-${safeName}-draft.md`, conversationResult.draft);
-          writeFileSync(`${outputDir}/${timestamp}-${safeName}-critique.md`, conversationResult.critique);
-          console.log(`[OUTPUT] Draft and critique saved`);
+          // Save outputs including dossier
+          saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
 
           // Format result for frontend compatibility
           result = {
             research: conversationResult.research,
-            dossier: { rawMarkdown: `# Conversation Mode\n\nNo dossier in conversation mode.\n\n## Draft\n\n${conversationResult.draft}\n\n## Critique\n\n${conversationResult.critique}` },
+            dossier: { rawMarkdown: conversationResult.dossier },
             profile: {
               donorName,
               profile: conversationResult.profile,
