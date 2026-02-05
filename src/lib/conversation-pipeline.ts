@@ -97,6 +97,9 @@ REGISTER RULES (non-negotiable):
 - Psychological interpretation becomes pattern exposure: not "she gets frustrated" but "when someone uses her platform without matching her literacy, she switches to interview mode and doesn't come back."
 - Every claim must be grounded in specific evidence from the sources — quotes, decisions, actions, patterns across appearances.
 
+## Life and Career
+Write 2-3 paragraphs summarizing this person's biographical background and career arc. Include: where they came from, key career moves, current position/focus, and any relevant personal facts (family, education, geography). This section is factual context-setting, not behavioral analysis — save insights for the later sections.
+
 Use these 17 behavioral dimensions as your analytical lens (not as output structure — write prose, not fields):
 
 1. Decision-Making Patterns
