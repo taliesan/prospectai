@@ -21,7 +21,7 @@ import {
   createRegenerationPrompt
 } from './prompts/profile';
 import { runAllValidators } from './validators';
-import { PROFILE_QUALITY_CHECKLIST, selectExemplars } from './canon/loader';
+import { selectExemplars } from './canon/loader';
 
 // Types
 interface ResearchResult {
@@ -520,9 +520,7 @@ export async function generateProfile(
   console.log(`[Profile] Starting generation for: ${donorName}`);
 
   const exemplars = selectExemplars(dossier, canonDocs.exemplars);
-  const systemPrompt = `You are a world-class donor profiler. Your profiles must be behavioral, specific, and actionable.
-
-${PROFILE_QUALITY_CHECKLIST}`;
+  const systemPrompt = 'You are writing a donor persuasion profile.';
 
   // Initial generation
   console.log('[Profile] Generating initial draft...');

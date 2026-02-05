@@ -109,7 +109,7 @@ export async function completeExtended(
 
 /**
  * Multi-turn conversation for the conversation-mode pipeline.
- * Uses a minimal system prompt - the exemplars and Geoffrey corrections do the real work.
+ * Uses a minimal system prompt - the Geoffrey Block handles voice and standards.
  */
 export async function conversationTurn(
   messages: Message[],
@@ -124,7 +124,7 @@ export async function conversationTurn(
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
-    system: 'You are a world-class donor profiler. Your profiles must read like they were written by someone who has sat in rooms with the donor.',
+    system: 'You are writing a donor persuasion profile.',
     messages: messages.map(m => ({
       role: m.role,
       content: m.content

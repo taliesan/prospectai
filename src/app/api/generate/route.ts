@@ -111,7 +111,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, seedUrls = [], mode = 'standard' } = body;
+  const { donorName, seedUrls = [], mode = 'conversation' } = body;
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(

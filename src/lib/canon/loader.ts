@@ -4,7 +4,6 @@ import * as path from 'path';
 
 // Cache for exemplars (loaded once at runtime)
 let exemplarsCache: string | null = null;
-let geoffreyCritiqueCache: string | null = null;
 let geoffreyBlockCache: string | null = null;
 
 /**
@@ -37,26 +36,6 @@ export function selectExemplars(_dossier: string, allExemplars: string): string 
 }
 
 /**
- * Load Geoffrey's critique examples from geoffrey-critique.md.
- * These are used in conversation mode to teach the model how to self-critique.
- */
-export function loadGeoffreyCritique(): string {
-  if (geoffreyCritiqueCache !== null) {
-    return geoffreyCritiqueCache;
-  }
-
-  try {
-    const critiquePath = path.join(process.cwd(), 'src/lib/canon/geoffrey-critique.md');
-    geoffreyCritiqueCache = fs.readFileSync(critiquePath, 'utf-8');
-    console.log(`[Canon] Loaded Geoffrey critique: ${geoffreyCritiqueCache.length} characters`);
-    return geoffreyCritiqueCache;
-  } catch (error) {
-    console.error('[Canon] Failed to load geoffrey-critique.md:', error);
-    return '';
-  }
-}
-
-/**
  * Load the Geoffrey Block from geoffrey-block.md.
  * System-level context for voice, standards, and decision-making.
  * Placed at the top of the context window, before exemplars and sources.
@@ -76,22 +55,3 @@ export function loadGeoffreyBlock(): string {
     return '';
   }
 }
-
-export const PROFILE_QUALITY_CHECKLIST = `
-## A+++ Profile Quality Checklist
-
-Before finalizing, verify:
-
-□ Every bullet describes BEHAVIOR, not traits
-□ Every bullet has conditional logic (when/if/under pressure)
-□ Every bullet implies consequence for asker
-□ No bullet could apply to a different donor (name-swap test)
-□ Core contradiction is surfaced and specific
-□ Retreat patterns are explicit - I know how they disengage
-□ Section 6 (Tactical) could run the entire meeting alone
-□ Section 7 (Dinner) captures informal presence
-□ All claims trace to dossier evidence
-□ Quality matches exemplars
-
-If ANY checkbox fails, the profile is not ready.
-`;
