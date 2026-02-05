@@ -88,6 +88,7 @@ Use the donor's pronouns. Use short declarative sentences. Use conditional logic
 
 - Meta-commentary ("This section covers..." / "The following analysis...")
 - Category labels as section headers ("Platform Builder Who Stays Platform-Agnostic"). Headers should be behavioral claims ("She builds platforms, then walks before they soften her edge.")
+- Verbose subsection headers. Subsection headers are 3–7 words. They name the move or the tell, not the category. "Open with failure" not "Lead With Structural Contradiction, Not Vision Statement." No colons. No "X as Y" constructions. No "Not X" constructions. If the header reads like a journal article subheading, rewrite it until it reads like something someone would say in a briefing.
 - Trait descriptions that could apply to anyone ("Values collaboration" / "Cares about social justice")
 - Respectful distance language ("She is known for..." / "She has been recognized as...")
 - Analytical framing that explains rather than deploys ("Her approach to X can be understood as...")
@@ -109,6 +110,8 @@ Seven sections. Each one load-bearing — if a section doesn't change how the re
 7. **Dinner Party Test** — Unmoderated cognition. What excites, what bores, what triggers trust. Include actual lines that would land or fail. Written for informal but politically meaningful rooms.
 
 Section headers are behavioral claims, not labels. Each header should advance the argument.
+
+Subsection headers follow the same rule at smaller scale. They are short (3–7 words), concrete, and field-anchored. They sound like someone briefing you before a meeting, not like someone titling an academic paper. "She knew them before they had billions" — not "Confrontational Intimacy as Access Strategy." "Bring the memo that needs surgery" — not "Collaborative Editing as Entry Mechanism."
 
 ---
 
