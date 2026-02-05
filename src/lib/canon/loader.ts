@@ -5,6 +5,7 @@ import * as path from 'path';
 // Cache for exemplars (loaded once at runtime)
 let exemplarsCache: string | null = null;
 let geoffreyCritiqueCache: string | null = null;
+let geoffreyBlockCache: string | null = null;
 
 /**
  * Load exemplar profiles from the exemplars.md file.
@@ -51,6 +52,27 @@ export function loadGeoffreyCritique(): string {
     return geoffreyCritiqueCache;
   } catch (error) {
     console.error('[Canon] Failed to load geoffrey-critique.md:', error);
+    return '';
+  }
+}
+
+/**
+ * Load the Geoffrey Block from geoffrey-block.md.
+ * System-level context for voice, standards, and decision-making.
+ * Placed at the top of the context window, before exemplars and sources.
+ */
+export function loadGeoffreyBlock(): string {
+  if (geoffreyBlockCache !== null) {
+    return geoffreyBlockCache;
+  }
+
+  try {
+    const blockPath = path.join(process.cwd(), 'src/lib/canon/geoffrey-block.md');
+    geoffreyBlockCache = fs.readFileSync(blockPath, 'utf-8');
+    console.log(`[Canon] Loaded Geoffrey Block: ${geoffreyBlockCache.length} characters`);
+    return geoffreyBlockCache;
+  } catch (error) {
+    console.error('[Canon] Failed to load geoffrey-block.md:', error);
     return '';
   }
 }

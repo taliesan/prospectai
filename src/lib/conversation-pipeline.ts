@@ -1,9 +1,9 @@
 // Conversation-mode pipeline for donor profiling
-// Single API call: exemplars + sources → profile
+// Single API call: Geoffrey Block + exemplars + sources → profile
 
 import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
-import { loadExemplars } from './canon/loader';
+import { loadExemplars, loadGeoffreyBlock } from './canon/loader';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -85,18 +85,26 @@ function rankAndSortSources(
 }
 
 /**
- * Build the prompt: exemplars first, then sources, then minimal instruction
+ * Build the prompt with Geoffrey Block first, then exemplars, then sources.
+ * Context window order:
+ * 1. Geoffrey Block (voice and standards)
+ * 2. Exemplar profiles (target quality)
+ * 3. Research sources (raw material)
+ * 4. One closing sentence
  */
-function buildTurn1Prompt(
+function buildPrompt(
   donorName: string,
   sources: { url: string; title: string; snippet: string; content?: string }[],
+  geoffreyBlock: string,
   exemplars: string
 ): string {
   const sourcesText = sources.map((s, i) =>
     `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}${s.content ? `\nContent: ${s.content}` : ''}`
   ).join('\n\n');
 
-  return `Here are exemplar donor persuasion profiles. Your output must match this quality, voice, and register exactly:
+  return `${geoffreyBlock}
+
+---
 
 ${exemplars}
 
@@ -130,15 +138,16 @@ export async function runConversationPipeline(
   onProgress(`✓ Research complete: ${research.sources.length} sources`, 'research');
   console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
 
-  // Step 2: Load exemplars
+  // Step 2: Load canon documents
+  const geoffreyBlock = loadGeoffreyBlock();
   const exemplars = loadExemplars();
-  console.log(`[Conversation] Loaded exemplars (${exemplars.length} chars)`);
+  console.log(`[Conversation] Loaded Geoffrey Block (${geoffreyBlock.length} chars) and exemplars (${exemplars.length} chars)`);
 
   // Step 3: Prepare sources with token budget management
   const rankedSources = rankAndSortSources(research.sources);
 
   // Build prompt to estimate tokens
-  let prompt = buildTurn1Prompt(donorName, rankedSources, exemplars);
+  let prompt = buildPrompt(donorName, rankedSources, geoffreyBlock, exemplars);
   let estimatedTokens = estimateTokens(prompt);
   const MAX_TOKENS = 180000;
 
@@ -152,7 +161,7 @@ export async function runConversationPipeline(
     // Progressively remove sources until under budget
     while (estimatedTokens > MAX_TOKENS && sourcesToUse.length > 10) {
       sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      prompt = buildTurn1Prompt(donorName, sourcesToUse, exemplars);
+      prompt = buildPrompt(donorName, sourcesToUse, geoffreyBlock, exemplars);
       estimatedTokens = estimateTokens(prompt);
     }
 
