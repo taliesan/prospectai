@@ -57,7 +57,7 @@ export default function ProfilePage() {
     const urls = markdown.match(urlRegex) || [];
 
     // Dedupe and create source objects
-    const uniqueUrls = [...new Set(urls)];
+    const uniqueUrls = Array.from(new Set(urls));
     return uniqueUrls.map(url => {
       try {
         const domain = new URL(url).hostname.replace('www.', '');
