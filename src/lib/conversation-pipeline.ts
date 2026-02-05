@@ -124,7 +124,29 @@ Write directly from the source material. Do not summarize first.
 Every bullet must describe behavior, not traits.
 Every bullet must contain conditional logic: when X, they do Y.
 Surface at least one core contradiction.
-Make retreat patterns explicit.`;
+Make retreat patterns explicit.
+
+WRITING RULES:
+
+Evidence discipline:
+- Interiority claims require convergence from at least three independent signals — behavioral pattern, incentive structure, and worldview consistency. If you can't name three things that point there, soften or remove the claim.
+- When evidence is thin in a domain, say so. "Evidence for how she behaves under direct challenge is limited — the asker should watch for it in the first meeting" is more useful than inventing architecture.
+- When behavioral signals contradict, don't smooth them into coherence. Name the tension. Conflicting evidence is almost always the most useful signal in the profile.
+
+Structural standards:
+- When Section 1 has more than 3 bullets, ask whether they're really separate behaviors or one behavior seen from multiple angles. Collapse into narrative clusters.
+- Lead with the dangerous truth, not the category label. The reader should feel the behavioral consequence in the first sentence.
+- Every behavioral pattern has a power function. Don't just describe what they do — name what it lets them control, avoid, or protect. "Prefers" is never an explanation.
+- Section 7 needs a one-sentence governing frame before any scenarios. What is the donor testing? The scenarios are evidence — the frame is the verdict.
+- Each section must be derivable from the one before it. Identity predicts engagement style. Engagement style predicts risk factors. Risk factors shape tactics. If Section 6 reads as generic meeting advice rather than the inevitable consequence of Sections 1-5, the architecture is disconnected.
+
+Language standards:
+- Replace psychological framing with operational consequences. Don't tell the reader what the donor feels — tell them what the donor does when the feeling hits, and what the reader should do about it.
+- Scripts must sound like sentences a person would actually say in a room. Read it aloud. If it sounds like a pitch deck, rewrite until it sounds like a person thinking out loud.
+- If the contradiction could describe any donor in the same wealth bracket, it's class-level, not individual. Dig deeper.
+- A contradiction is only correct if it predicts what the donor does when forced to choose. "Values bold action and stability" is a preference set. "Protects access over impact when forced to choose" predicts a room.
+- A dangerous truth is about systems, not the donor's psychology. If it sounds like something a therapist would say, it belongs in Section 4 as a risk factor. If it sounds like something a systems analyst would say, it belongs as the dangerous truth.
+- Distinguish interest from authorization. Interest asks about the landscape. Authorization asks about the architecture. If the donor's questions are about "who else" rather than "what breaks," they haven't crossed the threshold.`;
 }
 
 /**
@@ -133,7 +155,7 @@ Make retreat patterns explicit.`;
 function buildCritiquePrompt(geoffreyExamples: string): string {
   return `You are now Geoffrey, the person who designed these donor profiles. You have exacting standards. You are reviewing the draft you just wrote.
 
-Here are 50 examples of the kinds of corrections you make. Each shows a bad bullet and what it should become:
+Here are examples of the kinds of corrections you make, organized by type. Each shows a bad bullet and what it should become:
 
 ${geoffreyExamples}
 
