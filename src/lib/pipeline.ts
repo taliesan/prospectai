@@ -46,26 +46,34 @@ interface ProfileResult {
   status: 'complete' | 'validation_failed';
 }
 
+// Progress callback type for conversation pipeline integration
+type ResearchProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
+
 // Step 1: Research
 export async function conductResearch(
   donorName: string,
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
-  fetchFunction?: (url: string) => Promise<string>
+  fetchFunction?: (url: string) => Promise<string>,
+  onProgress?: ResearchProgressCallback
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
+  const emit = onProgress || (() => {});
+  const TOTAL = 28;
 
   // 1. Fetch and extract identity from seed URL(s)
   console.log('[Research] Fetching seed URL(s)...');
-  STATUS.identityResolving(donorName);
 
   let seedContent = '';
   for (const url of seedUrls) {
     if (fetchFunction) {
       try {
+        const domain = (() => { try { return new URL(url).hostname.replace('www.', ''); } catch { return url; } })();
+        emit(`Reading seed URL — ${domain}`, 'research', 2, TOTAL);
         const content = await fetchFunction(url);
         seedContent += `\n\n--- Content from ${url} ---\n${content}`;
         console.log(`[Research] Fetched seed URL: ${url} (${content.length} chars)`);
+        emit(`Extracted ${content.length} characters from ${domain}`, 'research', 3, TOTAL);
       } catch (err) {
         console.error(`[Research] Failed to fetch seed URL: ${url}`, err);
       }
@@ -74,6 +82,7 @@ export async function conductResearch(
 
   // 2. Extract identity signals from seed content
   console.log('[Research] Extracting identity signals...');
+  emit('Identifying role, org, and key affiliations', 'research', 4, TOTAL);
   let identity: any = { name: donorName, currentOrg: '', currentRole: '', locations: [], affiliations: [], uniqueIdentifiers: [] };
 
   if (seedContent) {
@@ -99,8 +108,14 @@ Extract the identity signals for this person.`;
     }
   }
 
+  emit(
+    `Identified: ${identity.fullName || donorName} — ${identity.currentRole || 'unknown role'} at ${identity.currentOrg || 'unknown org'}`,
+    'research', 5, TOTAL
+  );
+
   // 3. Generate targeted search queries using identity signals
   console.log('[Research] Generating targeted search queries...');
+  emit('Designing research strategy', 'research', 6, TOTAL);
   const queryPrompt = generateResearchQueries(donorName, identity);
   const queryResponse = await complete('You are a research strategist.', queryPrompt);
 
@@ -120,20 +135,29 @@ Extract the identity signals for this person.`;
   }
 
   console.log(`[Research] Generated ${queries.length} queries`);
-  STATUS.queriesGenerated(queries.length);
+  emit(`Researching ${queries.length} angles across interviews, news, and profiles`, 'research', 7, TOTAL);
 
   // 4. Execute searches
   console.log('[Research] Executing searches...');
   const allSources: { url: string; title: string; snippet: string; query: string }[] = [];
+  let searchedCount = 0;
 
   for (const q of queries) {
     try {
+      if (searchedCount === 0) {
+        emit(`Searching: "${q.query}"`, 'research', 8, TOTAL);
+      }
       const results = await searchFunction(q.query);
       for (const r of results) {
         allSources.push({ ...r, query: q.query });
       }
+      searchedCount++;
+      if (searchedCount % 3 === 0 || searchedCount === queries.length) {
+        emit(`Searched ${searchedCount} of ${queries.length} queries — ${allSources.length} results so far`, 'research', 9, TOTAL);
+      }
     } catch (err) {
       console.error(`[Research] Search failed for: ${q.query}`, err);
+      searchedCount++;
     }
   }
 
@@ -143,13 +167,19 @@ Extract the identity signals for this person.`;
   );
 
   console.log(`[Research] Collected ${uniqueSources.length} unique sources before screening`);
+  emit(`${uniqueSources.length} results from ${queries.length} searches`, 'research', 10, TOTAL);
+
+  // Tavily extract for top sources
+  emit('Reading full text from top sources', 'research', 11, TOTAL);
 
   // 5. Screen sources for relevance to THIS person
   console.log('[Research] Screening sources for relevance...');
-  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName);
+  emit(`Verifying sources match the right ${donorName}`, 'research', 12, TOTAL);
+  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName, emit);
 
-  console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${uniqueSources.length - screenedSources.length})`);
-  STATUS.sourcesCollected(screenedSources.length);
+  const dropped = uniqueSources.length - screenedSources.length;
+  console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${dropped})`);
+  emit(`Confirmed ${screenedSources.length} relevant sources (dropped ${dropped} false matches)`, 'research', 14, TOTAL);
 
   // 6. Generate raw research document
   const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, screenedSources);
@@ -166,7 +196,8 @@ Extract the identity signals for this person.`;
 async function screenSourcesForRelevance(
   sources: { url: string; title: string; snippet: string }[],
   identity: any,
-  donorName: string
+  donorName: string,
+  emit?: ResearchProgressCallback
 ): Promise<{ url: string; title: string; snippet: string }[]> {
 
   // Fast-path filters (no LLM needed)
@@ -256,6 +287,11 @@ Output as JSON array (one entry per result, in order):
         console.error('[Research] Source screening batch failed:', err);
         // On error, include all sources from this batch (fail open)
         screened.push(...batch);
+      }
+
+      const screenedSoFar = i + batch.length;
+      if (emit) {
+        emit(`Screened ${screenedSoFar} of ${needsScreening.length} sources`, 'research', 13, 28);
       }
     }
   }

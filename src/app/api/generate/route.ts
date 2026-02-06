@@ -255,12 +255,13 @@ export async function POST(request: NextRequest) {
                 seedUrls,
                 webSearch,
                 fetchUrl,
-                (message: string, stage?: string) => {
-                  sendEvent({
-                    type: 'status',
-                    stage: stage as any,
-                    message
-                  });
+                (message: string, phase?: string, step?: number, totalSteps?: number) => {
+                  if (phase && !message) {
+                    // Phase transition event
+                    sendEvent({ type: 'phase', message: '', phase: phase as any });
+                  } else {
+                    sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
+                  }
                 }
               );
 

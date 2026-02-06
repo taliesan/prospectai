@@ -4,9 +4,11 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
 export type ProgressEvent = {
-  type: 'status' | 'complete' | 'error';
+  type: 'status' | 'complete' | 'error' | 'phase' | 'ping';
   message: string;
-  stage?: 'research' | 'dossier' | 'profile';
+  phase?: 'research' | 'analysis' | 'writing';
+  step?: number;
+  totalSteps?: number;
   detail?: string;
 };
 
@@ -30,115 +32,118 @@ export function emitProgress(event: ProgressEvent) {
     callback(event);
   }
   // Also log to console for Railway logs
-  const prefix = event.stage ? `[${event.stage.toUpperCase()}]` : '[Progress]';
-  console.log(`${prefix} ${event.message}`);
+  const prefix = event.phase ? `[${event.phase.toUpperCase()}]` : '[Progress]';
+  if (event.message) {
+    console.log(`${prefix} ${event.message}`);
+  }
 }
 
-// User-friendly status messages
+// The old STATUS helpers are kept for backward compatibility with the standard pipeline.
+// The conversation pipeline now uses onProgress directly with step numbers.
 export const STATUS = {
   // Research stage
   identityResolving: (name: string) => emitProgress({
     type: 'status',
-    stage: 'research',
+    phase: 'research',
     message: `Identifying ${name}...`
   }),
   queriesGenerated: (count: number) => emitProgress({
     type: 'status',
-    stage: 'research',
+    phase: 'research',
     message: `Searching ${count} research angles...`
   }),
   sourcesCollected: (count: number) => emitProgress({
     type: 'status',
-    stage: 'research',
+    phase: 'research',
     message: `Found ${count} potential sources`
   }),
   researchComplete: (count: number) => emitProgress({
     type: 'status',
-    stage: 'research',
+    phase: 'research',
     message: `✓ Research complete: ${count} sources`
   }),
 
   // Dossier stage
   tiersPrioritized: (t1: number, t2: number, t3: number, t4: number) => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `Prioritizing sources: ${t1} interviews/podcasts, ${t2} speeches/profiles, ${t3} news, ${t4} bios`
   }),
   processingTop: (count: number) => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `Analyzing top ${count} sources for behavioral patterns`
   }),
   batchStarted: (batchNum: number, start: number, end: number) => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `Extracting patterns from sources ${start}-${end}...`
   }),
   batchComplete: (batchNum: number, start: number, end: number) => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `✓ Analyzed sources ${start}-${end}`
   }),
   batchFailed: (batchNum: number, error: string) => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `⚠ Batch ${batchNum} had issues, continuing...`
   }),
   synthesizing: () => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `Synthesizing 17 behavioral dimensions...`
   }),
   crossCutting: () => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `Identifying contradictions and patterns...`
   }),
   dossierComplete: () => emitProgress({
     type: 'status',
-    stage: 'dossier',
+    phase: 'analysis',
     message: `✓ Behavioral dossier complete`
   }),
 
   // Profile stage
   generatingDraft: () => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `Writing profile draft...`
   }),
   validationAttempt: (attempt: number, max: number) => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `Quality check ${attempt}/${max}...`
   }),
   validatorRunning: (name: string) => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `Checking: ${name}...`
   }),
   validatorPassed: (name: string) => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `✓ ${name}`
   }),
   validatorFailed: (name: string) => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `⚠ ${name} needs improvement`
   }),
   regenerating: () => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `Improving profile based on feedback...`
   }),
   profileComplete: () => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `✓ Profile complete`
   }),
   profileShipping: () => emitProgress({
     type: 'status',
-    stage: 'profile',
+    phase: 'writing',
     message: `✓ Profile ready (some checks may need review)`
   }),
 
