@@ -239,25 +239,47 @@ function buildFullHtml(options: PDFGenerationOptions): string {
 }
 
 export async function generatePDF(options: PDFGenerationOptions): Promise<void> {
+  console.log('[PDF] generatePDF called with:', {
+    donorName: options.donorName,
+    profileLength: options.profile?.length ?? 'MISSING',
+    meetingGuideLength: options.meetingGuide?.length ?? 'MISSING',
+    sourcesCount: options.sources?.length ?? 0,
+  });
+
   // Dynamic import to avoid SSR issues
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const html2pdfModule = await import('html2pdf.js') as any;
-  const html2pdfFn = html2pdfModule.default;
+  // Handle both ESM default export and CommonJS module.exports
+  const html2pdfFn = html2pdfModule.default || html2pdfModule;
+
+  console.log('[PDF] html2pdf loaded:', typeof html2pdfFn, html2pdfFn ? 'ok' : 'MISSING');
+
+  if (typeof html2pdfFn !== 'function') {
+    console.error('[PDF] html2pdf is not a function! Module:', html2pdfModule);
+    throw new Error('html2pdf.js failed to load properly');
+  }
 
   const html = buildFullHtml(options);
+  console.log('[PDF] Generated HTML length:', html.length, 'First 300 chars:', html.slice(0, 300));
 
   // Create a temporary container
+  // Use opacity:0 instead of left:-9999px so html2canvas can render it
   const container = document.createElement('div');
   container.innerHTML = html;
   container.style.width = '210mm'; // A4 width
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
+  container.style.position = 'fixed';
+  container.style.left = '0';
   container.style.top = '0';
+  container.style.opacity = '0';
+  container.style.zIndex = '-1';
+  container.style.pointerEvents = 'none';
   document.body.appendChild(container);
 
   const date = new Date().toISOString().split('T')[0];
   const safeName = options.donorName.replace(/\s+/g, '-');
   const filename = `${safeName}-ProspectAI-${date}.pdf`;
+
+  console.log('[PDF] Container added to DOM, child count:', container.children.length);
 
   try {
     await html2pdfFn()
@@ -279,6 +301,7 @@ export async function generatePDF(options: PDFGenerationOptions): Promise<void> 
       } as any)
       .from(container)
       .save();
+    console.log('[PDF] Save completed');
   } finally {
     document.body.removeChild(container);
   }

@@ -131,13 +131,22 @@ export default function ProfilePage() {
     try {
       const { generatePDF } = await import('@/lib/pdf-generator');
       const sources = extractSources();
-      await generatePDF({
+      const pdfOptions = {
         donorName,
         fundraiserName: (data as any).fundraiserName || '',
         profile: data.dossier.rawMarkdown,
         meetingGuide: data.meetingGuide,
         sources,
+      };
+      console.log('[PDF] Data being passed to generatePDF:', {
+        donorName: pdfOptions.donorName,
+        profileLength: pdfOptions.profile?.length ?? 'undefined/null',
+        profileFirst200: pdfOptions.profile?.slice(0, 200) ?? 'EMPTY',
+        meetingGuideLength: pdfOptions.meetingGuide?.length ?? 'undefined/null',
+        sourcesCount: pdfOptions.sources?.length ?? 0,
+        fundraiserName: pdfOptions.fundraiserName,
       });
+      await generatePDF(pdfOptions);
     } catch (err) {
       console.error('PDF generation failed:', err);
       alert('PDF generation failed. Please try again.');
