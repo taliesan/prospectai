@@ -87,7 +87,7 @@ function rankAndSortSources(
 }
 
 // Dossier prompt - embedded here as specified
-const DOSSIER_PROMPT = `You are writing a long-form behavioral profile for donor profiling.
+const DOSSIER_PROMPT = `You are writing a Persuasion Profile for donor profiling.
 
 REGISTER RULES (non-negotiable):
 - Write from inside the subject's behavioral logic, not about it from outside.
@@ -148,7 +148,9 @@ ${sourcesText}
 
 ${DOSSIER_PROMPT}
 
-Write a comprehensive behavioral dossier for ${donorName}.`;
+Title the document "${donorName} — Persuasion Profile" at the top.
+
+Write a comprehensive Persuasion Profile for ${donorName}.`;
 }
 
 /**
