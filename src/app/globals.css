@@ -3,35 +3,79 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #171717;
-  --background: #fafafa;
+  --dtw-black: #1A1A1A;
+  --dtw-charcoal: #2D2D2D;
+  --dtw-warm-gray: #4A4A4A;
+  --dtw-mid-gray: #7A7A7A;
+  --dtw-light-gray: #E8E5E0;
+  --dtw-off-white: #F5F3EF;
+  --dtw-warm-white: #FAF8F5;
+  --dtw-green: #2D6A4F;
+  --dtw-green-light: #40916C;
+  --dtw-green-pale: #D8F3DC;
+  --dtw-purple: #7B2D8E;
+  --dtw-purple-light: #C77DFF;
+  --dtw-purple-pale: #F0DDF5;
+  --dtw-coral: #E07A5F;
+  --dtw-gold: #F9C74F;
+  --dtw-red: #D62828;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground: #fafafa;
-    --background: #0a0a0a;
-  }
-}
-
+/* Kill dark mode — this design is light only */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--dtw-off-white) !important;
+  color: var(--dtw-charcoal);
+  font-family: 'DM Sans', system-ui, sans-serif;
 }
 
-/* Markdown rendering */
-.prose h1 { @apply text-2xl font-bold mt-8 mb-4; }
-.prose h2 { @apply text-xl font-semibold mt-6 mb-3; }
-.prose h3 { @apply text-lg font-medium mt-4 mb-2; }
-.prose p { @apply my-3 leading-relaxed; }
+/* Marker highlight effect (used on key insights) */
+.marker-highlight {
+  background: linear-gradient(180deg, transparent 55%, #F9C74F 55%, #F9C74F 88%, transparent 88%);
+  padding: 0 4px;
+}
+
+/* Gradient accent bar animation */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Pulsing dot for streaming */
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.streaming-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dtw-green);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Markdown rendering — DTW branded */
+.prose h1 { @apply text-2xl font-bold mt-8 mb-4 text-dtw-black; }
+.prose h2 { @apply text-xl font-semibold mt-6 mb-3 text-dtw-black; }
+.prose h3 { @apply text-lg font-medium mt-4 mb-2 text-dtw-charcoal; }
+.prose p { @apply my-3 leading-relaxed text-dtw-warm-gray; }
 .prose ul { @apply my-3 ml-6 list-disc; }
 .prose ol { @apply my-3 ml-6 list-decimal; }
-.prose li { @apply my-1; }
-.prose strong { @apply font-semibold; }
-.prose blockquote { @apply border-l-4 border-gray-300 pl-4 italic my-4; }
-.prose code { @apply bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm; }
-.prose pre { @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4; }
+.prose li { @apply my-1 text-dtw-warm-gray; }
+.prose strong { @apply font-semibold text-dtw-charcoal; }
+.prose em { @apply italic text-dtw-charcoal; }
+.prose blockquote { @apply border-l-[3px] border-dtw-purple pl-4 italic my-4 bg-dtw-off-white rounded-r-lg py-2 pr-4 text-dtw-warm-gray; }
+.prose code { @apply bg-dtw-off-white px-1 py-0.5 rounded text-sm; }
+.prose pre { @apply bg-dtw-off-white p-4 rounded-lg overflow-x-auto my-4; }
 .prose table { @apply w-full my-4 border-collapse; }
-.prose th { @apply border border-gray-300 dark:border-gray-700 px-3 py-2 bg-gray-50 dark:bg-gray-800 text-left; }
-.prose td { @apply border border-gray-300 dark:border-gray-700 px-3 py-2; }
+.prose th { @apply border border-dtw-light-gray px-3 py-2 bg-dtw-off-white text-left text-dtw-charcoal; }
+.prose td { @apply border border-dtw-light-gray px-3 py-2 text-dtw-warm-gray; }
+.prose a { @apply text-dtw-green hover:text-dtw-green-light transition-colors; }
+
+/* Meeting guide tab — green accents */
+.prose-green blockquote { @apply border-l-[3px] border-dtw-green bg-dtw-green-pale rounded-r-lg; }
+
+/* Sources tab — coral accents */
+.prose-coral a { @apply text-dtw-coral; }
