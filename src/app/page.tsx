@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProgressEvent {
-  type: 'status' | 'complete' | 'error';
+  type: 'status' | 'complete' | 'error' | 'ping';
   message: string;
   stage?: 'research' | 'dossier' | 'profile' | 'critique' | 'revision';
   detail?: string;
@@ -93,6 +93,11 @@ export default function Home() {
           if (line.startsWith('data: ')) {
             try {
               const event: ProgressEvent = JSON.parse(line.slice(6));
+
+              // Ignore keep-alive pings
+              if (event.type === 'ping') {
+                continue;
+              }
 
               // Update UI based on event type
               if (event.type === 'status') {

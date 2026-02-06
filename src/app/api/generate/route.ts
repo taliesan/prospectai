@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       // Set up progress callback
       setProgressCallback(sendEvent);
 
-      // Send keep-alive pings every 30 seconds to prevent connection timeout
+      // Send keep-alive pings every 15 seconds to prevent connection timeout
       const keepAliveInterval = setInterval(() => {
         try {
           if (!isControllerClosed) {
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           clearInterval(keepAliveInterval);
         }
-      }, 30000);
+      }, 15000);
 
       try {
         STATUS.pipelineStarted(donorName);
