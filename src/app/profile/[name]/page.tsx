@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     // Load from localStorage (in production, would fetch from API/database)
@@ -124,33 +125,24 @@ export default function ProfilePage() {
     { id: 'sources', label: 'Sources', description: 'Bibliography' },
   ];
 
-  const getDownloadLabel = () => {
-    switch (activeTab) {
-      case 'persuasion-profile':
-        return 'Download Profile';
-      case 'meeting-guide':
-        return data?.meetingGuide ? 'Download Guide' : null;
-      case 'sources':
-        return null;
-    }
-  };
-
-  const handleDownload = () => {
-    if (activeTab === 'persuasion-profile') {
-      const content = data.dossier.rawMarkdown;
-      const blob = new Blob([content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${donorName.replace(/\s+/g, '_')}_persuasion_profile.md`;
-      a.click();
-    } else if (activeTab === 'meeting-guide' && data.meetingGuide) {
-      const blob = new Blob([data.meetingGuide], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${donorName.replace(/\s+/g, '_')}_meeting_guide.md`;
-      a.click();
+  const handleDownloadPDF = async () => {
+    if (!data) return;
+    setIsGeneratingPDF(true);
+    try {
+      const { generatePDF } = await import('@/lib/pdf-generator');
+      const sources = extractSources();
+      await generatePDF({
+        donorName,
+        fundraiserName: (data as any).fundraiserName || '',
+        profile: data.dossier.rawMarkdown,
+        meetingGuide: data.meetingGuide,
+        sources,
+      });
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('PDF generation failed. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -270,8 +262,6 @@ export default function ProfilePage() {
     }
   };
 
-  const downloadLabel = getDownloadLabel();
-
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       {/* Header */}
@@ -290,15 +280,15 @@ export default function ProfilePage() {
               </h1>
             </div>
             <div className="flex gap-2">
-              {downloadLabel && (
-                <button
-                  onClick={handleDownload}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700
-                             hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {downloadLabel}
-                </button>
-              )}
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPDF}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700
+                           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
+              </button>
             </div>
           </div>
         </div>
