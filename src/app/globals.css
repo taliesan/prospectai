@@ -56,6 +56,22 @@ body {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Entrance animation for form section */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
 /* Markdown rendering — DTW branded */
 .prose h1 { @apply text-2xl font-bold mt-8 mb-4 text-dtw-black; }
 .prose h2 { @apply text-xl font-semibold mt-6 mb-3 text-dtw-black; }
