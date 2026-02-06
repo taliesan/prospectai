@@ -6,6 +6,9 @@ import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { setProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 
+// Allow long-running generation (5 minutes max for Vercel/Railway)
+export const maxDuration = 300;
+
 // Tavily API configuration
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
@@ -168,6 +171,17 @@ export async function POST(request: NextRequest) {
       // Set up progress callback
       setProgressCallback(sendEvent);
 
+      // Send keep-alive pings every 30 seconds to prevent connection timeout
+      const keepAliveInterval = setInterval(() => {
+        try {
+          if (!isControllerClosed) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping' })}\n\n`));
+          }
+        } catch (e) {
+          clearInterval(keepAliveInterval);
+        }
+      }, 30000);
+
       try {
         STATUS.pipelineStarted(donorName);
 
@@ -270,7 +284,9 @@ export async function POST(request: NextRequest) {
           message: `Error: ${errorMessage}`
         });
       } finally {
-        // Clear progress callback first
+        // Stop keep-alive pings
+        clearInterval(keepAliveInterval);
+        // Clear progress callback
         setProgressCallback(null);
         // Then safely close the controller
         safeClose();
