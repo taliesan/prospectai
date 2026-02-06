@@ -87,7 +87,7 @@ function rankAndSortSources(
 }
 
 // Dossier prompt - embedded here as specified
-const DOSSIER_PROMPT = `You are writing a long-form behavioral dossier for donor profiling.
+const DOSSIER_PROMPT = `You are writing a long-form behavioral profile for donor profiling.
 
 REGISTER RULES (non-negotiable):
 - Write from inside the subject's behavioral logic, not about it from outside.
@@ -97,10 +97,12 @@ REGISTER RULES (non-negotiable):
 - Psychological interpretation becomes pattern exposure: not "she gets frustrated" but "when someone uses her platform without matching her literacy, she switches to interview mode and doesn't come back."
 - Every claim must be grounded in specific evidence from the sources — quotes, decisions, actions, patterns across appearances.
 
+OUTPUT STRUCTURE (18 sections):
+
 ## Life and Career
 Write 2-3 paragraphs summarizing this person's biographical background and career arc. Include: where they came from, key career moves, current position/focus, and any relevant personal facts (family, education, geography). This section is factual context-setting, not behavioral analysis — save insights for the later sections.
 
-Use these 17 behavioral dimensions as your analytical lens (not as output structure — write prose, not fields):
+Then write one section for each of these 17 behavioral dimensions. Use the dimension name as the section header. Write substantive prose for each — this is long-form analysis, not bullet points.
 
 1. Decision-Making Patterns
 2. Trust Calibration
@@ -120,7 +122,7 @@ Use these 17 behavioral dimensions as your analytical lens (not as output struct
 16. Knowledge Areas
 17. Contradiction Patterns — MOST IMPORTANT. Contradictions reveal where persuasion has maximum leverage.
 
-OUTPUT: Long-form behavioral prose. Not structured data. Not bullet points. Organize by behavioral theme, not by source. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more. The profile step handles compression. The dossier step handles coverage and voice.`;
+OUTPUT: Long-form behavioral prose organized by the 18 sections above (Life and Career + 17 dimensions). Not bullet points. Each section should have a clear header and substantive analysis. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more.`;
 
 /**
  * Build Step 1 prompt: Geoffrey Block + sources + dossier instruction
@@ -253,29 +255,23 @@ export async function runConversationPipeline(
   onProgress(`✓ Dossier complete: ${dossier.length} chars`, 'dossier');
   console.log(`[Conversation] Dossier complete: ${dossier.length} chars`);
 
-  // Step 3: Generate profile (dossier → 7-section profile)
-  onProgress('Generating profile...', 'profile');
-  console.log('[Conversation] Step 2: Generating profile from dossier...');
-
-  const profilePrompt = buildProfilePrompt(donorName, dossier, geoffreyBlock, exemplars);
-  const profileTokenEstimate = estimateTokens(profilePrompt);
-  console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
-
-  const profileMessages: Message[] = [{ role: 'user', content: profilePrompt }];
-  const profile = await conversationTurn(profileMessages, { maxTokens: 16000 });
-
+  // Step 3: Profile generation is deprecated
+  // The dossier IS the profile now (18 sections: Life and Career + 17 dimensions)
+  // Meeting Guide will be built separately later
   onProgress('✓ Profile complete', 'profile');
-  console.log(`[Conversation] Profile complete: ${profile.length} chars`);
+  console.log(`[Conversation] Profile complete (dossier is the profile): ${dossier.length} chars`);
+
+  const profile = dossier; // Profile = Dossier in new architecture
 
   console.log(`${'='.repeat(60)}`);
-  console.log(`CONVERSATION MODE (Two-Step): Complete`);
+  console.log(`CONVERSATION MODE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
 
   return {
     research,
-    profile,
-    dossier,
-    draft: dossier,  // For backward compatibility, draft = dossier
-    critique: ''     // No critique in two-step architecture
+    profile,        // Now equals dossier
+    dossier,        // Keep for backward compatibility
+    draft: dossier,
+    critique: ''
   };
 }

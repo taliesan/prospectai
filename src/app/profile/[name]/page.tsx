@@ -152,17 +152,24 @@ export default function ProfilePage() {
         // Show dossier content (now the primary asset)
         // Swap LLM-facing headings for user-friendly display headings
         const headingMap: Record<string, string> = {
-          "The Exit Pattern and Institutional Allergies": "When They Move",
-          "Authority Calibration and Access Architecture": "Power & Influence",
-          "The Question as Weapon System": "How They Test You",
-          "Loyalty Architecture and Relationship Durability": "Who They Protect",
-          "Power Recognition and Status Games": "How They Read Power",
-          "Truth-Telling as Identity Architecture": "What They Can't Fake",
-          "Risk Calibration and Boundary Testing": "What They'll Risk",
-          "Learning Style and Information Processing": "How They Take In Information",
-          "Authority Relationship and Institutional Positioning": "Who They Answer To",
-          "Communication Strategy and Audience Architecture": "How They Hold Attention",
-          "The Contradiction Matrix: Where Leverage Lives": "Where to Start",
+          // Life and Career stays as-is (no mapping needed)
+          "Decision-Making Patterns": "How They Decide",
+          "Trust Calibration": "How They Build Trust",
+          "Influence Susceptibility": "What Moves Them",
+          "Communication Style": "How They Communicate",
+          "Learning Style": "How They Learn",
+          "Time Orientation": "How They Think About Time",
+          "Identity & Self-Concept": "Who They Think They Are",
+          "Values Hierarchy": "What They Value Most",
+          "Status & Recognition": "How They Read Status",
+          "Boundary Conditions": "Where They Draw Lines",
+          "Emotional Triggers": "What Sets Them Off",
+          "Relationship Patterns": "How They Build Relationships",
+          "Risk Tolerance": "What They'll Risk",
+          "Resource Philosophy": "How They Think About Resources",
+          "Commitment Patterns": "How They Commit",
+          "Knowledge Areas": "What They Know",
+          "Contradiction Patterns": "Where to Start",
         };
 
         let displayMarkdown = data.dossier.rawMarkdown;
