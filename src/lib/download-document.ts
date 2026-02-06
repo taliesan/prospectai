@@ -139,7 +139,6 @@ ${sources.map((s, i) => `
       <div class="source-body">
         <div class="source-title">${escapeHtml(s.title || s.url)}</div>
         <div class="source-url">${escapeHtml(s.url)}</div>
-        ${s.snippet ? `<div class="source-snippet">${escapeHtml(s.snippet)}</div>` : ''}
       </div>
     </div>`).join('\n')}
   </div>`;
@@ -148,9 +147,7 @@ ${sources.map((s, i) => `
 function renderSourcesMarkdown(sources: Source[]): string {
   if (sources.length === 0) return '*No sources available.*\n';
   return sources.map((s, i) => {
-    let entry = `${i + 1}. **${s.title || s.url}**\n   ${s.url}`;
-    if (s.snippet) entry += `\n   ${s.snippet}`;
-    return entry;
+    return `${i + 1}. **${s.title || s.url}**\n   ${s.url}`;
   }).join('\n\n');
 }
 
