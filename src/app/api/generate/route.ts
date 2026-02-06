@@ -4,7 +4,7 @@ import { runFullPipeline } from '@/lib/pipeline';
 import { runConversationPipeline } from '@/lib/conversation-pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
-import { setProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
+import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 
 // Allow long-running generation (5 minutes max for Vercel/Railway)
 export const maxDuration = 300;
@@ -168,9 +168,6 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      // Set up progress callback
-      setProgressCallback(sendEvent);
-
       // Send keep-alive pings every 15 seconds to prevent connection timeout
       const keepAliveInterval = setInterval(() => {
         try {
@@ -183,154 +180,170 @@ export async function POST(request: NextRequest) {
       }, 15000);
 
       try {
-        STATUS.pipelineStarted(donorName);
-
-        // Save outputs helper
-        const saveOutputs = (research: any, profile: string, dossier?: string) => {
-          const outputDir = '/tmp/prospectai-outputs';
-          if (!existsSync(outputDir)) {
-            mkdirSync(outputDir, { recursive: true });
-          }
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-
-          const researchPath = `${outputDir}/${timestamp}-${safeName}-research.md`;
-          const profilePath = `${outputDir}/${timestamp}-${safeName}-profile.md`;
-
-          writeFileSync(researchPath, research.rawMarkdown);
-          writeFileSync(profilePath, profile);
-
-          console.log(`[OUTPUT] Research saved to ${researchPath} (${research.rawMarkdown.length} chars)`);
-          console.log(`[OUTPUT] Profile saved to ${profilePath} (${profile.length} chars)`);
-
-          if (dossier) {
-            const dossierPath = `${outputDir}/${timestamp}-${safeName}-dossier.md`;
-            writeFileSync(dossierPath, dossier);
-            console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
-          }
-        };
-
-        // Fetch function for seed URLs using Tavily extract
-        const fetchUrl = async (url: string): Promise<string> => {
-          if (!TAVILY_API_KEY) {
-            // Fallback to direct fetch
-            const res = await fetch(url);
-            return sanitizeForClaude(await res.text());
-          }
+        // Run entire pipeline within request-scoped progress context
+        // All STATUS.* calls and sendEvent calls must be inside this wrapper
+        // so emitProgress() can find the request-scoped callback via AsyncLocalStorage
+        await withProgressCallback(sendEvent, async () => {
           try {
-            const extractResponse = await fetch('https://api.tavily.com/extract', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                api_key: TAVILY_API_KEY,
-                urls: [url],
-              }),
-            });
-            if (extractResponse.ok) {
-              const extractData: TavilyExtractResponse = await extractResponse.json();
-              if (extractData.results.length > 0) {
-                return sanitizeForClaude(extractData.results[0].raw_content);
-              }
-            }
-          } catch (err) {
-            console.warn(`[Fetch] Tavily extract failed for ${url}, falling back to direct fetch`);
-          }
-          // Fallback to direct fetch
-          const res = await fetch(url);
-          return sanitizeForClaude(await res.text());
-        };
+            STATUS.pipelineStarted(donorName);
 
-        let result: any;
-
-        if (isConversationMode) {
-          // Conversation mode: two-step pipeline (sources → dossier → profile)
-          console.log('[API] Running conversation mode pipeline (two-step)...');
-
-          const conversationResult = await runConversationPipeline(
-            donorName,
-            seedUrls,
-            webSearch,
-            fetchUrl,
-            (message: string, stage?: string) => {
-              sendEvent({
-                type: 'status',
-                stage: stage as any,
-                message
-              });
-            }
-          );
-
-          // Save outputs including dossier and meeting guide
-          saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
-
-          // Save meeting guide
-          if (conversationResult.meetingGuide) {
-            const outputDir = '/tmp/prospectai-outputs';
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            // Unique request ID for consistent output filenames
+            const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-            const meetingGuidePath = `${outputDir}/${timestamp}-${safeName}-meeting-guide.md`;
-            writeFileSync(meetingGuidePath, conversationResult.meetingGuide);
-            console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${conversationResult.meetingGuide.length} chars)`);
+
+            // Save outputs helper
+            const saveOutputs = (research: any, profile: string, dossier?: string) => {
+              const outputDir = '/tmp/prospectai-outputs';
+              if (!existsSync(outputDir)) {
+                mkdirSync(outputDir, { recursive: true });
+              }
+
+              const researchPath = `${outputDir}/${requestId}-${safeName}-research.md`;
+              const profilePath = `${outputDir}/${requestId}-${safeName}-profile.md`;
+
+              writeFileSync(researchPath, research.rawMarkdown);
+              writeFileSync(profilePath, profile);
+
+              console.log(`[OUTPUT] Research saved to ${researchPath} (${research.rawMarkdown.length} chars)`);
+              console.log(`[OUTPUT] Profile saved to ${profilePath} (${profile.length} chars)`);
+
+              if (dossier) {
+                const dossierPath = `${outputDir}/${requestId}-${safeName}-dossier.md`;
+                writeFileSync(dossierPath, dossier);
+                console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
+              }
+            };
+
+            // Fetch function for seed URLs using Tavily extract
+            const fetchUrl = async (url: string): Promise<string> => {
+              if (!TAVILY_API_KEY) {
+                // Fallback to direct fetch
+                const res = await fetch(url);
+                return sanitizeForClaude(await res.text());
+              }
+              try {
+                const extractResponse = await fetch('https://api.tavily.com/extract', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    api_key: TAVILY_API_KEY,
+                    urls: [url],
+                  }),
+                });
+                if (extractResponse.ok) {
+                  const extractData: TavilyExtractResponse = await extractResponse.json();
+                  if (extractData.results.length > 0) {
+                    return sanitizeForClaude(extractData.results[0].raw_content);
+                  }
+                }
+              } catch (err) {
+                console.warn(`[Fetch] Tavily extract failed for ${url}, falling back to direct fetch`);
+              }
+              // Fallback to direct fetch
+              const res = await fetch(url);
+              return sanitizeForClaude(await res.text());
+            };
+
+            let result: any;
+
+            if (isConversationMode) {
+              // Conversation mode: two-step pipeline (sources → dossier → profile)
+              console.log('[API] Running conversation mode pipeline (two-step)...');
+
+              const conversationResult = await runConversationPipeline(
+                donorName,
+                seedUrls,
+                webSearch,
+                fetchUrl,
+                (message: string, stage?: string) => {
+                  sendEvent({
+                    type: 'status',
+                    stage: stage as any,
+                    message
+                  });
+                }
+              );
+
+              // Save outputs including dossier and meeting guide
+              saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
+
+              // Save meeting guide using same requestId
+              if (conversationResult.meetingGuide) {
+                const outputDir = '/tmp/prospectai-outputs';
+                if (!existsSync(outputDir)) {
+                  mkdirSync(outputDir, { recursive: true });
+                }
+                const meetingGuidePath = `${outputDir}/${requestId}-${safeName}-meeting-guide.md`;
+                writeFileSync(meetingGuidePath, conversationResult.meetingGuide);
+                console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${conversationResult.meetingGuide.length} chars)`);
+              }
+
+              // Format result for frontend compatibility
+              result = {
+                research: conversationResult.research,
+                dossier: { rawMarkdown: conversationResult.dossier },
+                profile: {
+                  donorName,
+                  profile: conversationResult.profile,
+                  validationPasses: 0,
+                  status: 'complete'
+                },
+                meetingGuide: conversationResult.meetingGuide,
+                fundraiserName,
+              };
+
+            } else {
+              // Standard mode: existing multi-stage pipeline
+              console.log('[API] Running standard pipeline...');
+
+              // Load exemplars
+              const exemplars = loadExemplars();
+              console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
+
+              result = await runFullPipeline(
+                donorName,
+                seedUrls,
+                webSearch,
+                { exemplars }
+              );
+
+              // Save outputs
+              saveOutputs(result.research, result.profile.profile, result.dossier.rawMarkdown);
+            }
+
+            STATUS.pipelineComplete();
+
+            // Send the final result - this is the critical event that must reach the client
+            console.log('[SSE] Sending final complete event with profile data...');
+            sendEvent({
+              type: 'complete',
+              message: 'Profile generation complete',
+              detail: JSON.stringify(result)
+            });
+            console.log('[SSE] Final complete event sent successfully');
+
+          } catch (error) {
+            console.error('[API] Pipeline error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            STATUS.pipelineError(errorMessage);
+
+            sendEvent({
+              type: 'error',
+              message: `Error: ${errorMessage}`
+            });
           }
+        }); // end withProgressCallback
 
-          // Format result for frontend compatibility
-          result = {
-            research: conversationResult.research,
-            dossier: { rawMarkdown: conversationResult.dossier },
-            profile: {
-              donorName,
-              profile: conversationResult.profile,
-              validationPasses: 0,
-              status: 'complete'
-            },
-            meetingGuide: conversationResult.meetingGuide,
-            fundraiserName,
-          };
-
-        } else {
-          // Standard mode: existing multi-stage pipeline
-          console.log('[API] Running standard pipeline...');
-
-          // Load exemplars
-          const exemplars = loadExemplars();
-          console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
-
-          result = await runFullPipeline(
-            donorName,
-            seedUrls,
-            webSearch,
-            { exemplars }
-          );
-
-          // Save outputs
-          saveOutputs(result.research, result.profile.profile, result.dossier.rawMarkdown);
-        }
-
-        STATUS.pipelineComplete();
-
-        // Send the final result - this is the critical event that must reach the client
-        console.log('[SSE] Sending final complete event with profile data...');
-        sendEvent({
-          type: 'complete',
-          message: 'Profile generation complete',
-          detail: JSON.stringify(result)
-        });
-        console.log('[SSE] Final complete event sent successfully');
-
-      } catch (error) {
-        console.error('[API] Pipeline error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        STATUS.pipelineError(errorMessage);
-
+      } catch (outerError) {
+        // Catch errors from withProgressCallback itself (should be rare)
+        console.error('[API] Outer pipeline error:', outerError);
         sendEvent({
           type: 'error',
-          message: `Error: ${errorMessage}`
+          message: `Error: ${outerError instanceof Error ? outerError.message : 'Unknown error'}`
         });
       } finally {
         // Stop keep-alive pings
         clearInterval(keepAliveInterval);
-        // Clear progress callback
-        setProgressCallback(null);
         // Then safely close the controller
         safeClose();
       }

@@ -1,4 +1,7 @@
 // Progress event system for real-time updates to the frontend
+// Uses AsyncLocalStorage for request-scoped callbacks (no global state)
+
+import { AsyncLocalStorage } from 'async_hooks';
 
 export type ProgressEvent = {
   type: 'status' | 'complete' | 'error';
@@ -7,16 +10,24 @@ export type ProgressEvent = {
   detail?: string;
 };
 
-// Global progress callback - set by the API route
-let progressCallback: ((event: ProgressEvent) => void) | null = null;
+// Request-scoped storage for progress callbacks
+const progressStore = new AsyncLocalStorage<(event: ProgressEvent) => void>();
 
-export function setProgressCallback(callback: ((event: ProgressEvent) => void) | null) {
-  progressCallback = callback;
+/**
+ * Run a function with a request-scoped progress callback.
+ * All calls to emitProgress() within this context will use this callback.
+ */
+export function withProgressCallback<T>(
+  callback: (event: ProgressEvent) => void,
+  fn: () => T
+): T {
+  return progressStore.run(callback, fn);
 }
 
 export function emitProgress(event: ProgressEvent) {
-  if (progressCallback) {
-    progressCallback(event);
+  const callback = progressStore.getStore();
+  if (callback) {
+    callback(event);
   }
   // Also log to console for Railway logs
   const prefix = event.stage ? `[${event.stage.toUpperCase()}]` : '[Progress]';
