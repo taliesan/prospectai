@@ -29,7 +29,7 @@ export default function ProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
 
   useEffect(() => {
     // Load from localStorage (in production, would fetch from API/database)
@@ -124,36 +124,6 @@ export default function ProfilePage() {
     { id: 'meeting-guide', label: 'Meeting Guide', description: 'Tactical prep' },
     { id: 'sources', label: 'Sources', description: 'Bibliography' },
   ];
-
-  const handleDownloadPDF = async () => {
-    if (!data) return;
-    setIsGeneratingPDF(true);
-    try {
-      const { generatePDF } = await import('@/lib/pdf-generator');
-      const sources = extractSources();
-      const pdfOptions = {
-        donorName,
-        fundraiserName: (data as any).fundraiserName || '',
-        profile: data.dossier.rawMarkdown,
-        meetingGuide: data.meetingGuide,
-        sources,
-      };
-      console.log('[PDF] Data being passed to generatePDF:', {
-        donorName: pdfOptions.donorName,
-        profileLength: pdfOptions.profile?.length ?? 'undefined/null',
-        profileFirst200: pdfOptions.profile?.slice(0, 200) ?? 'EMPTY',
-        meetingGuideLength: pdfOptions.meetingGuide?.length ?? 'undefined/null',
-        sourcesCount: pdfOptions.sources?.length ?? 0,
-        fundraiserName: pdfOptions.fundraiserName,
-      });
-      await generatePDF(pdfOptions);
-    } catch (err) {
-      console.error('PDF generation failed:', err);
-      alert('PDF generation failed. Please try again.');
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -287,17 +257,6 @@ export default function ProfilePage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {donorName}
               </h1>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isGeneratingPDF}
-                className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700
-                           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
-              </button>
             </div>
           </div>
         </div>
