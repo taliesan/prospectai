@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProgressEvent {
-  type: 'status' | 'complete' | 'error' | 'ping';
+  type: 'status' | 'complete' | 'error' | 'ping' | 'phase';
   message: string;
-  stage?: 'research' | 'dossier' | 'profile' | 'critique' | 'revision';
+  phase?: 'research' | 'analysis' | 'writing';
+  step?: number;
+  totalSteps?: number;
   detail?: string;
 }
 
@@ -17,7 +19,9 @@ export default function Home() {
   const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
-  const [currentStage, setCurrentStage] = useState<string>('');
+  const [currentPhase, setCurrentPhase] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(28);
   const router = useRouter();
 
   // Polish item 5: URL validation state
@@ -29,7 +33,9 @@ export default function Home() {
 
     setIsLoading(true);
     setProgressMessages([]);
-    setCurrentStage('Starting...');
+    setCurrentPhase('');
+    setCurrentStep(0);
+    setTotalSteps(28);
 
     try {
       const response = await fetch('/api/generate', {
@@ -97,11 +103,13 @@ export default function Home() {
                 continue;
               }
 
-              if (event.type === 'status') {
+              if (event.type === 'phase') {
+                setCurrentPhase(event.phase || '');
+              } else if (event.type === 'status') {
                 setProgressMessages(prev => [...prev, event]);
-                if (event.stage) {
-                  setCurrentStage(event.stage.charAt(0).toUpperCase() + event.stage.slice(1));
-                }
+                if (event.phase) setCurrentPhase(event.phase);
+                if (event.step) setCurrentStep(event.step);
+                if (event.totalSteps) setTotalSteps(event.totalSteps);
               } else if (event.type === 'complete' && event.detail) {
                 console.log('[SSE] Received complete event with profile data');
                 const result = JSON.parse(event.detail);
@@ -138,22 +146,37 @@ export default function Home() {
 
   // Loading state — full dark screen with progress
   if (isLoading) {
-    const progressPercent = Math.min(progressMessages.length * 8, 95);
+    // Weighted progress: Research 0–40%, Analysis 40–80%, Writing 80–100%
+    const progressPercent = Math.min((currentStep / totalSteps) * 100, 98);
+
+    // Phase labels for the card header
+    const phaseLabels: Record<string, string> = {
+      'research': 'RESEARCHING',
+      'analysis': 'ANALYZING BEHAVIOR',
+      'writing': 'WRITING DOCUMENTS',
+    };
+    const phaseLabel = phaseLabels[currentPhase] || 'STARTING';
+
+    // Latest message for subtitle
+    const latestMessage = progressMessages.length > 0
+      ? progressMessages[progressMessages.length - 1].message
+      : 'Starting...';
+
     return (
       <div className="min-h-screen bg-dtw-black">
         {/* Animated gradient bar */}
         <div
-          className="h-1.5 w-full"
+          className="h-[5px] w-full"
           style={{
             background: 'linear-gradient(90deg, #7B2D8E, #C77DFF, #2D6A4F, #40916C, #7B2D8E)',
-            backgroundSize: '200% 100%',
-            animation: 'gradientShift 3s ease infinite',
+            backgroundSize: '300% 100%',
+            animation: 'gradientShift 8s ease-in-out infinite',
           }}
         />
 
         <div className="flex flex-col items-center justify-center min-h-[90vh] px-4">
           <h1 className="font-serif text-5xl text-white mb-4">{donorName}</h1>
-          <p className="text-base text-white/50 mb-10">{currentStage || 'Starting...'}</p>
+          <p className="text-base text-white/50 mb-10">{latestMessage}</p>
 
           {/* Progress bar */}
           <div className="w-full max-w-[400px] mb-3">
@@ -165,7 +188,7 @@ export default function Home() {
             </div>
           </div>
           <p className="text-[13px] text-white/35 mb-12">
-            {currentStage}
+            Step {currentStep} of {totalSteps}
           </p>
 
           {/* Streaming preview card */}
@@ -182,7 +205,7 @@ export default function Home() {
               <div className="absolute top-0 left-6 right-6 h-1 rounded-b-sm" style={{ background: '#C77DFF' }} />
 
               <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-4" style={{ color: '#D894E8' }}>
-                {currentStage === 'Research' ? 'RESEARCHING' : currentStage === 'Profile' ? 'PERSUASION PROFILE' : 'GENERATING'}
+                {phaseLabel}
               </p>
 
               <div className="space-y-1 text-sm max-h-48 overflow-y-auto">
