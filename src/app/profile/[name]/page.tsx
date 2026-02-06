@@ -24,6 +24,13 @@ interface ProfileData {
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
 
+// Per-tab accent colors
+const tabAccents: Record<Tab, { border: string; color: string; bg: string }> = {
+  'persuasion-profile': { border: '#D894E8', color: '#D894E8', bg: '#7B2D8E' },
+  'meeting-guide': { border: '#40916C', color: '#40916C', bg: '#2D6A4F' },
+  'sources': { border: '#E07A5F', color: '#E07A5F', bg: '#E07A5F' },
+};
+
 export default function ProfilePage() {
   const params = useParams();
   const donorName = decodeURIComponent(params.name as string);
@@ -62,7 +69,6 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    // Load from localStorage (in production, would fetch from API/database)
     const stored = localStorage.getItem('lastProfile');
     if (stored) {
       try {
@@ -74,21 +80,14 @@ export default function ProfilePage() {
     setIsLoading(false);
   }, []);
 
-  // Extract sources from research markdown or use sources array if available
   const extractSources = (): Source[] => {
     if (!data) return [];
-
-    // If sources array exists, use it
     if (data.research.sources && data.research.sources.length > 0) {
       return data.research.sources;
     }
-
-    // Otherwise, extract URLs from the raw markdown
     const markdown = data.research.rawMarkdown || '';
     const urlRegex = /https?:\/\/[^\s\)]+/g;
     const urls = markdown.match(urlRegex) || [];
-
-    // Dedupe and create source objects
     const uniqueUrls = Array.from(new Set(urls));
     return uniqueUrls.map(url => {
       try {
@@ -100,20 +99,15 @@ export default function ProfilePage() {
     });
   };
 
-  // Group sources by domain
   const groupSourcesByDomain = (sources: Source[]): Map<string, Source[]> => {
     const grouped = new Map<string, Source[]>();
     sources.forEach(source => {
       try {
         const domain = new URL(source.url).hostname.replace('www.', '');
-        if (!grouped.has(domain)) {
-          grouped.set(domain, []);
-        }
+        if (!grouped.has(domain)) grouped.set(domain, []);
         grouped.get(domain)!.push(source);
       } catch {
-        if (!grouped.has('other')) {
-          grouped.set('other', []);
-        }
+        if (!grouped.has('other')) grouped.set('other', []);
         grouped.get('other')!.push(source);
       }
     });
@@ -122,26 +116,19 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
+        <div className="text-dtw-mid-gray font-serif text-xl">Loading...</div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Profile Not Found
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            No profile data found for {donorName}
-          </p>
-          <a
-            href="/"
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-          >
+          <h1 className="font-serif text-3xl text-dtw-black mb-4">Profile Not Found</h1>
+          <p className="text-dtw-mid-gray mb-6">No profile data found for {donorName}</p>
+          <a href="/" className="text-dtw-green hover:text-dtw-green-light transition-colors">
             ← Generate a new profile
           </a>
         </div>
@@ -149,19 +136,19 @@ export default function ProfilePage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; description: string }[] = [
-    { id: 'persuasion-profile', label: 'Persuasion Profile', description: 'Behavioral analysis' },
-    { id: 'meeting-guide', label: 'Meeting Guide', description: 'Tactical prep' },
-    { id: 'sources', label: 'Sources', description: 'Bibliography' },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'persuasion-profile', label: 'Persuasion Profile' },
+    { id: 'meeting-guide', label: 'Meeting Guide' },
+    { id: 'sources', label: 'Sources' },
   ];
+
+  const currentAccent = tabAccents[activeTab];
+  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'persuasion-profile':
-        // Show dossier content (now the primary asset)
-        // Swap LLM-facing headings for user-friendly display headings
+      case 'persuasion-profile': {
         const headingMap: Record<string, string> = {
-          // Life and Career stays as-is (no mapping needed)
           "Decision-Making Patterns": "How They Decide",
           "Trust Calibration": "How They Build Trust",
           "Influence Susceptibility": "What Moves Them",
@@ -187,111 +174,124 @@ export default function ProfilePage() {
         }
 
         return (
-          <article className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {displayMarkdown}
-            </ReactMarkdown>
-          </article>
+          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-purple rounded-b-sm" />
+            <div className="p-9 pt-10">
+              <article className="prose max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {displayMarkdown}
+                </ReactMarkdown>
+              </article>
+            </div>
+          </div>
         );
+      }
 
-      case 'meeting-guide':
+      case 'meeting-guide': {
         if (!data.meetingGuide) {
           return (
-            <div className="text-center py-16">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                No Meeting Guide Available
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+                 style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <h2 className="font-serif text-2xl text-dtw-black mb-2">No Meeting Guide Available</h2>
+              <p className="text-dtw-mid-gray max-w-md mx-auto">
                 Re-generate this profile to include a Meeting Guide.
               </p>
             </div>
           );
         }
         return (
-          <article className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {data.meetingGuide}
-            </ReactMarkdown>
-          </article>
+          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
+            <div className="p-9 pt-10">
+              <article className="prose prose-green max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {data.meetingGuide}
+                </ReactMarkdown>
+              </article>
+            </div>
+          </div>
         );
+      }
 
-      case 'sources':
-        // Clean source bibliography
+      case 'sources': {
         const sources = extractSources();
         const groupedSources = groupSourcesByDomain(sources);
 
         if (sources.length === 0) {
           return (
-            <div className="text-center py-16">
-              <p className="text-gray-600 dark:text-gray-400">
-                No sources available
-              </p>
+            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+                 style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <p className="text-dtw-mid-gray">No sources available</p>
             </div>
           );
         }
 
         return (
-          <div className="space-y-6">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
-            </p>
+          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-coral rounded-b-sm" />
+            <div className="p-9 pt-10 space-y-8">
+              <p className="text-sm text-dtw-mid-gray">
+                {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
+              </p>
 
-            {Array.from(groupedSources.entries()).sort().map(([domain, domainSources]) => (
-              <div key={domain} className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  {domain}
-                </h3>
-                <ul className="space-y-2">
-                  {domainSources.map((source, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-gray-400 mt-1">•</span>
-                      <div className="flex-1 min-w-0">
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400
-                                     dark:hover:text-blue-300 break-all text-sm"
-                        >
-                          {source.title || source.url}
-                        </a>
-                        {source.title && source.title !== new URL(source.url).hostname.replace('www.', '') && (
-                          <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
-                            {source.url}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+              {Array.from(groupedSources.entries()).sort().map(([domain, domainSources]) => (
+                <div key={domain} className="space-y-3">
+                  <h3 className="text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px]">
+                    {domain}
+                  </h3>
+                  <ul className="space-y-2">
+                    {domainSources.map((source, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-dtw-coral mt-0.5 text-xs font-semibold">{'\u2022'}</span>
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-dtw-coral hover:text-dtw-warm-gray break-all text-sm transition-colors"
+                          >
+                            {source.title || source.url}
+                          </a>
+                          {source.title && source.title !== new URL(source.url).hostname.replace('www.', '') && (
+                            <p className="text-xs text-dtw-mid-gray truncate mt-0.5">
+                              {source.url}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         );
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-950 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <a
-                href="/"
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ← Back
-              </a>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {donorName}
-              </h1>
-            </div>
+    <div className="min-h-screen bg-dtw-off-white">
+      {/* Rainbow accent bar */}
+      <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #7B2D8E, #2D6A4F, #E07A5F)' }} />
+
+      {/* Dark header */}
+      <header className="bg-dtw-black">
+        <div className="max-w-4xl mx-auto px-6 pt-5 pb-0">
+          {/* Top row: back link + download button */}
+          <div className="flex items-center justify-between mb-6">
+            <a href="/" className="text-[13px] text-white/50 hover:text-white transition-colors">
+              ← New Profile
+            </a>
             <button
               onClick={() => handleDownload('html')}
               disabled={isDownloading}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800"
+              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-pill
+                         bg-white text-dtw-black hover:bg-dtw-gold
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isDownloading ? (
                 <>
@@ -311,35 +311,55 @@ export default function ProfilePage() {
               )}
             </button>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-4">
+          {/* Overline */}
+          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
+            Donor Intelligence Report
+          </p>
+
+          {/* Donor name */}
+          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
+
+          {/* Date */}
+          <p className="text-[15px] text-white/40 mb-8">{date}</p>
+
+          {/* Tabs */}
           <div className="flex gap-1">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
-              >
-                {tab.label}
-                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
-                  {tab.description}
-                </span>
-              </button>
-            ))}
+            {tabs.map(tab => {
+              const accent = tabAccents[tab.id];
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="px-5 py-3.5 text-sm font-medium transition-colors relative"
+                  style={{ color: isActive ? 'white' : 'rgba(255,255,255,0.4)' }}
+                >
+                  {tab.label}
+                  {isActive && (
+                    <div
+                      className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-sm"
+                      style={{ background: accent.border }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-[800px] mx-auto px-4 py-10">
         {renderContent()}
       </main>
+
+      {/* Footer */}
+      <footer className="bg-dtw-black py-6 text-center">
+        <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/25">
+          Democracy Takes Work &middot; ProspectAI &middot; 2026
+        </span>
+      </footer>
     </div>
   );
 }
