@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
 
 interface Source {
   url: string;
@@ -29,7 +30,36 @@ export default function ProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
 
+  const handleDownload = async (format: 'html' | 'markdown' = 'html') => {
+    if (!data) return;
+    setIsDownloading(true);
+    try {
+      let fundraiserName = '';
+      try {
+        const raw = localStorage.getItem('lastProfile');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          fundraiserName = parsed.fundraiserName || '';
+        }
+      } catch { /* ignore */ }
+
+      const downloadData: DownloadableProfile = {
+        donorName,
+        fundraiserName,
+        profile: data.dossier.rawMarkdown,
+        meetingGuide: data.meetingGuide,
+        sources: extractSources(),
+      };
+      downloadProfile(downloadData, format);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Download failed. Please try again.');
+    } finally {
+      setTimeout(() => setIsDownloading(false), 800);
+    }
+  };
 
   useEffect(() => {
     // Load from localStorage (in production, would fetch from API/database)
@@ -258,6 +288,28 @@ export default function ProfilePage() {
                 {donorName}
               </h1>
             </div>
+            <button
+              onClick={() => handleDownload('html')}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              {isDownloading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Preparing...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download
+                </>
+              )}
+            </button>
           </div>
         </div>
 
