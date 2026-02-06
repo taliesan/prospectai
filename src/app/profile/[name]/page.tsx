@@ -18,6 +18,7 @@ interface ProfileData {
   };
   dossier: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
+  meetingGuide?: string;
 }
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
@@ -128,9 +129,9 @@ export default function ProfilePage() {
       case 'persuasion-profile':
         return 'Download Profile';
       case 'meeting-guide':
-        return null; // No download for placeholder
+        return data?.meetingGuide ? 'Download Guide' : null;
       case 'sources':
-        return null; // No download for sources
+        return null;
     }
   };
 
@@ -142,6 +143,13 @@ export default function ProfilePage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `${donorName.replace(/\s+/g, '_')}_persuasion_profile.md`;
+      a.click();
+    } else if (activeTab === 'meeting-guide' && data.meetingGuide) {
+      const blob = new Blob([data.meetingGuide], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${donorName.replace(/\s+/g, '_')}_meeting_guide.md`;
       a.click();
     }
   };
@@ -186,18 +194,24 @@ export default function ProfilePage() {
         );
 
       case 'meeting-guide':
-        // Placeholder for future Meeting Guide
+        if (!data.meetingGuide) {
+          return (
+            <div className="text-center py-16">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No Meeting Guide Available
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                Re-generate this profile to include a Meeting Guide.
+              </p>
+            </div>
+          );
+        }
         return (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🚧</div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Meeting Guide Coming Soon
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-              We're building a tactical meeting preparation document with specific openers,
-              pivot points, and follow-up strategies tailored to this donor.
-            </p>
-          </div>
+          <article className="prose dark:prose-invert max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {data.meetingGuide}
+            </ReactMarkdown>
+          </article>
         );
 
       case 'sources':

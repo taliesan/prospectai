@@ -260,8 +260,18 @@ export async function POST(request: NextRequest) {
             }
           );
 
-          // Save outputs including dossier
+          // Save outputs including dossier and meeting guide
           saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
+
+          // Save meeting guide
+          if (conversationResult.meetingGuide) {
+            const outputDir = '/tmp/prospectai-outputs';
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+            const meetingGuidePath = `${outputDir}/${timestamp}-${safeName}-meeting-guide.md`;
+            writeFileSync(meetingGuidePath, conversationResult.meetingGuide);
+            console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${conversationResult.meetingGuide.length} chars)`);
+          }
 
           // Format result for frontend compatibility
           result = {
@@ -273,6 +283,7 @@ export async function POST(request: NextRequest) {
               validationPasses: 0,
               status: 'complete'
             },
+            meetingGuide: conversationResult.meetingGuide,
             fundraiserName,
           };
 
