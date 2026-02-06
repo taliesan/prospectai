@@ -263,16 +263,14 @@ export async function generatePDF(options: PDFGenerationOptions): Promise<void> 
   console.log('[PDF] Generated HTML length:', html.length, 'First 300 chars:', html.slice(0, 300));
 
   // Create a temporary container
-  // Use opacity:0 instead of left:-9999px so html2canvas can render it
+  // Must be in document flow with real dimensions — html2canvas needs measurable height
+  // Off-screen (left:-9999px) hides it visually while keeping it measurable
   const container = document.createElement('div');
   container.innerHTML = html;
-  container.style.width = '210mm'; // A4 width
-  container.style.position = 'fixed';
-  container.style.left = '0';
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
   container.style.top = '0';
-  container.style.opacity = '0';
-  container.style.zIndex = '-1';
-  container.style.pointerEvents = 'none';
+  container.style.width = '210mm';
   document.body.appendChild(container);
 
   const date = new Date().toISOString().split('T')[0];
