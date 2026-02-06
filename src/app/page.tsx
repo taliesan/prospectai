@@ -12,6 +12,7 @@ interface ProgressEvent {
 
 export default function Home() {
   const [donorName, setDonorName] = useState('');
+  const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
   const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +22,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!donorName.trim()) return;
+    if (!donorName.trim() || !seedUrls.trim()) return;
 
     setIsLoading(true);
     setProgressMessages([]);
@@ -33,6 +34,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           donorName: donorName.trim(),
+          fundraiserName: fundraiserName.trim(),
           seedUrls: seedUrls.split('\n').filter(u => u.trim()),
           mode
         })
@@ -170,16 +172,37 @@ export default function Home() {
 
           <div>
             <label
+              htmlFor="fundraiserName"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Fundraiser Name
+            </label>
+            <input
+              type="text"
+              id="fundraiserName"
+              value={fundraiserName}
+              onChange={(e) => setFundraiserName(e.target.value)}
+              placeholder="Your name (for the Meeting Guide)"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         placeholder-gray-400"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label
               htmlFor="seedUrls"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              Seed URLs (optional)
+              Seed URL <span className="text-red-500">*</span>
             </label>
             <textarea
               id="seedUrls"
               value={seedUrls}
               onChange={(e) => setSeedUrls(e.target.value)}
-              placeholder="Add URLs you know about this donor (one per line)"
+              placeholder="Add at least one URL about this donor (e.g., LinkedIn, company bio, interview)"
               rows={3}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -188,13 +211,13 @@ export default function Home() {
               disabled={isLoading}
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Providing seed URLs helps ensure we research the right person
+              Required — this anchors our research to the right person
             </p>
           </div>
 
           <button
             type="submit"
-            disabled={isLoading || !donorName.trim()}
+            disabled={isLoading || !donorName.trim() || !seedUrls.trim()}
             className="w-full py-4 px-6 rounded-lg font-medium text-white
                        bg-blue-600 hover:bg-blue-700
                        disabled:bg-gray-400 disabled:cursor-not-allowed

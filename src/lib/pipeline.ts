@@ -5,7 +5,7 @@ import { complete, completeExtended } from './anthropic';
 import { sanitizeForClaude } from './sanitize';
 import { STATUS } from './progress';
 import {
-  IDENTITY_RESOLUTION_PROMPT,
+  IDENTITY_EXTRACTION_PROMPT,
   generateResearchQueries,
   SOURCE_CLASSIFICATION_PROMPT
 } from './prompts/research';
@@ -50,59 +50,82 @@ interface ProfileResult {
 export async function conductResearch(
   donorName: string,
   seedUrls: string[] = [],
-  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
+  fetchFunction?: (url: string) => Promise<string>
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
 
-  // 1. Resolve identity
-  console.log('[Research] Resolving identity...');
+  // 1. Fetch and extract identity from seed URL(s)
+  console.log('[Research] Fetching seed URL(s)...');
   STATUS.identityResolving(donorName);
-  const identityPrompt = `${IDENTITY_RESOLUTION_PROMPT}
+
+  let seedContent = '';
+  for (const url of seedUrls) {
+    if (fetchFunction) {
+      try {
+        const content = await fetchFunction(url);
+        seedContent += `\n\n--- Content from ${url} ---\n${content}`;
+        console.log(`[Research] Fetched seed URL: ${url} (${content.length} chars)`);
+      } catch (err) {
+        console.error(`[Research] Failed to fetch seed URL: ${url}`, err);
+      }
+    }
+  }
+
+  // 2. Extract identity signals from seed content
+  console.log('[Research] Extracting identity signals...');
+  let identity: any = { name: donorName, currentOrg: '', currentRole: '', locations: [], affiliations: [], uniqueIdentifiers: [] };
+
+  if (seedContent) {
+    const identityPrompt = `${IDENTITY_EXTRACTION_PROMPT}
 
 Donor Name: ${donorName}
-Seed URLs: ${seedUrls.join(', ') || 'None provided'}
 
-Resolve the identity of this donor.`;
+PAGE CONTENT:
+${seedContent.slice(0, 15000)}
 
-  const identityResponse = await complete('You are a research assistant.', identityPrompt);
-  
-  let identity;
-  try {
-    // Extract JSON from response
-    const jsonMatch = identityResponse.match(/\{[\s\S]*\}/);
-    identity = jsonMatch ? JSON.parse(jsonMatch[0]) : { name: donorName, organizations: [], domainKeywords: [] };
-  } catch {
-    identity = { name: donorName, organizations: [], domainKeywords: [] };
+Extract the identity signals for this person.`;
+
+    try {
+      const identityResponse = await complete('You are a research assistant.', identityPrompt);
+      const jsonMatch = identityResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        identity = JSON.parse(jsonMatch[0]);
+        identity.name = identity.fullName || donorName;
+      }
+      console.log(`[Research] Identity extracted: ${identity.fullName || donorName} at ${identity.currentOrg || 'unknown org'}`);
+    } catch (err) {
+      console.error('[Research] Identity extraction failed:', err);
+    }
   }
-  
-  console.log(`[Research] Identity resolved: ${identity.name}`);
-  
-  // 2. Generate search queries
-  console.log('[Research] Generating search queries...');
+
+  // 3. Generate targeted search queries using identity signals
+  console.log('[Research] Generating targeted search queries...');
   const queryPrompt = generateResearchQueries(donorName, identity);
   const queryResponse = await complete('You are a research strategist.', queryPrompt);
-  
+
   let queries: { query: string; category: string }[] = [];
   try {
     const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
     queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch {
-    // Fallback queries
+    // Fallback queries with identity context
+    const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
     queries = [
-      { query: `"${donorName}" biography`, category: 'BIOGRAPHY' },
-      { query: `"${donorName}" interview`, category: 'INTERVIEWS' },
-      { query: `"${donorName}" philanthropy`, category: 'PHILANTHROPY' },
-      { query: `"${donorName}" podcast`, category: 'INTERVIEWS' },
+      { query: `"${donorName}"${orgSuffix} interview`, category: 'INTERVIEWS' },
+      { query: `"${donorName}"${orgSuffix} podcast`, category: 'INTERVIEWS' },
+      { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'PHILANTHROPY' },
+      { query: `"${donorName}"${orgSuffix} profile`, category: 'NEWS_PROFILES' },
     ];
   }
-  
+
   console.log(`[Research] Generated ${queries.length} queries`);
   STATUS.queriesGenerated(queries.length);
-  
-  // 3. Execute searches
+
+  // 4. Execute searches
   console.log('[Research] Executing searches...');
   const allSources: { url: string; title: string; snippet: string; query: string }[] = [];
-  
+
   for (const q of queries) {
     try {
       const results = await searchFunction(q.query);
@@ -113,25 +136,131 @@ Resolve the identity of this donor.`;
       console.error(`[Research] Search failed for: ${q.query}`, err);
     }
   }
-  
+
   // Deduplicate by URL
   const uniqueSources = Array.from(
     new Map(allSources.map(s => [s.url, s])).values()
   );
-  
-  console.log(`[Research] Collected ${uniqueSources.length} unique sources`);
-  STATUS.sourcesCollected(uniqueSources.length);
-  
-  // 4. Generate raw research document
-  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, uniqueSources);
-  
+
+  console.log(`[Research] Collected ${uniqueSources.length} unique sources before screening`);
+
+  // 5. Screen sources for relevance to THIS person
+  console.log('[Research] Screening sources for relevance...');
+  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName);
+
+  console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${uniqueSources.length - screenedSources.length})`);
+  STATUS.sourcesCollected(screenedSources.length);
+
+  // 6. Generate raw research document
+  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, screenedSources);
+
   return {
     donorName,
     identity,
     queries,
-    sources: uniqueSources,
+    sources: screenedSources,
     rawMarkdown
   };
+}
+
+async function screenSourcesForRelevance(
+  sources: { url: string; title: string; snippet: string }[],
+  identity: any,
+  donorName: string
+): Promise<{ url: string; title: string; snippet: string }[]> {
+
+  // Fast-path filters (no LLM needed)
+  const dominated: { url: string; title: string; snippet: string }[] = [];
+  const needsScreening: { url: string; title: string; snippet: string }[] = [];
+
+  for (const source of sources) {
+    const combined = `${source.url} ${source.title} ${source.snippet}`.toLowerCase();
+    let dominatedFlag = false;
+
+    // Always include if org name appears
+    if (identity.currentOrg) {
+      const orgLower = identity.currentOrg.toLowerCase();
+      if (combined.includes(orgLower)) {
+        dominated.push(source);
+        dominatedFlag = true;
+      }
+    }
+
+    // Always include if unique identifier appears
+    if (!dominatedFlag) {
+      for (const uid of (identity.uniqueIdentifiers || [])) {
+        if (uid && combined.includes(uid.toLowerCase())) {
+          dominated.push(source);
+          dominatedFlag = true;
+          break;
+        }
+      }
+    }
+
+    if (!dominatedFlag) {
+      needsScreening.push(source);
+    }
+  }
+
+  console.log(`[Research] Fast-path accepted: ${dominated.length}, needs LLM screening: ${needsScreening.length}`);
+
+  // For sources that didn't pass fast-path, use LLM screening
+  const screened: { url: string; title: string; snippet: string }[] = [...dominated];
+
+  if (needsScreening.length > 0) {
+    const BATCH_SIZE = 10;
+
+    for (let i = 0; i < needsScreening.length; i += BATCH_SIZE) {
+      const batch = needsScreening.slice(i, i + BATCH_SIZE);
+
+      const screenPrompt = `Screen these search results to determine if they are about the correct person.
+
+TARGET PERSON:
+- Name: ${donorName}
+- Current Role: ${identity.currentRole || 'Unknown'}
+- Current Organization: ${identity.currentOrg || 'Unknown'}
+- Locations: ${(identity.locations || []).join(', ') || 'Unknown'}
+- Affiliations: ${(identity.affiliations || []).join(', ') || 'Unknown'}
+- Unique Identifiers: ${(identity.uniqueIdentifiers || []).join(', ') || 'None'}
+
+SEARCH RESULTS TO SCREEN:
+${batch.map((s, idx) => `
+[${idx}]
+URL: ${s.url}
+Title: ${s.title}
+Snippet: ${s.snippet}
+`).join('\n')}
+
+For each result, determine if it's about the TARGET PERSON or a different person.
+Be conservative - if uncertain, mark as not a match.
+
+Output as JSON array (one entry per result, in order):
+[
+  { "index": 0, "isMatch": true, "confidence": "high", "reason": "brief explanation" },
+  { "index": 1, "isMatch": false, "confidence": "high", "reason": "different person - wrong company" }
+]`;
+
+      try {
+        const response = await complete('You are screening search results for identity matching.', screenPrompt);
+        const jsonMatch = response.match(/\[[\s\S]*\]/);
+
+        if (jsonMatch) {
+          const results = JSON.parse(jsonMatch[0]);
+          for (const r of results) {
+            if (r.isMatch && (r.confidence === 'high' || r.confidence === 'medium')) {
+              screened.push(batch[r.index]);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Research] Source screening batch failed:', err);
+        // On error, include all sources from this batch (fail open)
+        screened.push(...batch);
+      }
+    }
+  }
+
+  return screened;
 }
 
 function generateResearchMarkdown(

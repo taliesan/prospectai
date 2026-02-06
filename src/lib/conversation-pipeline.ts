@@ -204,6 +204,7 @@ export async function runConversationPipeline(
   donorName: string,
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
+  fetchFunction: (url: string) => Promise<string>,
   onProgress: (message: string, stage?: string) => void
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
@@ -212,7 +213,7 @@ export async function runConversationPipeline(
 
   // Step 1: Research (reuse existing)
   onProgress('Starting research...', 'research');
-  const research = await conductResearch(donorName, seedUrls, searchFunction);
+  const research = await conductResearch(donorName, seedUrls, searchFunction, fetchFunction);
   onProgress(`✓ Research complete: ${research.sources.length} sources`, 'research');
   console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
 

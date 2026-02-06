@@ -114,7 +114,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, seedUrls = [], mode = 'conversation' } = body;
+  const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation' } = body;
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(
@@ -210,6 +210,36 @@ export async function POST(request: NextRequest) {
           }
         };
 
+        // Fetch function for seed URLs using Tavily extract
+        const fetchUrl = async (url: string): Promise<string> => {
+          if (!TAVILY_API_KEY) {
+            // Fallback to direct fetch
+            const res = await fetch(url);
+            return sanitizeForClaude(await res.text());
+          }
+          try {
+            const extractResponse = await fetch('https://api.tavily.com/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: TAVILY_API_KEY,
+                urls: [url],
+              }),
+            });
+            if (extractResponse.ok) {
+              const extractData: TavilyExtractResponse = await extractResponse.json();
+              if (extractData.results.length > 0) {
+                return sanitizeForClaude(extractData.results[0].raw_content);
+              }
+            }
+          } catch (err) {
+            console.warn(`[Fetch] Tavily extract failed for ${url}, falling back to direct fetch`);
+          }
+          // Fallback to direct fetch
+          const res = await fetch(url);
+          return sanitizeForClaude(await res.text());
+        };
+
         let result: any;
 
         if (isConversationMode) {
@@ -220,6 +250,7 @@ export async function POST(request: NextRequest) {
             donorName,
             seedUrls,
             webSearch,
+            fetchUrl,
             (message: string, stage?: string) => {
               sendEvent({
                 type: 'status',
@@ -241,7 +272,8 @@ export async function POST(request: NextRequest) {
               profile: conversationResult.profile,
               validationPasses: 0,
               status: 'complete'
-            }
+            },
+            fundraiserName,
           };
 
         } else {
