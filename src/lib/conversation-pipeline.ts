@@ -4,7 +4,8 @@
 
 import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
-import { loadExemplars, loadGeoffreyBlock } from './canon/loader';
+import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
+import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -19,6 +20,7 @@ export interface ConversationResult {
   research: ResearchResult;
   profile: string;
   dossier: string;
+  meetingGuide: string;
   draft: string;
   critique: string;
 }
@@ -266,6 +268,33 @@ export async function runConversationPipeline(
 
   const profile = dossier; // Profile = Dossier in new architecture
 
+  // Step 4: Generate Meeting Guide (profile → meeting guide)
+  onProgress('Generating meeting guide...', 'meeting-guide');
+  console.log('[Conversation] Step 4: Generating meeting guide from profile...');
+
+  const meetingGuideBlock = loadMeetingGuideBlock();
+  const meetingGuideExemplars = loadMeetingGuideExemplars();
+  const dtwOrgLayer = loadDTWOrgLayer();
+
+  console.log(`[Conversation] Loaded Meeting Guide Block (${meetingGuideBlock.length} chars), Exemplars (${meetingGuideExemplars.length} chars), DTW Org Layer (${dtwOrgLayer.length} chars)`);
+
+  const meetingGuidePrompt = buildMeetingGuidePrompt(
+    donorName,
+    profile,
+    meetingGuideBlock,
+    dtwOrgLayer,
+    meetingGuideExemplars
+  );
+
+  const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
+  console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
+
+  const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
+  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
+
+  onProgress('✓ Meeting guide complete', 'meeting-guide');
+  console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
+
   console.log(`${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
@@ -274,6 +303,7 @@ export async function runConversationPipeline(
     research,
     profile,        // Now equals dossier
     dossier,        // Keep for backward compatibility
+    meetingGuide,
     draft: dossier,
     critique: ''
   };
