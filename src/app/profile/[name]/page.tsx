@@ -286,9 +286,34 @@ export default function ProfilePage() {
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
             <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-coral rounded-b-sm" />
             <div className="p-9 pt-10 space-y-8">
-              <p className="text-sm text-dtw-mid-gray">
-                {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-dtw-mid-gray">
+                  {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/research-dump?name=${encodeURIComponent(donorName)}`);
+                      if (!res.ok) throw new Error('No research data available');
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      const safe = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+                      link.href = url;
+                      link.download = `${safe}-research.json`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    } catch {
+                      alert('Research data not available. Generate a new profile to capture research data.');
+                    }
+                  }}
+                  className="text-xs font-medium text-dtw-coral hover:text-dtw-warm-gray transition-colors"
+                >
+                  Download Research Data
+                </button>
+              </div>
 
               {Array.from(groupedSources.entries()).sort().map(([domain, domainSources]) => (
                 <div key={domain} className="space-y-3">
