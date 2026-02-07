@@ -147,6 +147,17 @@ Then write one section for each of these 17 behavioral dimensions. Use the dimen
 16. Knowledge Areas
 17. Contradiction Patterns — MOST IMPORTANT. Contradictions reveal where persuasion has maximum leverage.
 
+INCORPORATING BEHAVIORAL DYNAMICS EVIDENCE:
+
+The extraction evidence includes 7 additional behavioral dynamics dimensions. Fold this evidence into the relevant profile sections:
+
+- "Emotional Triggers" should incorporate: SHAME_DEFENSE_TRIGGERS, HIDDEN_FRAGILITIES
+- "Communication Style" should incorporate: RETREAT_PATTERNS, TEMPO_MANAGEMENT, REAL_TIME_INTERPERSONAL_TELLS
+- "Relationship Patterns" should incorporate: RECOVERY_PATHS
+- "Decision-Making Patterns" should incorporate: CONDITIONAL_BEHAVIORAL_FORKS
+
+Every behavioral claim needs both branches of the fork. Not "he's direct" but "when X, he does Y; when not-X, he does Z."
+
 OUTPUT: Long-form behavioral prose organized by the 18 sections above (Life and Career + 17 dimensions). Not bullet points. Each section should have a clear header and substantive analysis. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more.`;
 
 /**
@@ -321,7 +332,7 @@ export async function runConversationPipeline(
   console.log(`[Conversation] Extraction prompt token estimate: ${extractionTokenEstimate}`);
 
   const extractionMessages: Message[] = [{ role: 'user', content: extractionPrompt }];
-  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 32000 });
+  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 50000 });
 
   // Timed intermediate updates during extraction
   let extractionDone = false;
