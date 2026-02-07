@@ -31,7 +31,7 @@ interface TavilyExtractResponse {
 }
 
 // Web search using Tavily API
-async function webSearch(query: string): Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]> {
+async function webSearch(query: string): Promise<{ url: string; title: string; snippet: string; content?: string }[]> {
   console.log(`[Search] Query: ${query}`);
 
   if (!TAVILY_API_KEY) {
