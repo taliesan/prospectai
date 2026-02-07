@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
+import { parseProfileForPDF } from '@/lib/pdf/parse-profile';
 
 interface Source {
   url: string;
@@ -63,6 +64,58 @@ export default function ProfilePage() {
     } catch (err) {
       console.error('Download failed:', err);
       alert('Download failed. Please try again.');
+    } finally {
+      setTimeout(() => setIsDownloading(false), 800);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!data) return;
+    setIsDownloading(true);
+    try {
+      let fundraiserName = '';
+      try {
+        const raw = localStorage.getItem('lastProfile');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          fundraiserName = parsed.fundraiserName || '';
+        }
+      } catch { /* ignore */ }
+
+      const sources = extractSources();
+      const profileData = parseProfileForPDF(
+        donorName,
+        fundraiserName,
+        data.dossier.rawMarkdown,
+        data.meetingGuide,
+        sources
+      );
+
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileData }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `PDF generation failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+      link.href = url;
+      link.download = `ProspectAI_${safeName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      console.error('PDF download failed:', err);
+      // Fall back to HTML download
+      handleDownload('html');
     } finally {
       setTimeout(() => setIsDownloading(false), 800);
     }
@@ -287,7 +340,7 @@ export default function ProfilePage() {
               ← New Profile
             </a>
             <button
-              onClick={() => handleDownload('html')}
+              onClick={handleDownloadPDF}
               disabled={isDownloading}
               className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-pill
                          bg-white text-dtw-black hover:bg-dtw-gold
