@@ -321,7 +321,7 @@ export async function runConversationPipeline(
   console.log(`[Conversation] Extraction prompt token estimate: ${extractionTokenEstimate}`);
 
   const extractionMessages: Message[] = [{ role: 'user', content: extractionPrompt }];
-  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 16000 });
+  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 32000 });
 
   // Timed intermediate updates during extraction
   let extractionDone = false;
