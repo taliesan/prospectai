@@ -1,7 +1,7 @@
 // Conversation-mode pipeline for donor profiling
 // Three-step architecture: sources → extraction (verbatim evidence) → profile
 // Extraction step curates raw content into ~10-15K behavioral dossier
-// Profile step structures dossier into 7-section format via Geoffrey Block + exemplars
+// Profile step feeds curated evidence into DOSSIER_PROMPT (18-section Persuasion Profile) via Geoffrey Block
 
 import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
@@ -158,7 +158,35 @@ Write a comprehensive Persuasion Profile for ${donorName}.`;
 }
 
 /**
- * Build Step 2 prompt: Geoffrey Block + exemplars + dossier + instruction
+ * Build dossier prompt from pre-extracted behavioral evidence.
+ * Same structure as buildDossierPrompt but takes curated evidence text
+ * instead of raw sources — the extraction step has already distilled
+ * verbatim quotes organized by 17 dimensions.
+ */
+function buildDossierPromptFromEvidence(
+  donorName: string,
+  evidenceText: string,
+  geoffreyBlock: string
+): string {
+  return `${geoffreyBlock}
+
+---
+
+Here is the behavioral evidence extracted from research sources about ${donorName}:
+
+${evidenceText}
+
+---
+
+${DOSSIER_PROMPT}
+
+Title the document "${donorName} — Persuasion Profile" at the top.
+
+Write a comprehensive Persuasion Profile for ${donorName}.`;
+}
+
+/**
+ * DEPRECATED: Build Step 2 prompt (7-section format, no longer used)
  */
 function buildProfilePrompt(
   donorName: string,
@@ -205,7 +233,7 @@ type PipelineProgressCallback = (message: string, phase?: string, step?: number,
 /**
  * Main conversation pipeline - three-step architecture
  * Step 4: sources → behavioral evidence extraction (verbatim quotes by 17 dimensions)
- * Step 5: dossier → 7-section profile (via Geoffrey Block + exemplars)
+ * Step 5: extraction evidence → Persuasion Profile (via Geoffrey Block + DOSSIER_PROMPT)
  * Step 6: profile → meeting guide
  */
 export async function runConversationPipeline(
@@ -292,33 +320,34 @@ export async function runConversationPipeline(
   onProgress(`✓ Extraction complete — ${behavioralDossier.length} chars of curated evidence`, 'extraction', 22, TOTAL_STEPS);
   console.log(`[Conversation] Behavioral dossier complete: ${behavioralDossier.length} chars`);
 
-  // ─── Step 5: Profile Generation from Dossier ──────────────────────
-  onProgress('Generating profile from behavioral evidence', 'analysis', 23, TOTAL_STEPS);
-  console.log('[Conversation] Step 5: Generating profile from behavioral dossier...');
+  // ─── Step 5: Persuasion Profile from Extraction Evidence ─────────
+  onProgress('Writing Persuasion Profile from curated evidence', 'analysis', 23, TOTAL_STEPS);
+  console.log('[Conversation] Step 5: Generating Persuasion Profile from extraction evidence...');
 
-  const profilePrompt = buildProfilePrompt(donorName, behavioralDossier, geoffreyBlock, exemplars);
-  const profileTokenEstimate = estimateTokens(profilePrompt);
-  console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
+  const dossierPrompt = buildDossierPromptFromEvidence(donorName, behavioralDossier, geoffreyBlock);
+  const dossierTokenEstimate = estimateTokens(dossierPrompt);
+  console.log(`[Conversation] Dossier prompt token estimate: ${dossierTokenEstimate}`);
 
-  const profileMessages: Message[] = [{ role: 'user', content: profilePrompt }];
-  const profilePromise = conversationTurn(profileMessages, { maxTokens: 16000 });
+  const dossierMessages: Message[] = [{ role: 'user', content: dossierPrompt }];
+  const dossierPromise = conversationTurn(dossierMessages, { maxTokens: 16000 });
 
   // Timed intermediate updates during profile generation
-  let profileDone = false;
-  const profileTimers = [
-    setTimeout(() => { if (!profileDone) onProgress('Structuring donor identity and core motivations', 'analysis', 24, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!profileDone) onProgress('Writing engagement strategy and risk factors', 'analysis', 25, TOTAL_STEPS); }, 30000),
-    setTimeout(() => { if (!profileDone) onProgress('Composing tactical approach and dinner party test', 'analysis', 26, TOTAL_STEPS); }, 50000),
+  let dossierDone = false;
+  const dossierTimers = [
+    setTimeout(() => { if (!dossierDone) onProgress('Mapping decision-making patterns and trust calibration', 'analysis', 24, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!dossierDone) onProgress('Extracting emotional triggers and contradiction patterns', 'analysis', 25, TOTAL_STEPS); }, 30000),
+    setTimeout(() => { if (!dossierDone) onProgress('Building 18-section behavioral profile', 'analysis', 26, TOTAL_STEPS); }, 50000),
   ];
 
-  const profile = await profilePromise;
-  profileDone = true;
-  profileTimers.forEach(clearTimeout);
+  const dossier = await dossierPromise;
+  dossierDone = true;
+  dossierTimers.forEach(clearTimeout);
 
-  const dossier = behavioralDossier;
+  // Profile = Dossier (the dossier prompt produces the Persuasion Profile directly)
+  const profile = dossier;
 
-  onProgress(`✓ Profile complete — ${profile.length} characters`, 'analysis', 27, TOTAL_STEPS);
-  console.log(`[Conversation] Profile complete: ${profile.length} chars`);
+  onProgress(`✓ Persuasion Profile complete — ${dossier.length} characters of insight`, 'analysis', 27, TOTAL_STEPS);
+  console.log(`[Conversation] Dossier/Profile complete: ${dossier.length} chars`);
 
   // ─── Phase 3: Writing ────────────────────────────────────────────
   onProgress('', 'writing'); // phase transition event
@@ -369,8 +398,8 @@ export async function runConversationPipeline(
 
   return {
     research,
-    profile,        // 7-section profile generated from dossier
-    dossier,        // Behavioral evidence extraction (verbatim quotes by dimension)
+    profile,        // Persuasion Profile (= dossier, 18-section format)
+    dossier,        // Same as profile (backward compat)
     meetingGuide,
     draft: dossier,
     critique: ''
