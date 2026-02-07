@@ -97,15 +97,61 @@ LEVERAGE (MOST IMPORTANT)
 
 ---
 
+BEHAVIORAL DYNAMICS
+
+18. RETREAT_PATTERNS — What language do they use when disengaging?
+- Look for: "Circle back," "interesting," "let me think about it" — each means something different
+- Example signals: Procedural language, sudden formality, topic shifts, scheduling deferrals
+
+19. SHAME_DEFENSE_TRIGGERS — What makes them shut down? What's the ego-defense behavior?
+- Look for: Topics they redirect from, criticisms they over-respond to, identities they protect
+- Example signals: Deflection patterns, humor as shield, sudden aggression, retreat to credentials
+
+20. REAL_TIME_INTERPERSONAL_TELLS — How do they signal evaluation vs. collaboration?
+- Look for: Body language cues mentioned in interviews, question patterns, energy shifts
+- Example signals: Leaning in vs. back, question depth, "tell me more" vs. "got it"
+
+21. TEMPO_MANAGEMENT — How do they speed up or slow down conversation? What does each signal?
+- Look for: Pacing changes, when they interrupt, when they pause, when they rapid-fire
+- Example signals: Urgency spikes, deliberate slowing, "let's step back," "wait—"
+
+22. HIDDEN_FRAGILITIES — What are they afraid is true about themselves or their work?
+- Look for: Defensive repetition, unsolicited justifications, what they preemptively explain
+- Example signals: Repeated narratives that feel like self-reassurance, over-explained decisions
+
+23. RECOVERY_PATHS — Once a trigger fires and they withdraw, what brings them back?
+- Look for: What resets them after conflict, who they defer to, what reframes work
+- Example signals: Humor that lands, acknowledgment patterns, topic pivots that re-engage
+
+24. CONDITIONAL_BEHAVIORAL_FORKS — When X happens, they do Y. When not-X, they do Z.
+- Look for: Every behavioral claim needs both branches. Not "they're direct" but "when trusted, direct; when uncertain, procedural"
+- Example signals: Contrasting behaviors across different contexts or relationships
+
+---
+
 OUTPUT FORMAT
 
-For each dimension where you find evidence:
+For each of the 24 dimensions, provide comprehensive behavioral evidence:
 
-## [DIMENSION NUMBER]. [DIMENSION NAME]
+## [NUMBER]. [DIMENSION NAME]
 
-**Evidence:**
-- "[Verbatim quote or described action]" — Source: [article/interview title]
-- "[Another quote]" — Source: [title]
+For each piece of evidence:
+- The verbatim quote (in quotation marks)
+- Source: [article/interview title]
+- Context: What was happening? Who was the audience? What prompted this?
+- Behavioral read: What does this reveal about how they operate?
+
+Cross-reference: Note connections to other dimensions where relevant.
+
+TARGET LENGTH: ~1,200-1,500 words per dimension (~30,000 words total)
+
+Extract EVERYTHING relevant. More is better. The profile-writing stage needs enough raw material to stay grounded in specific observations for the entire output.
+
+Prioritize:
+- Quotes that reveal behavioral patterns, not just stated positions
+- Conditional behaviors (when X, they do Y; when not-X, they do Z)
+- Retreat signals, defense mechanisms, recovery patterns
+- Real-time interpersonal dynamics, not just retrospective self-description
 
 If no evidence exists for a dimension, write:
 
@@ -119,8 +165,10 @@ CRITICAL RULES:
 - Pull exact quotes with quotation marks.
 - Describe actions factually without editorializing.
 - Include source attribution for every piece of evidence.
+- Provide behavioral context around each quote — situation, audience, what prompted it.
 - If a quote reveals multiple dimensions, include it under each relevant one.
-- Prioritize quality over quantity — distinctive evidence over generic statements.
+- For every behavioral claim, extract both branches: when X, they do Y; when not-X, they do Z.
+- Extract everything. Volume matters. The profile step needs dense raw material to stay grounded.
 `;
 
 export function buildExtractionPrompt(
@@ -142,5 +190,5 @@ ${sourcesText}
 
 ---
 
-Extract behavioral evidence for ${donorName} from the sources above. Output verbatim quotes and actions organized by the 17 dimensions.`;
+Extract behavioral evidence for ${donorName} from the sources above. Output verbatim quotes and actions organized by the 24 dimensions. Be exhaustive — extract everything.`;
 }
