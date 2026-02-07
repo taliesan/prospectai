@@ -188,7 +188,9 @@ export default function Home() {
             </div>
           </div>
           <p className="text-[13px] text-white/35 mb-12">
-            Step {currentStep} of {totalSteps}
+            {progressMessages.length > 0
+              ? progressMessages[progressMessages.length - 1]?.message
+              : 'Starting...'}
           </p>
 
           {/* Streaming preview card */}
@@ -208,25 +210,40 @@ export default function Home() {
                 {phaseLabel}
               </p>
 
-              <div className="space-y-1 text-sm max-h-48 overflow-y-auto">
-                {progressMessages.slice(-8).map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`${
-                      msg.type === 'error'
-                        ? 'text-dtw-red'
-                        : msg.message.startsWith('\u2713')
-                          ? 'text-dtw-green-light'
-                          : msg.message.startsWith('\u26A0')
-                            ? 'text-dtw-gold'
-                            : 'text-white/60'
-                    }`}
-                  >
-                    {msg.message}
-                  </div>
-                ))}
-                <span className="streaming-dot ml-1" />
+              {/* Current status — single line, always visible, overwrites */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="streaming-dot flex-shrink-0" />
+                <p className={`text-sm ${
+                  progressMessages[progressMessages.length - 1]?.type === 'error'
+                    ? 'text-dtw-red'
+                    : 'text-white'
+                }`}>
+                  {progressMessages[progressMessages.length - 1]?.message}
+                </p>
               </div>
+
+              {/* Completed items — newest on top, no scrolling needed */}
+              {progressMessages.length > 1 && (
+                <div className="border-t border-white/10 pt-3 space-y-1">
+                  {progressMessages
+                    .slice(0, -1)
+                    .filter(msg => msg.message.startsWith('\u2713') || msg.type === 'error')
+                    .reverse()
+                    .slice(0, 6)
+                    .map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`text-xs ${
+                          msg.type === 'error'
+                            ? 'text-dtw-red'
+                            : 'text-dtw-green-light/70'
+                        }`}
+                      >
+                        {msg.message}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
         </div>
