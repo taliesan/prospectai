@@ -8,6 +8,7 @@ import { conductResearch } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt } from './prompts/extraction-dossier';
+import { writeFileSync, mkdirSync } from 'fs';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -320,6 +321,13 @@ export async function runConversationPipeline(
   onProgress(`✓ Extraction complete — ${behavioralDossier.length} chars of curated evidence`, 'extraction', 22, TOTAL_STEPS);
   console.log(`[Conversation] Behavioral dossier complete: ${behavioralDossier.length} chars`);
 
+  // [DEBUG] Save extraction output for audit
+  try {
+    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-extraction-output.txt', behavioralDossier);
+    console.log(`[DEBUG] Extraction output saved (${behavioralDossier.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save extraction output:', e); }
+
   // ─── Step 5: Persuasion Profile from Extraction Evidence ─────────
   onProgress('Writing Persuasion Profile from curated evidence', 'analysis', 23, TOTAL_STEPS);
   console.log('[Conversation] Step 5: Generating Persuasion Profile from extraction evidence...');
@@ -327,6 +335,12 @@ export async function runConversationPipeline(
   const dossierPrompt = buildDossierPromptFromEvidence(donorName, behavioralDossier, geoffreyBlock);
   const dossierTokenEstimate = estimateTokens(dossierPrompt);
   console.log(`[Conversation] Dossier prompt token estimate: ${dossierTokenEstimate}`);
+
+  // [DEBUG] Save full profile prompt for audit
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-prompt.txt', dossierPrompt);
+    console.log(`[DEBUG] Profile prompt saved to /tmp/prospectai-outputs/DEBUG-profile-prompt.txt (${dossierPrompt.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save profile prompt:', e); }
 
   const dossierMessages: Message[] = [{ role: 'user', content: dossierPrompt }];
   const dossierPromise = conversationTurn(dossierMessages, { maxTokens: 16000 });
