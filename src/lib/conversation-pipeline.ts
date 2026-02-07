@@ -1,11 +1,13 @@
 // Conversation-mode pipeline for donor profiling
-// Two-step architecture: sources → dossier → profile
-// Both steps governed by the Geoffrey Block
+// Three-step architecture: sources → extraction (verbatim evidence) → profile
+// Extraction step curates raw content into ~10-15K behavioral dossier
+// Profile step structures dossier into 7-section format via Geoffrey Block + exemplars
 
 import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
+import { buildExtractionPrompt } from './prompts/extraction-dossier';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -201,9 +203,10 @@ You generate subsection headers and all content within each section. You do NOT 
 type PipelineProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
 /**
- * Main conversation pipeline - two-step architecture
- * Step 1: sources → dossier
- * Step 2: dossier → profile
+ * Main conversation pipeline - three-step architecture
+ * Step 4: sources → behavioral evidence extraction (verbatim quotes by 17 dimensions)
+ * Step 5: dossier → 7-section profile (via Geoffrey Block + exemplars)
+ * Step 6: profile → meeting guide
  */
 export async function runConversationPipeline(
   donorName: string,
@@ -216,7 +219,7 @@ export async function runConversationPipeline(
   console.log(`CONVERSATION MODE (Two-Step): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
-  const TOTAL_STEPS = 28;
+  const TOTAL_STEPS = 33;
 
   // ─── Phase 1: Research ───────────────────────────────────────────
   onProgress(`Building intelligence profile for ${donorName}`, undefined, 1, TOTAL_STEPS);
@@ -247,54 +250,80 @@ export async function runConversationPipeline(
 
   // Prepare sources with token budget management
   const MAX_TOKENS = 180000;
-  let dossierPrompt = buildDossierPrompt(donorName, rankedSources, geoffreyBlock);
-  let estimatedTokens = estimateTokens(dossierPrompt);
+  let extractionEstimate = estimateTokens(buildExtractionPrompt(donorName, rankedSources));
 
-  console.log(`[Conversation] Dossier prompt token estimate: ${estimatedTokens} (max: ${MAX_TOKENS})`);
+  console.log(`[Conversation] Extraction prompt token estimate: ${extractionEstimate} (max: ${MAX_TOKENS})`);
 
   let sourcesToUse = rankedSources;
-  if (estimatedTokens > MAX_TOKENS) {
+  if (extractionEstimate > MAX_TOKENS) {
     console.log(`[Conversation] Token budget exceeded, truncating sources...`);
-    while (estimatedTokens > MAX_TOKENS && sourcesToUse.length > 10) {
+    while (extractionEstimate > MAX_TOKENS && sourcesToUse.length > 10) {
       sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      dossierPrompt = buildDossierPrompt(donorName, sourcesToUse, geoffreyBlock);
-      estimatedTokens = estimateTokens(dossierPrompt);
+      extractionEstimate = estimateTokens(buildExtractionPrompt(donorName, sourcesToUse));
     }
-    console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${estimatedTokens} tokens`);
+    console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${extractionEstimate} tokens`);
   }
 
-  onProgress(`Preparing ${sourcesToUse.length} sources for behavioral analysis`, 'analysis', 17, TOTAL_STEPS);
+  onProgress(`Preparing ${sourcesToUse.length} sources for behavioral extraction`, 'analysis', 17, TOTAL_STEPS);
 
-  // Generate dossier with timed intermediate updates
-  onProgress('Analyzing behavioral patterns across all sources', 'analysis', 18, TOTAL_STEPS);
-  console.log('[Conversation] Step 1: Generating dossier...');
+  // ─── Step 4: Behavioral Evidence Extraction ────────────────────────
+  onProgress('Extracting behavioral evidence from sources', 'extraction', 18, TOTAL_STEPS);
+  console.log('[Conversation] Step 4: Extracting behavioral evidence from sources...');
 
-  const dossierMessages: Message[] = [{ role: 'user', content: dossierPrompt }];
-  const dossierPromise = conversationTurn(dossierMessages, { maxTokens: 16000 });
+  const extractionPrompt = buildExtractionPrompt(donorName, sourcesToUse);
+  const extractionTokenEstimate = estimateTokens(extractionPrompt);
+  console.log(`[Conversation] Extraction prompt token estimate: ${extractionTokenEstimate}`);
 
-  // Timed intermediate updates during the blocking API call
-  let dossierDone = false;
-  const dossierTimers = [
-    setTimeout(() => { if (!dossierDone) onProgress('Mapping decision-making patterns and trust calibration', 'analysis', 19, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!dossierDone) onProgress('Extracting emotional triggers and contradiction patterns', 'analysis', 20, TOTAL_STEPS); }, 30000),
-    setTimeout(() => { if (!dossierDone) onProgress('Building 18-section behavioral profile', 'analysis', 21, TOTAL_STEPS); }, 50000),
+  const extractionMessages: Message[] = [{ role: 'user', content: extractionPrompt }];
+  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 16000 });
+
+  // Timed intermediate updates during extraction
+  let extractionDone = false;
+  const extractionTimers = [
+    setTimeout(() => { if (!extractionDone) onProgress('Pulling verbatim quotes and decision patterns', 'extraction', 19, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!extractionDone) onProgress('Mapping emotional triggers and contradiction signals', 'extraction', 20, TOTAL_STEPS); }, 30000),
+    setTimeout(() => { if (!extractionDone) onProgress('Cataloging evidence across 17 behavioral dimensions', 'extraction', 21, TOTAL_STEPS); }, 50000),
   ];
 
-  const dossier = await dossierPromise;
-  dossierDone = true;
-  dossierTimers.forEach(clearTimeout);
+  const behavioralDossier = await extractionPromise;
+  extractionDone = true;
+  extractionTimers.forEach(clearTimeout);
 
-  onProgress(`✓ Behavioral analysis complete — ${dossier.length} characters of insight`, 'analysis', 22, TOTAL_STEPS);
-  console.log(`[Conversation] Dossier complete: ${dossier.length} chars`);
+  onProgress(`✓ Extraction complete — ${behavioralDossier.length} chars of curated evidence`, 'extraction', 22, TOTAL_STEPS);
+  console.log(`[Conversation] Behavioral dossier complete: ${behavioralDossier.length} chars`);
 
-  // Profile = Dossier in the current architecture
-  const profile = dossier;
-  console.log(`[Conversation] Profile complete (dossier is the profile): ${dossier.length} chars`);
+  // ─── Step 5: Profile Generation from Dossier ──────────────────────
+  onProgress('Generating profile from behavioral evidence', 'analysis', 23, TOTAL_STEPS);
+  console.log('[Conversation] Step 5: Generating profile from behavioral dossier...');
+
+  const profilePrompt = buildProfilePrompt(donorName, behavioralDossier, geoffreyBlock, exemplars);
+  const profileTokenEstimate = estimateTokens(profilePrompt);
+  console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
+
+  const profileMessages: Message[] = [{ role: 'user', content: profilePrompt }];
+  const profilePromise = conversationTurn(profileMessages, { maxTokens: 16000 });
+
+  // Timed intermediate updates during profile generation
+  let profileDone = false;
+  const profileTimers = [
+    setTimeout(() => { if (!profileDone) onProgress('Structuring donor identity and core motivations', 'analysis', 24, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!profileDone) onProgress('Writing engagement strategy and risk factors', 'analysis', 25, TOTAL_STEPS); }, 30000),
+    setTimeout(() => { if (!profileDone) onProgress('Composing tactical approach and dinner party test', 'analysis', 26, TOTAL_STEPS); }, 50000),
+  ];
+
+  const profile = await profilePromise;
+  profileDone = true;
+  profileTimers.forEach(clearTimeout);
+
+  const dossier = behavioralDossier;
+
+  onProgress(`✓ Profile complete — ${profile.length} characters`, 'analysis', 27, TOTAL_STEPS);
+  console.log(`[Conversation] Profile complete: ${profile.length} chars`);
 
   // ─── Phase 3: Writing ────────────────────────────────────────────
   onProgress('', 'writing'); // phase transition event
-  onProgress('Loading meeting strategy framework', 'writing', 23, TOTAL_STEPS);
-  console.log('[Conversation] Step 4: Generating meeting guide from profile...');
+  onProgress('Loading meeting strategy framework', 'writing', 28, TOTAL_STEPS);
+  console.log('[Conversation] Step 6: Generating meeting guide from profile...');
 
   const meetingGuideBlock = loadMeetingGuideBlock();
   const meetingGuideExemplars = loadMeetingGuideExemplars();
@@ -313,7 +342,7 @@ export async function runConversationPipeline(
   const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
   console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
 
-  onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 24, TOTAL_STEPS);
+  onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 29, TOTAL_STEPS);
 
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
   const mgPromise = conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
@@ -321,18 +350,18 @@ export async function runConversationPipeline(
   // Timed intermediate updates during meeting guide generation
   let meetingGuideDone = false;
   const mgTimers = [
-    setTimeout(() => { if (!meetingGuideDone) onProgress('Crafting opening moves and positioning strategy', 'writing', 25, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!meetingGuideDone) onProgress('Designing conversation flow and ask choreography', 'writing', 26, TOTAL_STEPS); }, 30000),
+    setTimeout(() => { if (!meetingGuideDone) onProgress('Crafting opening moves and positioning strategy', 'writing', 30, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!meetingGuideDone) onProgress('Designing conversation flow and ask choreography', 'writing', 31, TOTAL_STEPS); }, 30000),
   ];
 
   const meetingGuide = await mgPromise;
   meetingGuideDone = true;
   mgTimers.forEach(clearTimeout);
 
-  onProgress('✓ Meeting guide complete', 'writing', 27, TOTAL_STEPS);
+  onProgress('✓ Meeting guide complete', 'writing', 32, TOTAL_STEPS);
   console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
 
-  onProgress('✓ All documents ready — preparing download', undefined, 28, TOTAL_STEPS);
+  onProgress('✓ All documents ready — preparing download', undefined, 33, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE: Complete`);
@@ -340,8 +369,8 @@ export async function runConversationPipeline(
 
   return {
     research,
-    profile,        // Now equals dossier
-    dossier,        // Keep for backward compatibility
+    profile,        // 7-section profile generated from dossier
+    dossier,        // Behavioral evidence extraction (verbatim quotes by dimension)
     meetingGuide,
     draft: dossier,
     critique: ''
