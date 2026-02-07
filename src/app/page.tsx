@@ -157,11 +157,6 @@ export default function Home() {
     };
     const phaseLabel = phaseLabels[currentPhase] || 'STARTING';
 
-    // Latest message for subtitle
-    const latestMessage = progressMessages.length > 0
-      ? progressMessages[progressMessages.length - 1].message
-      : 'Starting...';
-
     return (
       <div className="min-h-screen bg-dtw-black">
         {/* Animated gradient bar */}
@@ -175,11 +170,10 @@ export default function Home() {
         />
 
         <div className="flex flex-col items-center justify-center min-h-[90vh] px-4">
-          <h1 className="font-serif text-5xl text-white mb-4">{donorName}</h1>
-          <p className="text-base text-white/50 mb-10">{latestMessage}</p>
+          <h1 className="font-serif text-5xl text-white mb-8">{donorName}</h1>
 
           {/* Progress bar */}
-          <div className="w-full max-w-[400px] mb-3">
+          <div className="w-full max-w-[400px] mb-10">
             <div className="h-1 rounded-full bg-white/10">
               <div
                 className="h-1 rounded-full bg-dtw-green transition-all duration-700"
@@ -187,65 +181,52 @@ export default function Home() {
               />
             </div>
           </div>
-          <p className="text-[13px] text-white/35 mb-12">
-            {progressMessages.length > 0
-              ? progressMessages[progressMessages.length - 1]?.message
-              : 'Starting...'}
-          </p>
 
-          {/* Streaming preview card */}
-          {progressMessages.length > 0 && (
-            <div
-              className="w-full max-w-lg rounded-2xl p-6 relative overflow-hidden"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              {/* Purple accent bar */}
-              <div className="absolute top-0 left-6 right-6 h-1 rounded-b-sm" style={{ background: '#C77DFF' }} />
+          {/* Single status display — always visible */}
+          <div
+            className="w-full max-w-lg rounded-2xl p-6 relative overflow-hidden"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            {/* Purple accent bar */}
+            <div className="absolute top-0 left-6 right-6 h-1 rounded-b-sm" style={{ background: '#C77DFF' }} />
 
-              <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-4" style={{ color: '#D894E8' }}>
-                {phaseLabel}
+            <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-4" style={{ color: '#D894E8' }}>
+              {phaseLabel}
+            </p>
+
+            {/* Current status — single line, overwrites */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="streaming-dot flex-shrink-0" />
+              <p className={`text-sm ${
+                progressMessages[progressMessages.length - 1]?.type === 'error'
+                  ? 'text-dtw-red'
+                  : 'text-white'
+              }`}>
+                {progressMessages.length > 0
+                  ? progressMessages[progressMessages.length - 1]?.message
+                  : 'Starting...'}
               </p>
-
-              {/* Current status — single line, always visible, overwrites */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="streaming-dot flex-shrink-0" />
-                <p className={`text-sm ${
-                  progressMessages[progressMessages.length - 1]?.type === 'error'
-                    ? 'text-dtw-red'
-                    : 'text-white'
-                }`}>
-                  {progressMessages[progressMessages.length - 1]?.message}
-                </p>
-              </div>
-
-              {/* Completed items — newest on top, no scrolling needed */}
-              {progressMessages.length > 1 && (
-                <div className="border-t border-white/10 pt-3 space-y-1">
-                  {progressMessages
-                    .slice(0, -1)
-                    .filter(msg => msg.message.startsWith('\u2713') || msg.type === 'error')
-                    .reverse()
-                    .slice(0, 6)
-                    .map((msg, i) => (
-                      <div
-                        key={i}
-                        className={`text-xs ${
-                          msg.type === 'error'
-                            ? 'text-dtw-red'
-                            : 'text-dtw-green-light/70'
-                        }`}
-                      >
-                        {msg.message}
-                      </div>
-                    ))}
-                </div>
-              )}
             </div>
-          )}
+
+            {/* Completed milestones — newest on top */}
+            {progressMessages.filter(msg => msg.message.startsWith('\u2713')).length > 0 && (
+              <div className="border-t border-white/10 pt-3 space-y-1">
+                {progressMessages
+                  .filter(msg => msg.message.startsWith('\u2713'))
+                  .reverse()
+                  .slice(0, 6)
+                  .map((msg, i) => (
+                    <div key={i} className="text-xs text-dtw-green-light/70">
+                      {msg.message}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
