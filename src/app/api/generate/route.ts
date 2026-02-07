@@ -102,7 +102,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
       url: result.url,
       title: result.title,
       snippet: result.content,
-      content: extractedContent[result.url],
+      fullContent: extractedContent[result.url],
     }));
 
   } catch (error) {
