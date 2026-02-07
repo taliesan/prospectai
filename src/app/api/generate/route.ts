@@ -212,6 +212,29 @@ export async function POST(request: NextRequest) {
                 writeFileSync(dossierPath, dossier);
                 console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
               }
+
+              // Save full research JSON with all source content and excerpts
+              try {
+                const researchJsonPath = `${outputDir}/${requestId}-${safeName}-research-full.json`;
+                const researchJson = {
+                  donorName: research.donorName,
+                  generatedAt: new Date().toISOString(),
+                  identity: research.identity,
+                  queries: research.queries,
+                  sourceCount: research.sources?.length || 0,
+                  sources: (research.sources || []).map((s: any, i: number) => ({
+                    index: i + 1,
+                    url: s.url,
+                    title: s.title,
+                    snippet: s.snippet,
+                    content: s.content || null,
+                  })),
+                };
+                writeFileSync(researchJsonPath, JSON.stringify(researchJson, null, 2));
+                console.log(`[OUTPUT] Full research JSON saved to ${researchJsonPath} (${researchJson.sourceCount} sources)`);
+              } catch (err) {
+                console.warn('[OUTPUT] Failed to save research JSON:', err);
+              }
             };
 
             // Fetch function for seed URLs using Tavily extract
