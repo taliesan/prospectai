@@ -30,7 +30,8 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
-import pdf from 'pdf-parse';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdf = require('pdf-parse');
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
