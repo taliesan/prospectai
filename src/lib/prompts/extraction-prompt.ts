@@ -98,24 +98,69 @@ Output as:
 [...continue for all 24 dimensions...]
 `;
 
+interface LinkedInData {
+  currentTitle: string;
+  currentEmployer: string;
+  careerHistory: Array<{
+    title: string;
+    employer: string;
+    startDate: string;
+    endDate: string | 'Present';
+    description?: string;
+  }>;
+  education: Array<{
+    institution: string;
+    degree?: string;
+    field?: string;
+    years?: string;
+  }>;
+  skills?: string[];
+  boards?: string[];
+}
+
 export function buildExtractionPrompt(
   donorName: string,
-  sources: { url: string; title: string; snippet: string; content?: string }[]
+  sources: { url: string; title: string; snippet: string; content?: string }[],
+  linkedinData?: LinkedInData | null
 ): string {
   const sourcesText = sources.map((s, i) => {
     const text = s.content || s.snippet;
     return `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\n\n${text}`;
   }).join('\n\n---\n\n');
 
-  return `${EXTRACTION_PROMPT}
+  let linkedinSection = '';
+  if (linkedinData) {
+    linkedinSection = `
+# CANONICAL BIOGRAPHICAL DATA (from LinkedIn)
+
+This is authoritative biographical information. Use these facts as the default for job title, employer, and career history. Web sources may add context but LinkedIn is the primary source for biographical accuracy.
+
+**Current Position:** ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}
+
+**Career History:**
+${linkedinData.careerHistory.map(job =>
+  `- ${job.title} at ${job.employer} (${job.startDate} - ${job.endDate})${job.description ? `\n  ${job.description}` : ''}`
+).join('\n')}
+
+**Education:**
+${linkedinData.education.map(edu =>
+  `- ${edu.institution}${edu.degree ? `, ${edu.degree}` : ''}${edu.field ? ` in ${edu.field}` : ''}${edu.years ? ` (${edu.years})` : ''}`
+).join('\n')}
+
+${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.boards.map(b => `- ${b}`).join('\n')}` : ''}
 
 ---
 
-# SOURCES FOR ${donorName.toUpperCase()}
+`;
+  }
+
+  return `${EXTRACTION_PROMPT}
+
+${linkedinSection}# SOURCES FOR ${donorName.toUpperCase()}
 
 ${sourcesText}
 
 ---
 
-Extract behavioral evidence for ${donorName} from the sources above.`;
+Extract behavioral evidence for ${donorName} from the sources above.${linkedinData ? ' Use the LinkedIn data as the canonical source for biographical facts (title, employer, career history, education).' : ''}`;
 }

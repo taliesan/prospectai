@@ -13,11 +13,12 @@ export async function GET(request: NextRequest) {
   const files: Record<string, string> = {
     extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
     prompt: '/tmp/prospectai-outputs/DEBUG-prompt.txt',
+    linkedin: '/tmp/prospectai-outputs/DEBUG-linkedin-data.json',
   };
 
   if (!file || !files[file]) {
     return new Response(
-      JSON.stringify({ error: 'Use ?file=extraction or ?file=prompt' }),
+      JSON.stringify({ error: 'Use ?file=extraction or ?file=prompt or ?file=linkedin' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -31,11 +32,13 @@ export async function GET(request: NextRequest) {
   }
 
   const content = readFileSync(path, 'utf-8');
+  const contentType = file === 'linkedin' ? 'application/json' : 'text/plain; charset=utf-8';
+  const ext = file === 'linkedin' ? 'json' : 'txt';
 
   return new Response(content, {
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Content-Disposition': `attachment; filename="DEBUG-${file}.txt"`,
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="DEBUG-${file}.${ext}"`,
     },
   });
 }
