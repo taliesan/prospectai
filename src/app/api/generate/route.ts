@@ -115,6 +115,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation', linkedinPdf } = body;
+  console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(

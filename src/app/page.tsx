@@ -42,6 +42,7 @@ export default function Home() {
       // Convert LinkedIn PDF to base64 if provided
       let linkedinPdfBase64: string | undefined;
       if (linkedinPdf) {
+        console.log('[Form] LinkedIn PDF selected:', linkedinPdf.name, 'size:', linkedinPdf.size);
         const arrayBuffer = await linkedinPdf.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         let binary = '';
@@ -49,6 +50,9 @@ export default function Home() {
           binary += String.fromCharCode(bytes[i]);
         }
         linkedinPdfBase64 = btoa(binary);
+        console.log('[Form] LinkedIn base64 length:', linkedinPdfBase64.length);
+      } else {
+        console.log('[Form] No LinkedIn PDF selected');
       }
 
       const response = await fetch('/api/generate', {
