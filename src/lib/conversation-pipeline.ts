@@ -1,17 +1,18 @@
 /**
- * Conversation Pipeline Architecture (v2 with extraction layer)
+ * Conversation Pipeline Architecture (v2 with source scoring)
  *
  * Phase 1: Research
  *   - Identity verification, query generation, source gathering
  *   - Output: sources with full content
  *
- * Phase 2: Extraction (NEW)
- *   - Input: raw sources with full content
- *   - Process: extract verbatim quotes organized by 17 behavioral dimensions
- *   - Output: Behavioral Dossier (~10-15K tokens of curated evidence)
+ * Phase 2: Source Scoring & Selection
+ *   - Input: all sources with full content
+ *   - Process: score each source across 24 behavioral dimensions (weighted by tier)
+ *   - Select top sources by score until ~30K word target reached
+ *   - Output: 3-8 complete, high-signal articles
  *
  * Phase 3: Profile Generation
- *   - Input: Behavioral Dossier + Geoffrey Block + DOSSIER_PROMPT
+ *   - Input: selected full-text sources + Geoffrey Block + DOSSIER_PROMPT
  *   - Output: Persuasion Profile (18 sections, user-facing)
  *
  * Phase 4: Meeting Guide Generation
@@ -19,7 +20,7 @@
  *   - Output: Meeting Guide (tactical choreography, user-facing)
  *
  * Key terms:
- *   - "Behavioral Dossier" = extraction output (verbatim evidence, intermediate, not user-facing)
+ *   - "Selected Sources" = top-scored full articles (intermediate, not user-facing)
  *   - "Persuasion Profile" = final 18-section output (user-facing)
  */
 
@@ -27,7 +28,7 @@ import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
-import { buildExtractionPrompt } from './prompts/extraction-dossier';
+import { buildScoringPrompt, selectTopSources } from './prompts/source-scoring';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // Types (re-exported from pipeline.ts)
@@ -149,7 +150,7 @@ Then write one section for each of these 17 behavioral dimensions. Use the dimen
 
 INCORPORATING BEHAVIORAL DYNAMICS EVIDENCE:
 
-The extraction evidence includes 7 additional behavioral dynamics dimensions. Fold this evidence into the relevant profile sections:
+The sources contain evidence for 7 additional behavioral dynamics. Fold this evidence into the relevant profile sections:
 
 - "Emotional Triggers" should incorporate: SHAME_DEFENSE_TRIGGERS, HIDDEN_FRAGILITIES
 - "Communication Style" should incorporate: RETREAT_PATTERNS, TEMPO_MANAGEMENT, REAL_TIME_INTERPERSONAL_TELLS
@@ -190,10 +191,9 @@ Write a comprehensive Persuasion Profile for ${donorName}.`;
 }
 
 /**
- * Build dossier prompt from pre-extracted behavioral evidence.
- * Same structure as buildDossierPrompt but takes curated evidence text
- * instead of raw sources — the extraction step has already distilled
- * verbatim quotes organized by 17 dimensions.
+ * Build profile prompt from selected high-signal sources.
+ * Takes the full text of top-scored sources (selected by behavioral
+ * signal density) instead of raw source arrays or extraction output.
  */
 function buildDossierPromptFromEvidence(
   donorName: string,
@@ -204,7 +204,7 @@ function buildDossierPromptFromEvidence(
 
 ---
 
-Here is the behavioral evidence extracted from research sources about ${donorName}:
+Here are the highest-signal research sources about ${donorName}, selected and ranked by behavioral evidence density:
 
 ${evidenceText}
 
@@ -273,7 +273,7 @@ export async function runConversationPipeline(
   onProgress: PipelineProgressCallback
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`CONVERSATION MODE (v2 with extraction): Processing ${donorName}`);
+  console.log(`CONVERSATION MODE (v2 with source scoring): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
   const TOTAL_STEPS = 33;
@@ -305,69 +305,101 @@ export async function runConversationPipeline(
     'analysis', 16, TOTAL_STEPS
   );
 
-  // Prepare sources with token budget management
+  // Prepare sources with token budget management for scoring prompt
   const MAX_TOKENS = 180000;
-  let extractionEstimate = estimateTokens(buildExtractionPrompt(donorName, rankedSources));
+  let scoringEstimate = estimateTokens(buildScoringPrompt(donorName, rankedSources));
 
-  console.log(`[Conversation] Extraction prompt token estimate: ${extractionEstimate} (max: ${MAX_TOKENS})`);
+  console.log(`[Conversation] Scoring prompt token estimate: ${scoringEstimate} (max: ${MAX_TOKENS})`);
 
   let sourcesToUse = rankedSources;
-  if (extractionEstimate > MAX_TOKENS) {
-    console.log(`[Conversation] Token budget exceeded, truncating sources...`);
-    while (extractionEstimate > MAX_TOKENS && sourcesToUse.length > 10) {
+  if (scoringEstimate > MAX_TOKENS) {
+    console.log(`[Conversation] Token budget exceeded, truncating sources for scoring...`);
+    while (scoringEstimate > MAX_TOKENS && sourcesToUse.length > 10) {
       sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      extractionEstimate = estimateTokens(buildExtractionPrompt(donorName, sourcesToUse));
+      scoringEstimate = estimateTokens(buildScoringPrompt(donorName, sourcesToUse));
     }
-    console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${extractionEstimate} tokens`);
+    console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${scoringEstimate} tokens`);
   }
 
-  onProgress(`Preparing ${sourcesToUse.length} sources for behavioral extraction`, 'analysis', 17, TOTAL_STEPS);
+  onProgress(`Preparing ${sourcesToUse.length} sources for behavioral scoring`, 'analysis', 17, TOTAL_STEPS);
 
-  // ─── Step 4: Behavioral Evidence Extraction ────────────────────────
-  onProgress('Extracting behavioral evidence from sources', 'extraction', 18, TOTAL_STEPS);
-  console.log('[Conversation] Step 4: Extracting behavioral evidence from sources...');
+  // ─── Step 4: Score Sources for Behavioral Signal Density ───────────
+  onProgress('Scoring sources for behavioral signal density', 'scoring', 18, TOTAL_STEPS);
+  console.log('[Conversation] Step 4: Scoring sources for behavioral signal density...');
 
-  const extractionPrompt = buildExtractionPrompt(donorName, sourcesToUse);
-  const extractionTokenEstimate = estimateTokens(extractionPrompt);
-  console.log(`[Conversation] Extraction prompt token estimate: ${extractionTokenEstimate}`);
+  const scoringPrompt = buildScoringPrompt(donorName, sourcesToUse);
+  const scoringTokenEstimate = estimateTokens(scoringPrompt);
+  console.log(`[Conversation] Scoring prompt token estimate: ${scoringTokenEstimate}`);
 
-  const extractionMessages: Message[] = [{ role: 'user', content: extractionPrompt }];
-  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 50000 });
+  const scoringMessages: Message[] = [{ role: 'user', content: scoringPrompt }];
+  const scoringPromise = conversationTurn(scoringMessages, { maxTokens: 8000 });
 
-  // Timed intermediate updates during extraction
-  let extractionDone = false;
-  const extractionTimers = [
-    setTimeout(() => { if (!extractionDone) onProgress('Pulling verbatim quotes and decision patterns', 'extraction', 19, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!extractionDone) onProgress('Mapping emotional triggers and contradiction signals', 'extraction', 20, TOTAL_STEPS); }, 30000),
-    setTimeout(() => { if (!extractionDone) onProgress('Cataloging evidence across 17 behavioral dimensions', 'extraction', 21, TOTAL_STEPS); }, 50000),
+  // Timed intermediate updates during scoring
+  let scoringDone = false;
+  const scoringTimers = [
+    setTimeout(() => { if (!scoringDone) onProgress('Evaluating behavioral signal density across sources', 'scoring', 19, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!scoringDone) onProgress('Weighting dimensions by meeting intelligence value', 'scoring', 20, TOTAL_STEPS); }, 30000),
   ];
 
-  const behavioralDossier = await extractionPromise;
-  extractionDone = true;
-  extractionTimers.forEach(clearTimeout);
+  const scoringResponse = await scoringPromise;
+  scoringDone = true;
+  scoringTimers.forEach(clearTimeout);
 
-  onProgress(`✓ Extraction complete — ${behavioralDossier.length} chars of curated evidence`, 'extraction', 22, TOTAL_STEPS);
-  console.log(`[Conversation] Behavioral dossier complete: ${behavioralDossier.length} chars`);
+  // Parse scoring response (JSON array)
+  let scoredSources: Array<{ source_index: number; total_score: number; word_count: number }>;
+  try {
+    const jsonMatch = scoringResponse.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      scoredSources = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('No JSON array found in scoring response');
+    }
+  } catch (e) {
+    console.error('[Conversation] Failed to parse scoring response, using fallback order:', e);
+    scoredSources = sourcesToUse.map((s, i) => ({
+      source_index: i + 1,
+      total_score: 50,
+      word_count: (s.content || s.snippet).split(/\s+/).length
+    }));
+  }
 
-  // [DEBUG] Save extraction output for audit
+  onProgress(`✓ Scored ${scoredSources.length} sources`, 'scoring', 21, TOTAL_STEPS);
+  console.log(`[Conversation] Scored ${scoredSources.length} sources`);
+
+  // ─── Step 5: Select Top Sources by Score ───────────────────────────
+  const TARGET_WORDS = 30000;
+  const selectedSources = selectTopSources(scoredSources, sourcesToUse, TARGET_WORDS);
+  const totalWords = selectedSources.reduce((sum, s) => sum + s.content.split(/\s+/).length, 0);
+
+  onProgress(`Selected top ${selectedSources.length} sources (~${totalWords} words)`, 'selection', 22, TOTAL_STEPS);
+  console.log(`[Conversation] Selected ${selectedSources.length} sources, ~${totalWords} words`);
+
+  // Build the evidence text from selected full sources
+  const behavioralEvidence = selectedSources.map((s, i) => {
+    const source = sourcesToUse[s.index - 1];
+    return `## SOURCE ${i + 1}: ${source.title} (Score: ${s.score})\nURL: ${source.url}\n\n${s.content}`;
+  }).join('\n\n---\n\n');
+
+  // [DEBUG] Save selected sources and scoring response for audit
   try {
     mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-extraction-output.txt', behavioralDossier);
-    console.log(`[DEBUG] Extraction output saved (${behavioralDossier.length} chars)`);
-  } catch (e) { console.warn('[DEBUG] Failed to save extraction output:', e); }
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-selected-sources.txt', behavioralEvidence);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-scoring-response.txt', scoringResponse);
+    console.log(`[DEBUG] Selected sources saved (${behavioralEvidence.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save debug files:', e); }
 
-  // ─── Step 5: Persuasion Profile from Behavioral Dossier ─────────
-  onProgress('Writing Persuasion Profile from curated evidence', 'analysis', 23, TOTAL_STEPS);
-  console.log('[Conversation] Step 5: Generating Persuasion Profile from behavioral dossier...');
+  // ─── Step 6: Persuasion Profile from Selected Sources ──────────────
+  onProgress('Writing Persuasion Profile from top-scored sources', 'analysis', 23, TOTAL_STEPS);
+  console.log('[Conversation] Step 6: Generating Persuasion Profile from selected sources...');
 
-  const profilePrompt = buildDossierPromptFromEvidence(donorName, behavioralDossier, geoffreyBlock);
+  const profilePrompt = buildDossierPromptFromEvidence(donorName, behavioralEvidence, geoffreyBlock);
   const profileTokenEstimate = estimateTokens(profilePrompt);
   console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
 
   // [DEBUG] Save full profile prompt for audit
   try {
     writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-prompt.txt', profilePrompt);
-    console.log(`[DEBUG] Profile prompt saved to /tmp/prospectai-outputs/DEBUG-profile-prompt.txt (${profilePrompt.length} chars)`);
+    console.log(`[DEBUG] Profile prompt saved (${profilePrompt.length} chars)`);
   } catch (e) { console.warn('[DEBUG] Failed to save profile prompt:', e); }
 
   const profileMessages: Message[] = [{ role: 'user', content: profilePrompt }];
@@ -391,7 +423,7 @@ export async function runConversationPipeline(
   // ─── Phase 3: Writing ────────────────────────────────────────────
   onProgress('', 'writing'); // phase transition event
   onProgress('Loading meeting strategy framework', 'writing', 28, TOTAL_STEPS);
-  console.log('[Conversation] Step 6: Generating meeting guide from profile...');
+  console.log('[Conversation] Step 7: Generating meeting guide from profile...');
 
   const meetingGuideBlock = loadMeetingGuideBlock();
   const meetingGuideExemplars = loadMeetingGuideExemplars();
@@ -440,7 +472,7 @@ export async function runConversationPipeline(
     profile: persuasionProfile,         // Persuasion Profile (18-section, user-facing)
     dossier: persuasionProfile,         // Frontend reads dossier.rawMarkdown for display
     meetingGuide,
-    draft: behavioralDossier,           // Behavioral Dossier (extraction output, intermediate)
+    draft: behavioralEvidence,          // Selected full-text sources (intermediate)
     critique: ''
   };
 }
