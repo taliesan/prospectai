@@ -211,17 +211,19 @@ export async function runConversationPipeline(
   let linkedinData: LinkedInData | null = null;
 
   if (linkedinPdfBase64) {
+    console.log(`[LinkedIn] PDF received, length: ${linkedinPdfBase64.length}`);
     onProgress('Parsing LinkedIn profile...', 'research', 15, TOTAL_STEPS);
-    console.log('[Conversation] Parsing LinkedIn PDF...');
 
     try {
       const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
-      const pdfData = await pdf(pdfBuffer);
-      const linkedinText = pdfData.text;
-      console.log(`[Conversation] LinkedIn PDF text extracted: ${linkedinText.length} chars`);
+      console.log(`[LinkedIn] PDF buffer size: ${pdfBuffer.length}`);
 
-      linkedinData = await parseLinkedInText(donorName, linkedinText);
-      console.log(`[Conversation] LinkedIn parsed: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
+      const pdfData = await pdf(pdfBuffer);
+      console.log(`[LinkedIn] PDF text extracted, length: ${pdfData.text.length}`);
+      console.log(`[LinkedIn] First 500 chars: ${pdfData.text.substring(0, 500)}`);
+
+      linkedinData = await parseLinkedInText(donorName, pdfData.text);
+      console.log(`[LinkedIn] Parsed data: ${JSON.stringify(linkedinData, null, 2)}`);
 
       // [DEBUG] Save parsed LinkedIn data
       try {
@@ -232,9 +234,11 @@ export async function runConversationPipeline(
 
       onProgress(`✓ LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, 'research', 15, TOTAL_STEPS);
     } catch (err) {
-      console.error('[Conversation] LinkedIn PDF parsing failed:', err);
+      console.error('[LinkedIn] Parsing failed:', err);
       onProgress('LinkedIn PDF parsing failed — continuing without it', 'research', 15, TOTAL_STEPS);
     }
+  } else {
+    console.log('[LinkedIn] No PDF provided in request');
   }
 
   // ─── Stage 2: Behavioral Evidence Extraction ────────────────────────
@@ -261,6 +265,10 @@ export async function runConversationPipeline(
   let extractionEstimate = estimateTokens(extractionPromptText);
 
   console.log(`[Conversation] Extraction prompt token estimate: ${extractionEstimate} (max: ${MAX_TOKENS})`);
+  console.log(`[LinkedIn] LinkedIn data passed to extraction: ${linkedinData ? 'YES' : 'NO'}`);
+  if (linkedinData) {
+    console.log(`[LinkedIn] Extraction prompt contains CANONICAL BIOGRAPHICAL DATA: ${extractionPromptText.includes('CANONICAL BIOGRAPHICAL DATA')}`);
+  }
 
   let sourcesToUse = rankedSources;
   if (extractionEstimate > MAX_TOKENS) {
