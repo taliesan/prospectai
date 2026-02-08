@@ -16,6 +16,7 @@ export default function Home() {
   const [donorName, setDonorName] = useState('');
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
+  const [linkedinPdf, setLinkedinPdf] = useState<File | null>(null);
   const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
@@ -38,6 +39,18 @@ export default function Home() {
     setTotalSteps(28);
 
     try {
+      // Convert LinkedIn PDF to base64 if provided
+      let linkedinPdfBase64: string | undefined;
+      if (linkedinPdf) {
+        const arrayBuffer = await linkedinPdf.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        linkedinPdfBase64 = btoa(binary);
+      }
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,7 +58,8 @@ export default function Home() {
           donorName: donorName.trim(),
           fundraiserName: fundraiserName.trim(),
           seedUrls: seedUrls.split('\n').filter(u => u.trim()),
-          mode
+          mode,
+          linkedinPdf: linkedinPdfBase64,
         })
       });
 
@@ -333,6 +347,29 @@ export default function Home() {
                   onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.background = '#F5F3EF'; }}
                   disabled={isLoading}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="linkedinPdf" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
+                  LinkedIn Profile PDF
+                </label>
+                <input
+                  type="file"
+                  id="linkedinPdf"
+                  accept=".pdf"
+                  onChange={(e) => setLinkedinPdf(e.target.files?.[0] || null)}
+                  className="w-full text-[15px] text-dtw-black border border-dtw-light-gray border-b-2 rounded px-4 py-3
+                             file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium
+                             file:bg-dtw-off-white file:text-dtw-black hover:file:bg-dtw-light-gray
+                             focus:border-dtw-green focus:outline-none transition-all"
+                  style={{ boxShadow: 'none', background: '#F5F3EF', borderBottomColor: '#D5D2CC' }}
+                  disabled={isLoading}
+                />
+                <p className="mt-1.5 text-xs text-dtw-mid-gray">
+                  Recommended — ensures accurate title and career history.<br />
+                  <span className="font-medium">How to save:</span> Open their LinkedIn profile &rarr; More &rarr; Save to PDF<br />
+                  <span className="font-medium">Why PDF?</span> LinkedIn blocks automated access.
+                </p>
               </div>
 
               <div>

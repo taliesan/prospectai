@@ -30,6 +30,7 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
+import pdf from 'pdf-parse';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -112,6 +113,70 @@ function rankAndSortSources(
   return ranked;
 }
 
+// LinkedIn structured data
+export interface LinkedInData {
+  currentTitle: string;
+  currentEmployer: string;
+  careerHistory: Array<{
+    title: string;
+    employer: string;
+    startDate: string;
+    endDate: string | 'Present';
+    description?: string;
+  }>;
+  education: Array<{
+    institution: string;
+    degree?: string;
+    field?: string;
+    years?: string;
+  }>;
+  skills?: string[];
+  boards?: string[];
+}
+
+async function parseLinkedInText(donorName: string, linkedinText: string): Promise<LinkedInData> {
+  const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
+
+Return JSON in this exact format:
+{
+  "currentTitle": "their current job title",
+  "currentEmployer": "their current employer",
+  "careerHistory": [
+    {
+      "title": "Job Title",
+      "employer": "Company Name",
+      "startDate": "Mon YYYY",
+      "endDate": "Mon YYYY or Present",
+      "description": "role description if present"
+    }
+  ],
+  "education": [
+    {
+      "institution": "University Name",
+      "degree": "Degree Type",
+      "field": "Field of Study",
+      "years": "YYYY - YYYY"
+    }
+  ],
+  "skills": ["skill1", "skill2"],
+  "boards": ["Board membership 1", "Advisory role 2"]
+}
+
+Parse carefully. The PDF text may have formatting artifacts. Extract all career history entries in chronological order (most recent first).
+
+LinkedIn Profile Text:
+${linkedinText}`;
+
+  const response = await conversationTurn([{ role: 'user', content: parsePrompt }], { maxTokens: 4000 });
+
+  const jsonMatch = response.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  throw new Error('Failed to parse LinkedIn data');
+}
+
 // Progress callback type matching the new phase/step signature
 type PipelineProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
@@ -123,7 +188,8 @@ export async function runConversationPipeline(
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
   fetchFunction: (url: string) => Promise<string>,
-  onProgress: PipelineProgressCallback
+  onProgress: PipelineProgressCallback,
+  linkedinPdfBase64?: string
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE (v5 extraction pipeline): Processing ${donorName}`);
@@ -139,6 +205,36 @@ export async function runConversationPipeline(
 
   onProgress(`✓ Research complete — ${research.sources.length} verified sources`, 'research', 15, TOTAL_STEPS);
   console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
+
+  // ─── LinkedIn PDF Parsing (if provided) ──────────────────────────────
+  let linkedinData: LinkedInData | null = null;
+
+  if (linkedinPdfBase64) {
+    onProgress('Parsing LinkedIn profile...', 'research', 15, TOTAL_STEPS);
+    console.log('[Conversation] Parsing LinkedIn PDF...');
+
+    try {
+      const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
+      const pdfData = await pdf(pdfBuffer);
+      const linkedinText = pdfData.text;
+      console.log(`[Conversation] LinkedIn PDF text extracted: ${linkedinText.length} chars`);
+
+      linkedinData = await parseLinkedInText(donorName, linkedinText);
+      console.log(`[Conversation] LinkedIn parsed: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
+
+      // [DEBUG] Save parsed LinkedIn data
+      try {
+        mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+        writeFileSync('/tmp/prospectai-outputs/DEBUG-linkedin-data.json', JSON.stringify(linkedinData, null, 2));
+        console.log('[DEBUG] LinkedIn data saved');
+      } catch (e) { console.warn('[DEBUG] Failed to save LinkedIn data:', e); }
+
+      onProgress(`✓ LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, 'research', 15, TOTAL_STEPS);
+    } catch (err) {
+      console.error('[Conversation] LinkedIn PDF parsing failed:', err);
+      onProgress('LinkedIn PDF parsing failed — continuing without it', 'research', 15, TOTAL_STEPS);
+    }
+  }
 
   // ─── Stage 2: Behavioral Evidence Extraction ────────────────────────
   onProgress('', 'analysis'); // phase transition event
@@ -160,7 +256,7 @@ export async function runConversationPipeline(
 
   // Build extraction prompt with token budget management
   const MAX_TOKENS = 180000;
-  let extractionPromptText = buildExtractionPrompt(donorName, rankedSources);
+  let extractionPromptText = buildExtractionPrompt(donorName, rankedSources, linkedinData);
   let extractionEstimate = estimateTokens(extractionPromptText);
 
   console.log(`[Conversation] Extraction prompt token estimate: ${extractionEstimate} (max: ${MAX_TOKENS})`);
@@ -170,7 +266,7 @@ export async function runConversationPipeline(
     console.log(`[Conversation] Token budget exceeded, truncating sources for extraction...`);
     while (extractionEstimate > MAX_TOKENS && sourcesToUse.length > 10) {
       sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      extractionPromptText = buildExtractionPrompt(donorName, sourcesToUse);
+      extractionPromptText = buildExtractionPrompt(donorName, sourcesToUse, linkedinData);
       extractionEstimate = estimateTokens(extractionPromptText);
     }
     console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${extractionEstimate} tokens`);

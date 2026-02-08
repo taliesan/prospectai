@@ -114,7 +114,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation' } = body;
+  const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation', linkedinPdf } = body;
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(
@@ -285,7 +285,8 @@ export async function POST(request: NextRequest) {
                   } else {
                     sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
                   }
-                }
+                },
+                linkedinPdf
               );
 
               // Save outputs including dossier and meeting guide
