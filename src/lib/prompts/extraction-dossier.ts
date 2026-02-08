@@ -136,39 +136,44 @@ For each of the 24 dimensions, provide comprehensive behavioral evidence:
 ## [NUMBER]. [DIMENSION NAME]
 
 For each piece of evidence:
-- The verbatim quote (in quotation marks)
-- Source: [article/interview title]
-- Context: What was happening? Who was the audience? What prompted this?
-- Behavioral read: What does this reveal about how they operate?
+- "[Verbatim quote]" — Source: [article/interview title]
+- Context: [What was happening? Who was the audience? What prompted this?]
 
 Cross-reference: Note connections to other dimensions where relevant.
 
-TARGET LENGTH: ~1,200-1,500 words per dimension (~30,000 words total)
+---
 
-Extract EVERYTHING relevant. More is better. The profile-writing stage needs enough raw material to stay grounded in specific observations for the entire output.
+EXTRACTION DEPTH
 
-Prioritize:
-- Quotes that reveal behavioral patterns, not just stated positions
-- Conditional behaviors (when X, they do Y; when not-X, they do Z)
-- Retreat signals, defense mechanisms, recovery patterns
-- Real-time interpersonal dynamics, not just retrospective self-description
+This is a comprehensive evidence dump, not a summary. Extract EVERYTHING that might be relevant:
 
-If no evidence exists for a dimension, write:
+- 15-25 quotes per dimension (not 3-5)
+- Include the full surrounding passage, not just the key sentence
+- Include seemingly minor details — they often reveal behavioral patterns
+- When in doubt, include it. More is always better.
+- If a quote reveals patterns across multiple dimensions, include it in each one with different contextual framing
 
-## [NUMBER]. [NAME]
-No evidence found.
+For dimensions where direct evidence is thin, extract:
+- Indirect signals (what they DON'T say, topics they avoid, energy shifts)
+- Comparative evidence (how they discuss others in similar situations)
+- Absence patterns (what's conspicuously missing from their self-narrative)
+
+TARGET: ~1,200-1,500 words per dimension. ~30,000 words total.
+
+Do not write "[No specific evidence found]" — instead, note what indirect evidence exists or what the absence of evidence might indicate.
 
 ---
 
 CRITICAL RULES:
-- Do not interpret. Do not synthesize. Do not transform language.
-- Pull exact quotes with quotation marks.
-- Describe actions factually without editorializing.
+- Do not interpret. Do not synthesize. Do not editorialize. No "behavioral reads."
+- Pull exact quotes with quotation marks. Include the full surrounding passage.
+- Describe actions factually. Context only — no analytical annotations.
 - Include source attribution for every piece of evidence.
-- Provide behavioral context around each quote — situation, audience, what prompted it.
-- If a quote reveals multiple dimensions, include it under each relevant one.
+- Provide situational context around each quote — who, where, when, what prompted it.
+- If a quote reveals multiple dimensions, include it under each one with different context.
 - For every behavioral claim, extract both branches: when X, they do Y; when not-X, they do Z.
 - Extract everything. Volume matters. The profile step needs dense raw material to stay grounded.
+- Never skip a dimension. If direct evidence is thin, extract indirect signals and absence patterns.
 `;
 
 export function buildExtractionPrompt(
