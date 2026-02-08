@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 
 /**
- * GET /api/debug-dump?file=sources|prompt|scoring
+ * GET /api/debug-dump?file=extraction|prompt
  *
  * Returns the debug files saved during pipeline execution.
  * Temporary endpoint — remove after testing.
@@ -11,14 +11,13 @@ export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get('file');
 
   const files: Record<string, string> = {
-    sources: '/tmp/prospectai-outputs/DEBUG-selected-sources.txt',
-    prompt: '/tmp/prospectai-outputs/DEBUG-profile-prompt.txt',
-    scoring: '/tmp/prospectai-outputs/DEBUG-scoring-response.txt',
+    extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
+    prompt: '/tmp/prospectai-outputs/DEBUG-prompt.txt',
   };
 
   if (!file || !files[file]) {
     return new Response(
-      JSON.stringify({ error: 'Use ?file=sources or ?file=prompt or ?file=scoring' }),
+      JSON.stringify({ error: 'Use ?file=extraction or ?file=prompt' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
