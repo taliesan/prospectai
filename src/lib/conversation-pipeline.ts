@@ -190,7 +190,9 @@ export async function runConversationPipeline(
       console.log(`[LinkedIn] PDF buffer size: ${pdfBuffer.length}`);
 
       // pdf-parse v2 uses a class-based API: new PDFParse({ data }) → .getText()
+      // Disable worker to avoid Next.js bundling issue where pdf.worker.mjs isn't included
       const { PDFParse } = await import('pdf-parse');
+      PDFParse.setWorker('');
       const parser = new PDFParse({ data: pdfBuffer });
       const pdfData = await parser.getText();
       await parser.destroy();
