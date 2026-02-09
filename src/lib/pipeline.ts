@@ -116,36 +116,54 @@ Extract the identity signals for this person.`;
     }
   }
 
-  // Enrich identity with LinkedIn data (fills gaps, provides authoritative biographical facts)
+  // Enrich identity with LinkedIn data (authoritative for biographical facts)
+  // Step 1 (above): Always extract identity from seed URL — provides affiliations, unique identifiers, context
+  // Step 2 (here): LinkedIn overrides biographical facts (title, employer, career, education)
   if (linkedinData) {
     console.log(`[Research] Enriching identity with LinkedIn data: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
-    // LinkedIn is authoritative for current role/org — override if LLM extraction missed or was vague
-    if (!identity.currentRole || identity.currentRole === 'Unknown') {
-      identity.currentRole = linkedinData.currentTitle;
+
+    // LinkedIn is authoritative for current role/org — always override
+    identity.currentRole = linkedinData.currentTitle || identity.currentRole;
+    identity.currentOrg = linkedinData.currentEmployer || identity.currentOrg;
+
+    // Career history from LinkedIn (authoritative)
+    if (linkedinData.careerHistory?.length) {
+      identity.pastRoles = linkedinData.careerHistory.map(j => ({
+        role: j.title,
+        org: j.employer,
+        years: `${j.startDate} - ${j.endDate}`
+      }));
     }
-    if (!identity.currentOrg || identity.currentOrg === 'Unknown') {
-      identity.currentOrg = linkedinData.currentEmployer;
+
+    // Education from LinkedIn (authoritative)
+    if (linkedinData.education?.length) {
+      identity.education = linkedinData.education.map(e => ({
+        school: e.institution,
+        degree: e.degree,
+        year: e.years
+      }));
     }
-    // Add past employers and boards as affiliations
-    const linkedinAffiliations: string[] = [];
-    for (const job of (linkedinData.careerHistory || [])) {
-      if (job.employer && job.employer !== linkedinData.currentEmployer) {
-        linkedinAffiliations.push(job.employer);
-      }
-    }
-    for (const board of (linkedinData.boards || [])) {
-      linkedinAffiliations.push(board);
-    }
-    // Merge without duplicates
+
+    // Add LinkedIn boards to affiliations (merge, don't replace)
     const existingAffiliations = new Set((identity.affiliations || []).map((a: string) => a.toLowerCase()));
-    for (const aff of linkedinAffiliations) {
-      if (!existingAffiliations.has(aff.toLowerCase())) {
+    for (const board of (linkedinData.boards || [])) {
+      if (!existingAffiliations.has(board.toLowerCase())) {
         identity.affiliations = identity.affiliations || [];
-        identity.affiliations.push(aff);
-        existingAffiliations.add(aff.toLowerCase());
+        identity.affiliations.push(board);
+        existingAffiliations.add(board.toLowerCase());
       }
     }
-    // Add education institutions as unique identifiers (helps with disambiguation)
+
+    // Add past employers to affiliations (merge, don't replace)
+    for (const job of (linkedinData.careerHistory || [])) {
+      if (job.employer && job.employer !== linkedinData.currentEmployer && !existingAffiliations.has(job.employer.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(job.employer);
+        existingAffiliations.add(job.employer.toLowerCase());
+      }
+    }
+
+    // Add education institutions to uniqueIdentifiers (helps disambiguation)
     for (const edu of (linkedinData.education || [])) {
       if (edu.institution) {
         identity.uniqueIdentifiers = identity.uniqueIdentifiers || [];
@@ -154,6 +172,8 @@ Extract the identity signals for this person.`;
         }
       }
     }
+
+    // Keep uniqueIdentifiers from seed URL — LinkedIn doesn't provide these
     console.log(`[Research] Identity after LinkedIn enrichment:`, JSON.stringify(identity, null, 2));
   }
 
