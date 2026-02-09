@@ -302,7 +302,7 @@ export async function runConversationPipeline(
   onProgress('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
   console.log('[Conversation] Stage 3: Generating Persuasion Profile...');
 
-  const profilePromptText = buildProfilePrompt(donorName, extractionOutput, geoffreyBlock, linkedinData);
+  const profilePromptText = buildProfilePrompt(donorName, extractionOutput, geoffreyBlock, exemplars, linkedinData);
   const profileTokenEstimate = estimateTokens(profilePromptText);
   console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
 

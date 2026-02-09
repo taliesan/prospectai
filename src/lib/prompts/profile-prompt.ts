@@ -1,64 +1,24 @@
-export const PROFILE_OUTPUT_INSTRUCTIONS = `You are writing a Persuasion Profile for donor profiling.
-
-REGISTER RULES (non-negotiable):
-- Write from inside the subject's behavioral logic, not about it from outside.
-- Biography becomes behavioral force: not "she co-founded Recode" but "she exits institutions before they soften her edge."
-- Traits become pressure-read results: not "she's direct" but "she tests for posture misalignment in the first 10 minutes."
-- Values become posture in the room: not "she appreciates dialogue" but "she'll say 'interesting' and never take the meeting again."
-- Psychological interpretation becomes pattern exposure: not "she gets frustrated" but "when someone uses her platform without matching her literacy, she switches to interview mode and doesn't come back."
-- Every claim must be grounded in specific evidence from the sources — quotes, decisions, actions, patterns across appearances.
-
-OUTPUT STRUCTURE (18 sections):
-
-## Life and Career
-Write 2-3 paragraphs summarizing this person's biographical background and career arc. Include: where they came from, key career moves, current position/focus, and any relevant personal facts (family, education, geography). This section is factual context-setting, not behavioral analysis — save insights for the later sections.
-
-If CANONICAL BIOGRAPHICAL DATA is provided, use it as the authoritative source for title, employer, career chronology, and education in this section. The extraction output provides behavioral evidence; the canonical data provides biographical facts. Both should inform the profile.
-
-Then write one section for each of these 17 behavioral dimensions. Use the dimension name as the section header. Write substantive prose for each — this is long-form analysis, not bullet points.
-
-1. Decision-Making Patterns
-2. Trust Calibration
-3. Influence Susceptibility
-4. Communication Style
-5. Learning Style
-6. Time Orientation
-7. Identity & Self-Concept
-8. Values Hierarchy
-9. Status & Recognition
-10. Boundary Conditions
-11. Emotional Triggers
-12. Relationship Patterns
-13. Risk Tolerance
-14. Resource Philosophy
-15. Commitment Patterns
-16. Knowledge Areas
-17. Contradiction Patterns — MOST IMPORTANT. Contradictions reveal where persuasion has maximum leverage.
-
-INCORPORATING BEHAVIORAL DYNAMICS EVIDENCE:
-
-The extraction evidence includes 7 additional behavioral dynamics dimensions. Fold this evidence into the relevant profile sections:
-
-- "Emotional Triggers" should incorporate: SHAME_DEFENSE_TRIGGERS, HIDDEN_FRAGILITIES
-- "Communication Style" should incorporate: RETREAT_PATTERNS, TEMPO_MANAGEMENT, REAL_TIME_INTERPERSONAL_TELLS
-- "Relationship Patterns" should incorporate: RECOVERY_PATHS
-- "Decision-Making Patterns" should incorporate: CONDITIONAL_BEHAVIORAL_FORKS
-
-Every behavioral claim needs both branches of the fork. Not "he's direct" but "when X, he does Y; when not-X, he does Z."
-
-OUTPUT: Long-form behavioral prose organized by the 18 sections above (Life and Career + 17 dimensions). Not bullet points. Each section should have a clear header and substantive analysis. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more.`;
-
 import type { LinkedInData } from './extraction-prompt';
 
 export function buildProfilePrompt(
   donorName: string,
   extractionOutput: string,
   geoffreyBlock: string,
+  exemplars: string,
   linkedinData?: LinkedInData | null
 ): string {
-  let linkedinSection = '';
+  // --- Layer 1: Geoffrey Block v2 (full, unmodified) ---
+  const layer1 = geoffreyBlock;
+
+  // --- Layer 2: Exemplar Profiles ---
+  const layer2 = `---
+
+${exemplars}`;
+
+  // --- Layer 3: Canonical Biographical Data (only if linkedinData exists) ---
+  let layer3 = '';
   if (linkedinData) {
-    linkedinSection = `
+    layer3 = `
 ---
 
 # CANONICAL BIOGRAPHICAL DATA
@@ -81,19 +41,77 @@ ${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.board
 `;
   }
 
-  return `${geoffreyBlock}
-${linkedinSection}
----
+  // --- Layer 4: Behavioral Evidence ---
+  const layer4 = `---
 
-Here is the behavioral evidence extracted from research sources about ${donorName}:
+# BEHAVIORAL EVIDENCE
 
-${extractionOutput}
+The following behavioral evidence was extracted from research sources about ${donorName}. Use it as raw material — quotes are proof for behavioral claims, not content to be restated. Make behavioral inferences from the evidence. Do not summarize the evidence.
 
----
+${extractionOutput}`;
 
-${PROFILE_OUTPUT_INSTRUCTIONS}
+  // --- Layer 5: Output Instructions ---
+  // Evidence class selection
+  const firstPersonQuotes = (extractionOutput.match(/"[^"]*\b(I|we)\b[^"]*"/gi) || []).length;
+  const evidenceClass = firstPersonQuotes >= 5 ? 'A' : 'B';
 
-Title the document "${donorName} — Persuasion Profile" at the top.
+  const evidenceClassBlock = evidenceClass === 'A'
+    ? `This donor has a substantial public record including direct quotes and first-person statements. Deploy quotes as behavioral proof — the profile makes a claim, then a quote demonstrates it. Do not let quotes drive the structure. The behavioral inference drives the structure; quotes prove it.`
+    : `This donor operates primarily through institutional channels. Their public record consists mainly of press releases, grant announcements, governance positions, and program design decisions. Grant architecture is behavioral evidence. Governance choices are behavioral evidence. Program design is behavioral evidence. What they funded, how they structured it, who they convened, and what they didn't fund — these are the source material for behavioral inference.`;
 
-Write a comprehensive Persuasion Profile for ${donorName}.`;
+  const donorNameCaps = donorName.toUpperCase();
+
+  const layer5 = `---
+
+# OUTPUT INSTRUCTIONS
+
+Write a Persuasion Profile for ${donorName}.
+
+## Structure (non-negotiable)
+
+Title the document: \`# PERSUASION PROFILE — ${donorNameCaps}\`
+
+The profile has exactly 18 sections in exactly this order with exactly these headings:
+
+1. ## Life and Career
+2. ## Who They Think They Are
+3. ## What They Value Most
+4. ## Where to Start
+5. ## What Moves Them
+6. ## How They Decide
+7. ## How They Build Trust
+8. ## What Sets Them Off
+9. ## Where They Draw Lines
+10. ## How They Communicate
+11. ## How They Commit
+12. ## How They Think About Resources
+13. ## What They'll Risk
+14. ## How They Build Relationships
+15. ## How They Think About Time
+16. ## How They Read Status
+17. ## How They Learn
+18. ## What They Know
+
+All 18 sections must appear. Do not combine sections. Do not rename sections. Do not reorder sections. Do not add sections.
+
+## Evidence class
+
+${evidenceClassBlock}
+
+## Writing principles
+
+- An insight earns its space once. The first time it appears, give it full treatment. If it's relevant to a later section, reference it or trust the reader to hold it. Do not re-derive the same insight in different words.
+- Section length follows evidence density. A section with one sentence is correct if that sentence is the only new thing to say. A section with three paragraphs is correct if the evidence supports three paragraphs of non-redundant behavioral analysis.
+- When the evidence can't support a section's analytical ambition, say so. Use an evidence ceiling bracket: **[Evidence ceiling: description of what data is missing and what the above observations are inferred from.]**
+- Section 5 (What Moves Them) must contain a sentence explicitly flagged as the most important sentence in the profile — the single tactical instruction the reader must hold above all others.
+- Section 4 (Where to Start) must name at least one usable contradiction. If this section doesn't give the reader a tension they can use in the room, the profile fails.
+- Section 6 (How They Decide) must follow the three-stage structure: entry condition, permission logic, behavioral commitment.`;
+
+  // Assemble all five layers
+  return `${layer1}
+${layer2}
+${layer3}
+${layer4}
+
+${layer5}`;
 }
