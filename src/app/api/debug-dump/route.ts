@@ -12,13 +12,14 @@ export async function GET(request: NextRequest) {
 
   const files: Record<string, string> = {
     extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
+    'extraction-prompt': '/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt',
     prompt: '/tmp/prospectai-outputs/DEBUG-prompt.txt',
     linkedin: '/tmp/prospectai-outputs/DEBUG-linkedin-data.json',
   };
 
   if (!file || !files[file]) {
     return new Response(
-      JSON.stringify({ error: 'Use ?file=extraction or ?file=prompt or ?file=linkedin' }),
+      JSON.stringify({ error: 'Use ?file=extraction or ?file=extraction-prompt or ?file=prompt or ?file=linkedin' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }

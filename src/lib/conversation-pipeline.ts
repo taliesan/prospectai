@@ -266,6 +266,13 @@ export async function runConversationPipeline(
   onProgress(`Extracting behavioral evidence from ${sourcesToUse.length} sources across 24 dimensions`, 'analysis', 17, TOTAL_STEPS);
   console.log('[Conversation] Stage 2: Extracting behavioral evidence...');
 
+  // [DEBUG] Save extraction prompt (the input to Stage 2 LLM) for audit
+  try {
+    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt', extractionPromptText);
+    console.log(`[DEBUG] Extraction prompt saved (${extractionPromptText.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save extraction prompt:', e); }
+
   const extractionMessages: Message[] = [{ role: 'user', content: extractionPromptText }];
   const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 16000 });
 
