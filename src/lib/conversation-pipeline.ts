@@ -30,8 +30,6 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdf = require('pdf-parse');
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -218,7 +216,11 @@ export async function runConversationPipeline(
       const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
       console.log(`[LinkedIn] PDF buffer size: ${pdfBuffer.length}`);
 
-      const pdfData = await pdf(pdfBuffer);
+      // pdf-parse v2 uses a class-based API: new PDFParse({ data }) → .getText()
+      const { PDFParse } = await import('pdf-parse');
+      const parser = new PDFParse({ data: pdfBuffer });
+      const pdfData = await parser.getText();
+      await parser.destroy();
       console.log(`[LinkedIn] PDF text extracted, length: ${pdfData.text.length}`);
       console.log(`[LinkedIn] First 500 chars: ${pdfData.text.substring(0, 500)}`);
 
