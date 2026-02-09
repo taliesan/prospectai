@@ -13,6 +13,8 @@ OUTPUT STRUCTURE (18 sections):
 ## Life and Career
 Write 2-3 paragraphs summarizing this person's biographical background and career arc. Include: where they came from, key career moves, current position/focus, and any relevant personal facts (family, education, geography). This section is factual context-setting, not behavioral analysis — save insights for the later sections.
 
+If CANONICAL BIOGRAPHICAL DATA is provided, use it as the authoritative source for title, employer, career chronology, and education in this section. The extraction output provides behavioral evidence; the canonical data provides biographical facts. Both should inform the profile.
+
 Then write one section for each of these 17 behavioral dimensions. Use the dimension name as the section header. Write substantive prose for each — this is long-form analysis, not bullet points.
 
 1. Decision-Making Patterns
@@ -46,13 +48,41 @@ Every behavioral claim needs both branches of the fork. Not "he's direct" but "w
 
 OUTPUT: Long-form behavioral prose organized by the 18 sections above (Life and Career + 17 dimensions). Not bullet points. Each section should have a clear header and substantive analysis. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more.`;
 
+import type { LinkedInData } from './extraction-prompt';
+
 export function buildProfilePrompt(
   donorName: string,
   extractionOutput: string,
-  geoffreyBlock: string
+  geoffreyBlock: string,
+  linkedinData?: LinkedInData | null
 ): string {
-  return `${geoffreyBlock}
+  let linkedinSection = '';
+  if (linkedinData) {
+    linkedinSection = `
+---
 
+# CANONICAL BIOGRAPHICAL DATA
+
+Use this as the authoritative source for biographical facts in the Life & Career section.
+
+**Current Position:** ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}
+
+**Career History:**
+${linkedinData.careerHistory.map(job =>
+  `- ${job.title} at ${job.employer} (${job.startDate} - ${job.endDate})`
+).join('\n')}
+
+**Education:**
+${linkedinData.education.map(edu =>
+  `- ${edu.institution}${edu.degree ? `: ${edu.degree}` : ''}${edu.field ? ` in ${edu.field}` : ''}${edu.years ? ` (${edu.years})` : ''}`
+).join('\n')}
+
+${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.boards.map(b => `- ${b}`).join('\n')}` : ''}
+`;
+  }
+
+  return `${geoffreyBlock}
+${linkedinSection}
 ---
 
 Here is the behavioral evidence extracted from research sources about ${donorName}:
