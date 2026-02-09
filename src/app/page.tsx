@@ -17,6 +17,7 @@ export default function Home() {
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
   const [linkedinPdf, setLinkedinPdf] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
@@ -61,7 +62,7 @@ export default function Home() {
         body: JSON.stringify({
           donorName: donorName.trim(),
           fundraiserName: fundraiserName.trim(),
-          seedUrls: seedUrls.split('\n').filter(u => u.trim()),
+          seedUrls: [seedUrls.trim()].filter(Boolean),
           mode,
           linkedinPdf: linkedinPdfBase64,
         })
@@ -281,7 +282,7 @@ export default function Home() {
           style={{ background: 'radial-gradient(circle at 30% 70%, #2D6A4F, transparent 60%)' }}
         />
 
-        <div className="relative z-10 text-center py-24 pb-32 px-4">
+        <div className="relative z-10 text-center py-14 pb-20 px-4">
           <h1 className="font-serif text-[80px] leading-[1.05] text-white mb-4">
             Prospect<span className="font-serif italic" style={{ color: '#D894E8' }}>AI</span>
           </h1>
@@ -313,8 +314,8 @@ export default function Home() {
               <h2 className="font-serif text-2xl text-dtw-black">Start a Profile</h2>
 
               <div>
-                <label htmlFor="donorName" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
-                  Donor Name
+                <label htmlFor="donorName" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  Donor name
                 </label>
                 {/* Item 8: input bg #F5F3EF, bottom border #D5D2CC */}
                 <input
@@ -334,8 +335,8 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="fundraiserName" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
-                  Fundraiser Name
+                <label htmlFor="fundraiserName" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  Fundraiser name
                 </label>
                 <input
                   type="text"
@@ -354,42 +355,78 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="linkedinPdf" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
-                  LinkedIn Profile PDF
+                <label className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  LinkedIn profile PDF
                 </label>
-                <input
-                  type="file"
-                  id="linkedinPdf"
-                  accept=".pdf"
-                  onChange={(e) => setLinkedinPdf(e.target.files?.[0] || null)}
-                  className="w-full text-[15px] text-dtw-black border border-dtw-light-gray border-b-2 rounded px-4 py-3
-                             file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium
-                             file:bg-dtw-off-white file:text-dtw-black hover:file:bg-dtw-light-gray
-                             focus:border-dtw-green focus:outline-none transition-all"
-                  style={{ boxShadow: 'none', background: '#F5F3EF', borderBottomColor: '#D5D2CC' }}
-                  disabled={isLoading}
-                />
+                <div
+                  className={`relative rounded border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-purple-500 bg-purple-50'
+                      : linkedinPdf
+                        ? 'border-dtw-green bg-green-50/50'
+                        : 'border-dtw-light-gray hover:border-purple-300'
+                  }`}
+                  style={{ background: isDragging ? undefined : linkedinPdf ? undefined : '#F5F3EF' }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files[0];
+                    if (file?.type === 'application/pdf') setLinkedinPdf(file);
+                  }}
+                  onClick={() => document.getElementById('linkedinPdf')?.click()}
+                >
+                  <input
+                    type="file"
+                    id="linkedinPdf"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => setLinkedinPdf(e.target.files?.[0] || null)}
+                    disabled={isLoading}
+                  />
+                  {linkedinPdf ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 text-dtw-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span className="text-sm text-dtw-black font-medium">{linkedinPdf.name}</span>
+                      <button
+                        type="button"
+                        className="ml-2 text-xs text-dtw-mid-gray hover:text-dtw-red"
+                        onClick={(e) => { e.stopPropagation(); setLinkedinPdf(null); }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-dtw-mid-gray">
+                        <span className="font-medium text-purple-700">Choose a file</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-dtw-mid-gray/70 mt-1">PDF only</p>
+                    </div>
+                  )}
+                </div>
                 <p className="mt-1.5 text-xs text-dtw-mid-gray">
                   Recommended — ensures accurate title and career history.<br />
-                  <span className="font-medium">How to save:</span> Open their LinkedIn profile &rarr; More &rarr; Save to PDF<br />
-                  <span className="font-medium">Why PDF?</span> LinkedIn blocks automated access.
+                  <span className="font-medium">How to save:</span> Open their LinkedIn profile &rarr; More &rarr; Save to PDF
                 </p>
               </div>
 
               <div>
-                <label htmlFor="seedUrls" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
+                <label htmlFor="seedUrls" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
                   Seed URL <span className="text-dtw-red">*</span>
                 </label>
-                {/* Item 4: shorter placeholder, Item 5: green border on valid URL */}
-                <textarea
+                <input
+                  type="url"
                   id="seedUrls"
                   value={seedUrls}
                   onChange={(e) => setSeedUrls(e.target.value)}
                   placeholder="https://linkedin.com/in/donor-name"
-                  rows={3}
                   className={`w-full text-[15px] text-dtw-black border border-dtw-light-gray border-b-2 rounded px-4 py-3.5
                              focus:border-dtw-green focus:border-b-dtw-green focus:bg-white focus:outline-none
-                             placeholder-dtw-mid-gray transition-all resize-none
+                             placeholder-dtw-mid-gray transition-all
                              ${hasValidUrl ? 'border-dtw-green' : ''}`}
                   style={{
                     boxShadow: 'none',
@@ -411,16 +448,17 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isLoading || !donorName.trim() || !seedUrls.trim()}
-                  className="w-full rounded-pill text-[15px] font-semibold text-white bg-dtw-black py-[18px] px-8 tracking-[0.3px]
-                             hover:bg-dtw-green hover:-translate-y-0.5
+                  className="w-full rounded-pill text-[15px] font-semibold text-white py-[18px] px-8 tracking-[0.3px]
+                             hover:-translate-y-0.5
                              disabled:bg-dtw-light-gray disabled:text-dtw-mid-gray disabled:cursor-not-allowed disabled:hover:translate-y-0
                              transition-all duration-300"
                   style={{
                     boxShadow: 'none',
+                    background: (!donorName.trim() || !seedUrls.trim()) ? undefined : '#6B21A8',
                     ...((!donorName.trim() || !seedUrls.trim()) ? { border: '1px solid #D5D2CC' } : {}),
                   }}
-                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.boxShadow = '0 4px 16px rgba(45,106,79,0.3)'; }}
-                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = (!donorName.trim() || !seedUrls.trim()) ? '' : '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
                 >
                   Generate Profile
                 </button>
@@ -433,7 +471,7 @@ export default function Home() {
           </div>
 
           {/* RIGHT: What you'll get — Item 6: sidebar pt-[40px] */}
-          <div className="flex-1 lg:pt-[40px]">
+          <div className="flex-1 lg:pt-[40px]" style={{ borderLeft: '3px solid #6B21A8', paddingLeft: '24px' }}>
             <p className="text-[11px] font-semibold tracking-[3px] uppercase text-dtw-mid-gray mb-8">
               What you&apos;ll get
             </p>
