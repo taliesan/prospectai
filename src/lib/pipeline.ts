@@ -24,10 +24,16 @@ import { runAllValidators } from './validators';
 import { selectExemplars } from './canon/loader';
 
 // Types
+interface GeneratedQuery {
+  query: string;
+  tier: 'STANDARD' | 'TAILORED';
+  rationale: string;
+}
+
 interface ResearchResult {
   donorName: string;
   identity: any;
-  queries: { query: string; category: string }[];
+  queries: GeneratedQuery[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
 }
@@ -119,23 +125,31 @@ Extract the identity signals for this person.`;
   const queryPrompt = generateResearchQueries(donorName, identity);
   const queryResponse = await complete('You are a research strategist.', queryPrompt);
 
-  let queries: { query: string; category: string }[] = [];
+  let queries: GeneratedQuery[] = [];
   try {
     const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
     queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch {
-    // Fallback queries with identity context
-    const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
+    // Fallback queries if LLM parsing fails
+    const org = identity.currentOrg || '';
     queries = [
-      { query: `"${donorName}"${orgSuffix} interview`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} podcast`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'PHILANTHROPY' },
-      { query: `"${donorName}"${orgSuffix} profile`, category: 'NEWS_PROFILES' },
+      { query: `"${donorName}" interview`, tier: 'STANDARD', rationale: 'Basic interview search' },
+      { query: `"${donorName}" ${org} profile`, tier: 'STANDARD', rationale: 'Profile at current org' },
+      { query: `"${donorName}" philanthropy foundation`, tier: 'STANDARD', rationale: 'Philanthropic activity' },
+      { query: `"${donorName}" speech keynote`, tier: 'STANDARD', rationale: 'Public speaking' },
+      { query: `${org || donorName} grants 2024`, tier: 'TAILORED', rationale: 'Recent org activity' },
+      { query: `${org || donorName} announcement`, tier: 'TAILORED', rationale: 'Org press releases' },
     ];
   }
 
-  console.log(`[Research] Generated ${queries.length} queries`);
-  emit(`Researching ${queries.length} angles across interviews, news, and profiles`, 'research', 7, TOTAL);
+  const standardCount = queries.filter(q => q.tier === 'STANDARD').length;
+  const tailoredCount = queries.filter(q => q.tier === 'TAILORED').length;
+  console.log(`[Research] Generated ${queries.length} queries (${standardCount} standard, ${tailoredCount} tailored)`);
+  queries.forEach((q, i) => {
+    console.log(`  ${i + 1}. [${q.tier}] ${q.query}`);
+    console.log(`      Rationale: ${q.rationale}`);
+  });
+  emit(`Researching ${queries.length} angles — ${standardCount} standard, ${tailoredCount} tailored`, 'research', 7, TOTAL);
 
   // 4. Execute searches
   console.log('[Research] Executing searches...');
@@ -302,7 +316,7 @@ Output as JSON array (one entry per result, in order):
 function generateResearchMarkdown(
   donorName: string,
   identity: any,
-  queries: { query: string; category: string }[],
+  queries: GeneratedQuery[],
   sources: { url: string; title: string; snippet: string }[]
 ): string {
   const sections = [
@@ -316,7 +330,7 @@ function generateResearchMarkdown(
     '```',
     '',
     '## Search Queries',
-    ...queries.map(q => `- [${q.category}] ${q.query}`),
+    ...queries.map(q => `- [${q.tier}] ${q.query} — ${q.rationale}`),
     '',
     '## Sources',
     ...sources.map((s, i) => [

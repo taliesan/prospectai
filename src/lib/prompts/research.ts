@@ -30,31 +30,66 @@ Output as JSON:
   "uniqueIdentifiers": ["Specific facts that distinguish this person"]
 }`;
 
-export const QUERY_GENERATION_PROMPT = `You are generating search queries to research a donor comprehensively.
+export const QUERY_GENERATION_PROMPT = `You are a profiler researching a donor for a high-stakes meeting. Your queries will feed into a system that builds a behavioral profile — how this person thinks, decides, and operates under pressure.
 
-Given the identity signals extracted from their seed URL, generate 15-25 targeted queries.
+Generate 20-30 search queries in two tiers:
 
-CRITICAL: Every query must include enough specificity to find THIS person, not someone else with the same name. Combine name with:
-- Current organization
-- Current role
-- Location
-- Unique identifiers
+## TIER 1 — STANDARD (10-15 queries)
 
-Categories to cover:
-1. INTERVIEWS (4-5 queries): Podcasts, video interviews, Q&As — use name + org + "interview" or "podcast"
-2. PERSONAL_WRITING (2-3 queries): Substack, Medium, blog, op-eds — use name + org + platform names
-3. SPEECHES (2-3 queries): Talks, keynotes, panels — use name + org + "keynote" or "speech" or conference names
-4. PHILANTHROPY (2-3 queries): Giving, foundation work, causes — use name + "philanthropy" or "foundation" or "donor"
-5. NEWS_PROFILES (3-4 queries): In-depth coverage — use name + org + publication names (NYT, WSJ, etc.)
-6. CONTROVERSY (1-2 queries): Criticism, conflicts — use name + org + "controversy" or "criticism"
-7. RECENT (2-3 queries): Last 12 months — use name + org + "2024" or "2025"
+The basics that work for anyone. Use their name + organization + specifics from the identity signals to disambiguate from other people with similar names.
 
-Keep queries concise (4-8 words). Use quotes around full name.
+Cover these areas:
+- Interviews, podcasts, video Q&As
+- Personal writing (Substack, Medium, op-eds, personal blog)
+- Speeches, keynotes, conference panels
+- News profiles and feature articles
+- Recent coverage (last 12 months — use "2024" or "2025")
+- Controversy, criticism, conflicts, or public disputes
 
-Output as JSON array:
+Keep queries concise (4-8 words). Use quotes around full name when helpful.
+
+## TIER 2 — TAILORED (10-15 queries)
+
+Now think like a PI. Based on who this person is and what role they hold, get creative:
+
+**Where does someone in THIS role leave traces?**
+- Foundation officer → grants, program reports, grantee announcements, RFP documents
+- CEO/founder → earnings calls, investor letters, company announcements, employee reviews on Glassdoor
+- Board member → proxy statements, nonprofit 990s, organizational decisions during their tenure
+- Investor/VC → portfolio company announcements, investment thesis posts, founder testimonials
+- Low-profile donor → the organizations they fund, boards they sit on, causes they back
+
+**What has their organization done during their tenure?**
+- Decisions, grants, investments, or public positions attributed to them or their program
+- Strategic shifts that happened while they were in charge
+- "[Organization] [program area] grants [year]" or "[Organization] annual report [year]"
+
+**Who are their collaborators, grantees, critics, or opponents?**
+- What have those people said publicly?
+- "[Collaborator name] AND [organization]" or "[Grantee org] AND [funder org]"
+
+**What controversies touched their domain?**
+- How did they respond — or conspicuously NOT respond?
+- Industry or sector debates where they would have had to take a position
+
+**What would a journalist investigating this person look for?**
+- Public records, filings, disclosed conflicts of interest
+- Patterns across their career moves or funding decisions
+
+Generate queries a lazy researcher would miss. The goal is behavioral signal — how they think, what they value, how they handle pressure — not just biography.
+
+## OUTPUT FORMAT
+
+Return a JSON array:
 [
-  { "query": "search query text", "category": "CATEGORY_NAME" }
-]`;
+  {
+    "query": "search query text",
+    "tier": "STANDARD" or "TAILORED",
+    "rationale": "brief note on what this might reveal"
+  }
+]
+
+Generate 20-30 queries total. Tier 1 and Tier 2 should each have 10-15 queries.`;
 
 export const SOURCE_RELEVANCE_PROMPT = `You are screening search results to verify they are about the correct person.
 

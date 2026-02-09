@@ -37,7 +37,7 @@ const pdf = require('pdf-parse');
 export interface ResearchResult {
   donorName: string;
   identity: any;
-  queries: { query: string; category: string }[];
+  queries: { query: string; tier: string; rationale: string }[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
 }
