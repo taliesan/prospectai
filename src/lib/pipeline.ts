@@ -16,6 +16,7 @@ import {
   CROSS_CUTTING_PROMPT,
   DIMENSIONS
 } from './prompts/extraction';
+import type { LinkedInData } from './prompts/extraction-prompt';
 import {
   createProfilePrompt,
   createRegenerationPrompt
@@ -61,7 +62,8 @@ export async function conductResearch(
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
   fetchFunction?: (url: string) => Promise<string>,
-  onProgress?: ResearchProgressCallback
+  onProgress?: ResearchProgressCallback,
+  linkedinData?: LinkedInData | null
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
   const emit = onProgress || (() => {});
@@ -112,6 +114,47 @@ Extract the identity signals for this person.`;
     } catch (err) {
       console.error('[Research] Identity extraction failed:', err);
     }
+  }
+
+  // Enrich identity with LinkedIn data (fills gaps, provides authoritative biographical facts)
+  if (linkedinData) {
+    console.log(`[Research] Enriching identity with LinkedIn data: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
+    // LinkedIn is authoritative for current role/org — override if LLM extraction missed or was vague
+    if (!identity.currentRole || identity.currentRole === 'Unknown') {
+      identity.currentRole = linkedinData.currentTitle;
+    }
+    if (!identity.currentOrg || identity.currentOrg === 'Unknown') {
+      identity.currentOrg = linkedinData.currentEmployer;
+    }
+    // Add past employers and boards as affiliations
+    const linkedinAffiliations: string[] = [];
+    for (const job of (linkedinData.careerHistory || [])) {
+      if (job.employer && job.employer !== linkedinData.currentEmployer) {
+        linkedinAffiliations.push(job.employer);
+      }
+    }
+    for (const board of (linkedinData.boards || [])) {
+      linkedinAffiliations.push(board);
+    }
+    // Merge without duplicates
+    const existingAffiliations = new Set((identity.affiliations || []).map((a: string) => a.toLowerCase()));
+    for (const aff of linkedinAffiliations) {
+      if (!existingAffiliations.has(aff.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(aff);
+        existingAffiliations.add(aff.toLowerCase());
+      }
+    }
+    // Add education institutions as unique identifiers (helps with disambiguation)
+    for (const edu of (linkedinData.education || [])) {
+      if (edu.institution) {
+        identity.uniqueIdentifiers = identity.uniqueIdentifiers || [];
+        if (!identity.uniqueIdentifiers.includes(edu.institution)) {
+          identity.uniqueIdentifiers.push(edu.institution);
+        }
+      }
+    }
+    console.log(`[Research] Identity after LinkedIn enrichment:`, JSON.stringify(identity, null, 2));
   }
 
   emit(
