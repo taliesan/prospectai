@@ -154,6 +154,7 @@ Extract the identity signals for this person.`;
   // 4. Execute searches
   console.log('[Research] Executing searches...');
   const allSources: { url: string; title: string; snippet: string; query: string }[] = [];
+  const tailoredUrls = new Set<string>(); // Track which URLs came from TAILORED queries
   let searchedCount = 0;
 
   for (const q of queries) {
@@ -164,6 +165,9 @@ Extract the identity signals for this person.`;
       const results = await searchFunction(q.query);
       for (const r of results) {
         allSources.push({ ...r, query: q.query });
+        if (q.tier === 'TAILORED') {
+          tailoredUrls.add(r.url);
+        }
       }
       searchedCount++;
       if (searchedCount % 3 === 0 || searchedCount === queries.length) {
@@ -188,8 +192,9 @@ Extract the identity signals for this person.`;
 
   // 5. Screen sources for relevance to THIS person
   console.log('[Research] Screening sources for relevance...');
+  console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
   emit(`Verifying sources match the right ${donorName}`, 'research', 12, TOTAL);
-  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName, emit);
+  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName, tailoredUrls, emit);
 
   const dropped = uniqueSources.length - screenedSources.length;
   console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${dropped})`);
@@ -211,6 +216,7 @@ async function screenSourcesForRelevance(
   sources: { url: string; title: string; snippet: string }[],
   identity: any,
   donorName: string,
+  tailoredUrls: Set<string>,
   emit?: ResearchProgressCallback
 ): Promise<{ url: string; title: string; snippet: string }[]> {
 
@@ -258,7 +264,7 @@ async function screenSourcesForRelevance(
     for (let i = 0; i < needsScreening.length; i += BATCH_SIZE) {
       const batch = needsScreening.slice(i, i + BATCH_SIZE);
 
-      const screenPrompt = `Screen these search results to determine if they are about the correct person.
+      const screenPrompt = `Screen these search results to determine if they are relevant to research about the target person.
 
 TARGET PERSON:
 - Name: ${donorName}
@@ -269,15 +275,28 @@ TARGET PERSON:
 - Unique Identifiers: ${(identity.uniqueIdentifiers || []).join(', ') || 'None'}
 
 SEARCH RESULTS TO SCREEN:
-${batch.map((s, idx) => `
-[${idx}]
+${batch.map((s, idx) => {
+  const isTailored = tailoredUrls.has(s.url);
+  return `
+[${idx}]${isTailored ? ' [TAILORED QUERY RESULT]' : ''}
 URL: ${s.url}
 Title: ${s.title}
-Snippet: ${s.snippet}
-`).join('\n')}
+Snippet: ${s.snippet}`;
+}).join('\n')}
 
-For each result, determine if it's about the TARGET PERSON or a different person.
-Be conservative - if uncertain, mark as not a match.
+For each result, determine if it is RELEVANT to researching the target person.
+
+IMPORTANT: Some sources are relevant even if they don't mention the donor by name directly. Accept sources that:
+- Show decisions, grants, investments, or actions from the donor's organization or program
+- Cover the donor's domain, sector, or program area during their tenure
+- Include perspectives from collaborators, grantees, or critics of the donor's organization
+- Discuss controversies or debates in the donor's professional domain
+
+The goal is behavioral signal — understanding how this person thinks and operates. Institutional decisions reflect their judgment even when they're not named personally.
+
+Sources marked [TAILORED QUERY RESULT] were found through targeted research into the person's institutional footprint. These deserve extra consideration — they may not mention the person by name but can reveal how they operate through organizational actions.
+
+REJECT sources that are clearly about a DIFFERENT person with the same or similar name (wrong company, wrong field, wrong location). Be conservative about wrong-person matches, but inclusive about institutional and domain sources.
 
 Output as JSON array (one entry per result, in order):
 [
@@ -286,14 +305,20 @@ Output as JSON array (one entry per result, in order):
 ]`;
 
       try {
-        const response = await complete('You are screening search results for identity matching.', screenPrompt);
+        const response = await complete('You are screening search results for relevance to a donor research profile.', screenPrompt);
         const jsonMatch = response.match(/\[[\s\S]*\]/);
 
         if (jsonMatch) {
           const results = JSON.parse(jsonMatch[0]);
           for (const r of results) {
-            if (r.isMatch && (r.confidence === 'high' || r.confidence === 'medium')) {
-              screened.push(batch[r.index]);
+            if (r.isMatch) {
+              const source = batch[r.index];
+              const isTailored = tailoredUrls.has(source.url);
+              // Standard sources: require high or medium confidence
+              // Tailored sources: accept any confidence level (the query was targeted)
+              if (isTailored || r.confidence === 'high' || r.confidence === 'medium') {
+                screened.push(source);
+              }
             }
           }
         }
@@ -310,6 +335,7 @@ Output as JSON array (one entry per result, in order):
     }
   }
 
+  console.log(`[Research] Screening complete: ${screened.length} accepted (${screened.length - dominated.length} via LLM, ${dominated.length} fast-path)`);
   return screened;
 }
 
