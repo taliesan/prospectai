@@ -98,7 +98,7 @@ Output as:
 [...continue for all 24 dimensions...]
 `;
 
-interface LinkedInData {
+export interface LinkedInData {
   currentTitle: string;
   currentEmployer: string;
   careerHistory: Array<{

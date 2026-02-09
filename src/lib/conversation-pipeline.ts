@@ -27,7 +27,7 @@ import { conversationTurn, Message } from './anthropic';
 import { conductResearch } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
-import { buildExtractionPrompt } from './prompts/extraction-prompt';
+import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
 
@@ -112,26 +112,8 @@ function rankAndSortSources(
   return ranked;
 }
 
-// LinkedIn structured data
-export interface LinkedInData {
-  currentTitle: string;
-  currentEmployer: string;
-  careerHistory: Array<{
-    title: string;
-    employer: string;
-    startDate: string;
-    endDate: string | 'Present';
-    description?: string;
-  }>;
-  education: Array<{
-    institution: string;
-    degree?: string;
-    field?: string;
-    years?: string;
-  }>;
-  skills?: string[];
-  boards?: string[];
-}
+// Re-export LinkedInData from canonical definition
+export type { LinkedInData } from './prompts/extraction-prompt';
 
 async function parseLinkedInText(donorName: string, linkedinText: string): Promise<LinkedInData> {
   const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
@@ -196,21 +178,12 @@ export async function runConversationPipeline(
 
   const TOTAL_STEPS = 33;
 
-  // ─── Stage 1: Source Collection ─────────────────────────────────────
-  onProgress(`Building intelligence profile for ${donorName}`, undefined, 1, TOTAL_STEPS);
-  onProgress('', 'research'); // phase transition event
-
-  const research = await conductResearch(donorName, seedUrls, searchFunction, fetchFunction, onProgress);
-
-  onProgress(`✓ Research complete — ${research.sources.length} verified sources`, 'research', 15, TOTAL_STEPS);
-  console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
-
-  // ─── LinkedIn PDF Parsing (if provided) ──────────────────────────────
+  // ─── LinkedIn PDF Parsing (before research, so it informs identity & queries) ───
   let linkedinData: LinkedInData | null = null;
 
   if (linkedinPdfBase64) {
     console.log(`[LinkedIn] PDF received, length: ${linkedinPdfBase64.length}`);
-    onProgress('Parsing LinkedIn profile...', 'research', 15, TOTAL_STEPS);
+    onProgress('Parsing LinkedIn profile...', undefined, 1, TOTAL_STEPS);
 
     try {
       const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
@@ -234,14 +207,23 @@ export async function runConversationPipeline(
         console.log('[DEBUG] LinkedIn data saved');
       } catch (e) { console.warn('[DEBUG] Failed to save LinkedIn data:', e); }
 
-      onProgress(`✓ LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, 'research', 15, TOTAL_STEPS);
+      onProgress(`✓ LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, undefined, 2, TOTAL_STEPS);
     } catch (err) {
       console.error('[LinkedIn] Parsing failed:', err);
-      onProgress('LinkedIn PDF parsing failed — continuing without it', 'research', 15, TOTAL_STEPS);
+      onProgress('LinkedIn PDF parsing failed — continuing without it', undefined, 2, TOTAL_STEPS);
     }
   } else {
     console.log('[LinkedIn] No PDF provided in request');
   }
+
+  // ─── Stage 1: Source Collection ─────────────────────────────────────
+  onProgress(`Building intelligence profile for ${donorName}`, undefined, 3, TOTAL_STEPS);
+  onProgress('', 'research'); // phase transition event
+
+  const research = await conductResearch(donorName, seedUrls, searchFunction, fetchFunction, onProgress, linkedinData);
+
+  onProgress(`✓ Research complete — ${research.sources.length} verified sources`, 'research', 15, TOTAL_STEPS);
+  console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
 
   // ─── Stage 2: Behavioral Evidence Extraction ────────────────────────
   onProgress('', 'analysis'); // phase transition event
