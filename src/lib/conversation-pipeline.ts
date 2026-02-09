@@ -189,17 +189,13 @@ export async function runConversationPipeline(
       const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
       console.log(`[LinkedIn] PDF buffer size: ${pdfBuffer.length}`);
 
-      // pdf-parse v2 uses a class-based API: new PDFParse({ data }) → .getText()
-      // Disable worker to avoid Next.js bundling issue where pdf.worker.mjs isn't included
-      const { PDFParse } = await import('pdf-parse');
-      PDFParse.setWorker('');
-      const parser = new PDFParse({ data: pdfBuffer });
-      const pdfData = await parser.getText();
-      await parser.destroy();
-      console.log(`[LinkedIn] PDF text extracted, length: ${pdfData.text.length}`);
-      console.log(`[LinkedIn] First 500 chars: ${pdfData.text.substring(0, 500)}`);
+      // Use unpdf for serverless-compatible PDF text extraction (no worker threads needed)
+      const { extractText } = await import('unpdf');
+      const { text: pdfText } = await extractText(new Uint8Array(pdfBuffer), { mergePages: true });
+      console.log(`[LinkedIn] PDF text extracted, length: ${pdfText.length}`);
+      console.log(`[LinkedIn] First 500 chars: ${pdfText.substring(0, 500)}`);
 
-      linkedinData = await parseLinkedInText(donorName, pdfData.text);
+      linkedinData = await parseLinkedInText(donorName, pdfText);
       console.log(`[LinkedIn] Parsed data: ${JSON.stringify(linkedinData, null, 2)}`);
 
       // [DEBUG] Save parsed LinkedIn data
