@@ -11,11 +11,16 @@
  *   - Output: quote + source + context entries (no interpretation)
  *
  * Stage 3: Profile Generation
- *   - Input: Geoffrey Block + extraction output + output instructions
- *   - Output: Persuasion Profile (18 sections, user-facing)
+ *   - Input: Geoffrey Block + exemplars + extraction output + output instructions
+ *   - Output: First draft Persuasion Profile (18 sections)
+ *
+ * Stage 3b: Critique and Redraft Pass (if ENABLE_CRITIQUE_REDRAFT)
+ *   - Input: Geoffrey Block + exemplars + extraction output + first draft
+ *   - Process: score for insight novelty and tactical value, cut/compress
+ *   - Output: Final Persuasion Profile (18 sections, user-facing)
  *
  * Stage 4: Meeting Guide Generation
- *   - Input: Persuasion Profile + Meeting Guide Block + MG Exemplars + DTW Org Layer
+ *   - Input: Final Persuasion Profile + Meeting Guide Block + MG Exemplars + DTW Org Layer
  *   - Output: Meeting Guide (tactical choreography, user-facing)
  *
  * Key terms:
@@ -29,7 +34,13 @@ import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGui
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
+import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
+
+// STAGE 4b: Critique and Redraft Pass
+// Set to false to revert to single-pass profile generation
+// Added 2026-02-09 — if output quality degrades, set to false
+const ENABLE_CRITIQUE_REDRAFT = true;
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -176,7 +187,7 @@ export async function runConversationPipeline(
   console.log(`CONVERSATION MODE (v5 extraction pipeline): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
-  const TOTAL_STEPS = 33;
+  const TOTAL_STEPS = 38;
 
   // ─── LinkedIn PDF Parsing (before research, so it informs identity & queries) ───
   let linkedinData: LinkedInData | null = null;
@@ -323,16 +334,75 @@ export async function runConversationPipeline(
     setTimeout(() => { if (!profileDone) onProgress('Building 18-section Persuasion Profile', 'analysis', 26, TOTAL_STEPS); }, 50000),
   ];
 
-  const persuasionProfile = await profilePromise;
+  const firstDraftProfile = await profilePromise;
   profileDone = true;
   profileTimers.forEach(clearTimeout);
 
-  onProgress(`✓ Persuasion Profile complete — ${persuasionProfile.length} characters of insight`, 'analysis', 27, TOTAL_STEPS);
-  console.log(`[Conversation] Persuasion Profile complete: ${persuasionProfile.length} chars`);
+  console.log(`[Stage 3] Profile generation complete: ${firstDraftProfile.length} chars`);
+
+  // Save first draft debug output (ALWAYS, regardless of flag)
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-first-draft.txt', firstDraftProfile);
+    console.log(`[DEBUG] First draft profile saved (${firstDraftProfile.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save first draft:', e); }
+
+  // ─── Stage 3b: Critique and Redraft Pass ─────────────────────────────
+  // Revert by setting ENABLE_CRITIQUE_REDRAFT = false at top of file
+  let finalProfile = firstDraftProfile;
+
+  if (ENABLE_CRITIQUE_REDRAFT) {
+    console.log(`[Stage 3b] Starting critique and redraft pass...`);
+    onProgress('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
+
+    const critiquePrompt = buildCritiqueRedraftPrompt(
+      donorName,
+      firstDraftProfile,
+      geoffreyBlock,
+      exemplars,
+      extractionOutput,
+      linkedinData
+    );
+
+    // Save critique prompt for debugging
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
+      console.log(`[DEBUG] Critique prompt saved (${critiquePrompt.length} chars)`);
+    } catch (e) { console.warn('[DEBUG] Failed to save critique prompt:', e); }
+    console.log(`[Stage 3b] Critique prompt token estimate: ${estimateTokens(critiquePrompt)}`);
+
+    onProgress('Applying editorial pass...', 'analysis', 28, TOTAL_STEPS);
+
+    const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
+    const critiquePromise = conversationTurn(critiqueMessages, { maxTokens: 16000 });
+
+    // Timed intermediate updates during critique
+    let critiqueDone = false;
+    const critiqueTimers = [
+      setTimeout(() => { if (!critiqueDone) onProgress('Scoring for insight novelty and redundancy', 'analysis', 29, TOTAL_STEPS); }, 15000),
+      setTimeout(() => { if (!critiqueDone) onProgress('Cutting horizontal restatement, compressing low-value passages', 'analysis', 30, TOTAL_STEPS); }, 30000),
+    ];
+
+    finalProfile = await critiquePromise;
+    critiqueDone = true;
+    critiqueTimers.forEach(clearTimeout);
+
+    // Save final profile debug output
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-final.txt', finalProfile);
+      console.log(`[DEBUG] Final profile saved (${finalProfile.length} chars)`);
+    } catch (e) { console.warn('[DEBUG] Failed to save final profile:', e); }
+
+    const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
+    console.log(`[Stage 3b] Complete: ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
+    onProgress(`✓ Editorial pass complete — ${reduction}% tighter`, 'analysis', 31, TOTAL_STEPS);
+  } else {
+    console.log(`[Stage 3b] Skipped (ENABLE_CRITIQUE_REDRAFT = false)`);
+    onProgress(`✓ Persuasion Profile complete — ${finalProfile.length} characters of insight`, 'analysis', 27, TOTAL_STEPS);
+  }
 
   // ─── Stage 4: Meeting Guide Generation ──────────────────────────────
   onProgress('', 'writing'); // phase transition event
-  onProgress('Loading meeting strategy framework', 'writing', 28, TOTAL_STEPS);
+  onProgress('Loading meeting strategy framework', 'writing', 33, TOTAL_STEPS);
   console.log('[Conversation] Stage 4: Generating meeting guide from profile...');
 
   const meetingGuideBlock = loadMeetingGuideBlock();
@@ -343,7 +413,7 @@ export async function runConversationPipeline(
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
     donorName,
-    persuasionProfile,
+    finalProfile,
     meetingGuideBlock,
     dtwOrgLayer,
     meetingGuideExemplars
@@ -352,7 +422,7 @@ export async function runConversationPipeline(
   const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
   console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
 
-  onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 29, TOTAL_STEPS);
+  onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 34, TOTAL_STEPS);
 
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
   const mgPromise = conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
@@ -360,18 +430,18 @@ export async function runConversationPipeline(
   // Timed intermediate updates during meeting guide generation
   let meetingGuideDone = false;
   const mgTimers = [
-    setTimeout(() => { if (!meetingGuideDone) onProgress('Crafting opening moves and positioning strategy', 'writing', 30, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!meetingGuideDone) onProgress('Designing conversation flow and ask choreography', 'writing', 31, TOTAL_STEPS); }, 30000),
+    setTimeout(() => { if (!meetingGuideDone) onProgress('Crafting opening moves and positioning strategy', 'writing', 35, TOTAL_STEPS); }, 15000),
+    setTimeout(() => { if (!meetingGuideDone) onProgress('Designing conversation flow and ask choreography', 'writing', 36, TOTAL_STEPS); }, 30000),
   ];
 
   const meetingGuide = await mgPromise;
   meetingGuideDone = true;
   mgTimers.forEach(clearTimeout);
 
-  onProgress('✓ Meeting guide complete', 'writing', 32, TOTAL_STEPS);
+  onProgress('✓ Meeting guide complete', 'writing', 37, TOTAL_STEPS);
   console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
 
-  onProgress('✓ All documents ready — preparing download', undefined, 33, TOTAL_STEPS);
+  onProgress('✓ All documents ready — preparing download', undefined, 38, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE: Complete`);
@@ -379,8 +449,8 @@ export async function runConversationPipeline(
 
   return {
     research,
-    profile: persuasionProfile,         // Persuasion Profile (18-section, user-facing)
-    dossier: persuasionProfile,         // Frontend reads dossier.rawMarkdown for display
+    profile: finalProfile,              // Persuasion Profile (18-section, user-facing)
+    dossier: finalProfile,              // Frontend reads dossier.rawMarkdown for display
     meetingGuide,
     draft: extractionOutput,            // Extraction output (intermediate, for debug)
     critique: ''

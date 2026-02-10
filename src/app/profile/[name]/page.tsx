@@ -430,6 +430,33 @@ export default function ProfilePage() {
       {/* Content */}
       <main className="max-w-[800px] mx-auto px-4 py-10">
         {renderContent()}
+
+        {/* Debug Downloads */}
+        <details className="mt-8 border-t border-dtw-light-gray pt-4">
+          <summary className="cursor-pointer text-sm text-dtw-mid-gray hover:text-dtw-warm-gray transition-colors">
+            Debug Files
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { file: 'extraction-prompt', label: 'Extraction Prompt' },
+              { file: 'extraction', label: 'Extraction Output' },
+              { file: 'prompt', label: 'Profile Prompt' },
+              { file: 'first-draft', label: 'First Draft' },
+              { file: 'critique-prompt', label: 'Critique Prompt' },
+              { file: 'final', label: 'Final Profile' },
+              { file: 'linkedin', label: 'LinkedIn Data' },
+            ].map(({ file, label }) => (
+              <a
+                key={file}
+                href={`/api/debug-dump?file=${file}`}
+                download={`DEBUG-${file}.${file === 'linkedin' ? 'json' : 'txt'}`}
+                className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </details>
       </main>
 
       {/* Footer */}
