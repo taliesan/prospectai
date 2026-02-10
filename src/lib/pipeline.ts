@@ -1,5 +1,6 @@
 // Core pipeline for donor profiling
 // This orchestrates the three steps: Research → Dossier → Profile
+// v3: Rebuilt source collection with tiering, screening, and blog crawling
 
 import { complete, completeExtended } from './anthropic';
 import { sanitizeForClaude } from './sanitize';
@@ -7,6 +8,7 @@ import { STATUS } from './progress';
 import {
   IDENTITY_EXTRACTION_PROMPT,
   generateResearchQueries,
+  parseAnalyticalQueries,
   SOURCE_CLASSIFICATION_PROMPT
 } from './prompts/research';
 import {
@@ -23,6 +25,17 @@ import {
 import { runAllValidators } from './validators';
 import { selectExemplars } from './canon/loader';
 
+// New v3 research modules
+import { ResearchSource, runScreeningPipeline } from './research/screening';
+import { crawlSubjectPublishing } from './research/blog-crawler';
+import {
+  tierSources,
+  enforceTargets,
+  TieredSource,
+  TIER_PREAMBLE,
+  buildEvidenceGapBlock
+} from './research/tiering';
+
 // Types
 interface ResearchResult {
   donorName: string;
@@ -30,6 +43,10 @@ interface ResearchResult {
   queries: { query: string; category: string }[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
+  tier1Count?: number;
+  tier2Count?: number;
+  tier3Count?: number;
+  evidenceWarnings?: string[];
 }
 
 interface DossierResult {
@@ -49,11 +66,11 @@ interface ProfileResult {
 // Progress callback type for conversation pipeline integration
 type ResearchProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
-// Step 1: Research
+// Step 1: Research (v3 — with blog crawling, aggressive screening, tiering)
 export async function conductResearch(
   donorName: string,
   seedUrls: string[] = [],
-  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
   fetchFunction?: (url: string) => Promise<string>,
   onProgress?: ResearchProgressCallback
 ): Promise<ResearchResult> {
@@ -113,33 +130,78 @@ Extract the identity signals for this person.`;
     'research', 5, TOTAL
   );
 
-  // 3. Generate targeted search queries using identity signals
-  console.log('[Research] Generating targeted search queries...');
-  emit('Designing research strategy', 'research', 6, TOTAL);
-  const queryPrompt = generateResearchQueries(donorName, identity);
-  const queryResponse = await complete('You are a research strategist.', queryPrompt);
-
-  let queries: { query: string; category: string }[] = [];
-  try {
-    const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
-    queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-  } catch {
-    // Fallback queries with identity context
-    const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
-    queries = [
-      { query: `"${donorName}"${orgSuffix} interview`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} podcast`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'PHILANTHROPY' },
-      { query: `"${donorName}"${orgSuffix} profile`, category: 'NEWS_PROFILES' },
-    ];
+  // ── NEW: Crawl subject's own publishing first ────────────────────
+  let tier1Sources: ResearchSource[] = [];
+  if (fetchFunction) {
+    emit('Crawling subject\'s personal publishing', 'research', 6, TOTAL);
+    try {
+      tier1Sources = await crawlSubjectPublishing(
+        donorName,
+        seedUrls,
+        identity,
+        searchFunction as any,
+        fetchFunction
+      );
+      console.log(`[Research] Blog/publishing crawl: ${tier1Sources.length} Tier 1 sources`);
+      if (tier1Sources.length > 0) {
+        emit(`Found ${tier1Sources.length} posts from subject's own publishing`, 'research', 6, TOTAL);
+      }
+    } catch (err) {
+      console.error('[Research] Blog crawl failed:', err);
+    }
   }
 
-  console.log(`[Research] Generated ${queries.length} queries`);
-  emit(`Researching ${queries.length} angles across interviews, news, and profiles`, 'research', 7, TOTAL);
+  // 3. Generate targeted search queries using identity signals (v3: analytical categories)
+  console.log('[Research] Generating analytical search queries...');
+  emit('Designing research strategy with analytical categories', 'research', 7, TOTAL);
+  const queryPrompt = generateResearchQueries(donorName, identity, seedContent.slice(0, 3000));
+  const queryResponse = await complete('You are a research analyst designing search queries for behavioral evidence.', queryPrompt);
+
+  // Parse queries with new analytical format
+  let queries: { query: string; category: string; hypothesis?: string }[] = [];
+  const analyticalQueries = parseAnalyticalQueries(queryResponse);
+
+  if (analyticalQueries.length > 0) {
+    queries = analyticalQueries.map(q => ({
+      query: q.query,
+      category: q.category,
+      hypothesis: q.hypothesis,
+    }));
+
+    // Log category distribution
+    const catCounts: Record<string, number> = {};
+    for (const q of analyticalQueries) {
+      catCounts[q.category] = (catCounts[q.category] || 0) + 1;
+    }
+    console.log(`[Query Gen] Generated ${queries.length} queries:`);
+    console.log(`  Category A (known outputs): ${catCounts['A'] || 0}`);
+    console.log(`  Category B (pressure points): ${catCounts['B'] || 0}`);
+    console.log(`  Category C (community): ${catCounts['C'] || 0}`);
+    console.log(`  Category D (org context): ${catCounts['D'] || 0}`);
+    console.log(`  Category E (gap-filling): ${catCounts['E'] || 0}`);
+  } else {
+    // Fallback: try old format parsing
+    try {
+      const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
+      queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    } catch {
+      // Fallback queries with identity context
+      const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
+      queries = [
+        { query: `"${donorName}"${orgSuffix} interview`, category: 'A' },
+        { query: `"${donorName}"${orgSuffix} podcast`, category: 'A' },
+        { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'C' },
+        { query: `"${donorName}"${orgSuffix} profile`, category: 'C' },
+      ];
+    }
+    console.log(`[Research] Generated ${queries.length} queries (fallback format)`);
+  }
+
+  emit(`Researching ${queries.length} angles across ${new Set(queries.map(q => q.category)).size} categories`, 'research', 7, TOTAL);
 
   // 4. Execute searches
   console.log('[Research] Executing searches...');
-  const allSources: { url: string; title: string; snippet: string; query: string }[] = [];
+  const allSources: ResearchSource[] = [];
   let searchedCount = 0;
 
   for (const q of queries) {
@@ -149,7 +211,14 @@ Extract the identity signals for this person.`;
       }
       const results = await searchFunction(q.query);
       for (const r of results) {
-        allSources.push({ ...r, query: q.query });
+        allSources.push({
+          ...r,
+          content: (r as any).fullContent || undefined,
+          query: q.query,
+          queryCategory: q.category as any,
+          queryHypothesis: q.hypothesis,
+          source: 'tavily',
+        });
       }
       searchedCount++;
       if (searchedCount % 3 === 0 || searchedCount === queries.length) {
@@ -162,36 +231,78 @@ Extract the identity signals for this person.`;
   }
 
   // Deduplicate by URL
-  const uniqueSources = Array.from(
-    new Map(allSources.map(s => [s.url, s])).values()
-  );
+  const urlMap = new Map<string, ResearchSource>();
+  // Add tier1 sources first (priority)
+  for (const s of tier1Sources) {
+    urlMap.set(s.url, s);
+  }
+  // Then add Tavily sources (won't override tier1)
+  for (const s of allSources) {
+    if (!urlMap.has(s.url)) {
+      urlMap.set(s.url, s);
+    }
+  }
+  const uniqueSources = Array.from(urlMap.values());
 
-  console.log(`[Research] Collected ${uniqueSources.length} unique sources before screening`);
-  emit(`${uniqueSources.length} results from ${queries.length} searches`, 'research', 10, TOTAL);
+  console.log(`[Research] Collected ${uniqueSources.length} unique sources (${tier1Sources.length} from publishing crawl, ${allSources.length} from Tavily)`);
+  emit(`${uniqueSources.length} results from ${queries.length} searches + ${tier1Sources.length} blog posts`, 'research', 10, TOTAL);
 
   // Tavily extract for top sources
   emit('Reading full text from top sources', 'research', 11, TOTAL);
 
-  // 5. Screen sources for relevance to THIS person
-  console.log('[Research] Screening sources for relevance...');
-  emit(`Verifying sources match the right ${donorName}`, 'research', 12, TOTAL);
-  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName, emit);
+  // ── NEW: Aggressive pre-extraction screening ─────────────────────
+  console.log('[Research] Running aggressive screening pipeline...');
+  emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 12, TOTAL);
 
-  const dropped = uniqueSources.length - screenedSources.length;
-  console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${dropped})`);
-  emit(`Confirmed ${screenedSources.length} relevant sources (dropped ${dropped} false matches)`, 'research', 14, TOTAL);
+  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+    uniqueSources,
+    donorName,
+    identity
+  );
+
+  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 13, TOTAL);
+
+  // ── NEW: Tier and enforce targets ────────────────────────────────
+  const tieredSources = tierSources(screenedSources, donorName);
+  const { selected: finalSources, warnings: evidenceWarnings } = enforceTargets(tieredSources);
+
+  const finalTier1 = finalSources.filter(s => s.tier === 1).length;
+  const finalTier2 = finalSources.filter(s => s.tier === 2).length;
+  const finalTier3 = finalSources.filter(s => s.tier === 3).length;
+
+  console.log(`[Research] === Source Collection Summary ===`);
+  console.log(`[Research] Blog crawl: ${tier1Sources.length} posts`);
+  console.log(`[Research] Tavily queries: ${queries.length}`);
+  console.log(`[Research] Raw sources collected: ${uniqueSources.length}`);
+  console.log(`[Screening] Automatic rejections: ${screeningStats.autoRejected}`);
+  console.log(`[Screening] LLM rejections: ${screeningStats.llmRejected}`);
+  console.log(`[Screening] Deduplication: ${screeningStats.beforeDedup} → ${screeningStats.afterDedup}`);
+  console.log(`[Tiering] Tier 1: ${finalTier1}, Tier 2: ${finalTier2}, Tier 3: ${finalTier3}`);
+  console.log(`[Targets] Final selection: ${finalSources.length} sources`);
+  if (evidenceWarnings.length > 0) {
+    console.log(`[Warnings] ${evidenceWarnings.join('; ')}`);
+  }
+
+  const dropped = uniqueSources.length - finalSources.length;
+  emit(`${finalSources.length} quality sources selected (${finalTier1} T1, ${finalTier2} T2, ${finalTier3} T3) — dropped ${dropped}`, 'research', 14, TOTAL);
 
   // 6. Generate raw research document
-  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, screenedSources);
+  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, finalSources);
 
   return {
     donorName,
     identity,
     queries,
-    sources: screenedSources,
-    rawMarkdown
+    sources: finalSources,
+    rawMarkdown,
+    tier1Count: finalTier1,
+    tier2Count: finalTier2,
+    tier3Count: finalTier3,
+    evidenceWarnings,
   };
 }
+
+// ── Identity-based relevance screening (kept for backward compat) ──
 
 async function screenSourcesForRelevance(
   sources: { url: string; title: string; snippet: string }[],
@@ -303,7 +414,7 @@ function generateResearchMarkdown(
   donorName: string,
   identity: any,
   queries: { query: string; category: string }[],
-  sources: { url: string; title: string; snippet: string }[]
+  sources: (TieredSource | { url: string; title: string; snippet: string })[]
 ): string {
   const sections = [
     `# RAW RESEARCH: ${donorName}`,
@@ -319,14 +430,17 @@ function generateResearchMarkdown(
     ...queries.map(q => `- [${q.category}] ${q.query}`),
     '',
     '## Sources',
-    ...sources.map((s, i) => [
-      `### ${i + 1}. ${s.title}`,
-      `URL: ${s.url}`,
-      `Snippet: ${s.snippet}`,
-      ''
-    ].join('\n'))
+    ...sources.map((s, i) => {
+      const tierLabel = 'tier' in s ? ` [TIER ${s.tier}]` : '';
+      return [
+        `### ${i + 1}. ${s.title}${tierLabel}`,
+        `URL: ${s.url}`,
+        `Snippet: ${s.snippet}`,
+        ''
+      ].join('\n');
+    })
   ];
-  
+
   return sections.join('\n');
 }
 
@@ -345,7 +459,7 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Source ranking by behavioral signal value
+// Source ranking by behavioral signal value (kept for backward compat with extractDossier)
 // TIER 1: Interviews, podcasts, personal writing (highest behavioral signal)
 // TIER 2: Speeches, talks, in-depth profiles
 // TIER 3: News coverage, press releases
@@ -428,7 +542,7 @@ function rankSourceByBehavioralValue(source: { url: string; title: string; snipp
   return 3;
 }
 
-function rankAndSortSources(
+export function rankAndSortSources(
   sources: { url: string; title: string; snippet: string; content?: string }[]
 ): { url: string; title: string; snippet: string; content?: string; tier: number }[] {
   const ranked = sources.map(source => ({
@@ -594,12 +708,12 @@ export async function extractDossier(
   }
 
   console.log(`[Dossier] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
-  
+
   // 2. Synthesize by dimension
   console.log('[Dossier] Synthesizing dimensions...');
   STATUS.synthesizing();
   const combinedEvidence = allEvidence.map(e => e.extraction).join('\n\n---\n\n');
-  
+
   const synthesisPrompt = `${SYNTHESIS_PROMPT}
 
 DONOR: ${donorName}
@@ -614,7 +728,7 @@ Synthesize the evidence across all 17 dimensions. For each dimension, provide th
     synthesisPrompt,
     { maxTokens: 12000 }
   );
-  
+
   // 3. Cross-cutting analysis
   console.log('[Dossier] Generating cross-cutting analysis...');
   STATUS.crossCutting();
@@ -632,10 +746,10 @@ Generate the cross-cutting analysis: core contradiction, dangerous truth, and su
     crossCuttingPrompt,
     { maxTokens: 4096 }
   );
-  
+
   // 4. Generate dossier document
   const rawMarkdown = generateDossierMarkdown(donorName, synthesis, crossCutting, allEvidence);
-  
+
   return {
     donorName,
     dimensions: [], // Would parse synthesis into structured form
@@ -792,24 +906,24 @@ export async function runFullPipeline(
   console.log(`\n${'='.repeat(60)}`);
   console.log(`PROSPECTAI: Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
-  
+
   // Step 1: Research
   const research = await conductResearch(donorName, seedUrls, searchFunction);
   console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
   STATUS.researchComplete(research.sources.length);
-  
+
   // Step 2: Dossier
   const dossier = await extractDossier(donorName, research.sources, canonDocs);
   console.log(`\n[Pipeline] Dossier complete\n`);
   STATUS.dossierComplete();
-  
+
   // Step 3: Profile
   const profile = await generateProfile(donorName, dossier.rawMarkdown, canonDocs);
   console.log(`\n[Pipeline] Profile complete: ${profile.status}\n`);
-  
+
   console.log(`${'='.repeat(60)}`);
   console.log(`PROSPECTAI: Complete`);
   console.log(`${'='.repeat(60)}\n`);
-  
+
   return { research, dossier, profile };
 }

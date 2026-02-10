@@ -1,11 +1,20 @@
 // Conversation-mode pipeline for donor profiling
 // Two-step architecture: sources → dossier → profile
 // Both steps governed by the Geoffrey Block
+// v3: Uses tiered sources with tier labels and evidence gap warnings
 
 import { conversationTurn, Message } from './anthropic';
-import { conductResearch } from './pipeline';
+import { conductResearch, rankAndSortSources } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
+import {
+  tierSources,
+  TieredSource,
+  TIER_PREAMBLE,
+  formatSourcesForDossier,
+  truncateToTokenBudget,
+  buildEvidenceGapBlock
+} from './research/tiering';
 
 // Types (re-exported from pipeline.ts)
 export interface ResearchResult {
@@ -14,6 +23,10 @@ export interface ResearchResult {
   queries: { query: string; category: string }[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
+  tier1Count?: number;
+  tier2Count?: number;
+  tier3Count?: number;
+  evidenceWarnings?: string[];
 }
 
 export interface ConversationResult {
@@ -28,64 +41,6 @@ export interface ConversationResult {
 // Token estimation (rough: 4 chars per token)
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
-}
-
-// Source ranking for truncation (same logic as pipeline.ts)
-function rankSourceByBehavioralValue(source: { url: string; title: string; snippet: string }): number {
-  const url = source.url.toLowerCase();
-  const title = (source.title || '').toLowerCase();
-  const snippet = (source.snippet || '').toLowerCase();
-  const combined = `${url} ${title} ${snippet}`;
-
-  // TIER 1: Video/podcast interviews, personal writing
-  const tier1Patterns = [
-    /youtube\.com/, /youtu\.be/, /podcast/, /\binterview\b/,
-    /medium\.com/, /substack/, /\bop-ed\b/, /\bi think\b/,
-    /\bmy view\b/, /\bi believe\b/, /personal\s*(essay|blog|writing)/,
-  ];
-  for (const pattern of tier1Patterns) {
-    if (pattern.test(combined)) return 1;
-  }
-
-  // TIER 2: Speeches, talks, in-depth profiles
-  const tier2Patterns = [
-    /\bspeech\b/, /\bkeynote\b/, /\bremarks\b/, /\btalk at\b/,
-    /\btalks at\b/, /\bprofile\b/, /\bfeature\b/, /longform/,
-    /newyorker\.com/, /theatlantic\.com/, /wired\.com/, /vanityfair\.com/,
-  ];
-  for (const pattern of tier2Patterns) {
-    if (pattern.test(combined)) return 2;
-  }
-
-  // TIER 4: Wikipedia, bio pages, LinkedIn
-  const tier4Patterns = [
-    /wikipedia\.org/, /linkedin\.com/, /crunchbase\.com/,
-    /bloomberg\.com\/profile/, /forbes\.com\/profile/, /\/bio\b/, /\/about\b/,
-  ];
-  for (const pattern of tier4Patterns) {
-    if (pattern.test(combined)) return 4;
-  }
-
-  // TIER 3: News coverage, press releases (default)
-  return 3;
-}
-
-function rankAndSortSources(
-  sources: { url: string; title: string; snippet: string; content?: string }[]
-): { url: string; title: string; snippet: string; content?: string; tier: number }[] {
-  const ranked = sources.map(source => ({
-    ...source,
-    tier: rankSourceByBehavioralValue(source)
-  }));
-
-  ranked.sort((a, b) => {
-    if (a.tier !== b.tier) return a.tier - b.tier;
-    if (a.content && !b.content) return -1;
-    if (!a.content && b.content) return 1;
-    return 0;
-  });
-
-  return ranked;
 }
 
 // Dossier prompt - embedded here as specified
@@ -127,26 +82,46 @@ Then write one section for each of these 17 behavioral dimensions. Use the dimen
 OUTPUT: Long-form behavioral prose organized by the 18 sections above (Life and Career + 17 dimensions). Not bullet points. Each section should have a clear header and substantive analysis. Cross-reference across sources. Surface every signal, every quote, every contradiction, every conspicuous silence. Be expansive — more is more.`;
 
 /**
- * Build Step 1 prompt: Geoffrey Block + sources + dossier instruction
+ * Build Step 1 prompt: Geoffrey Block + tier preamble + tiered sources + dossier instruction
+ * v3: Sources now include tier labels and evidence gap warnings
  */
 function buildDossierPrompt(
   donorName: string,
-  sources: { url: string; title: string; snippet: string; content?: string }[],
-  geoffreyBlock: string
+  sources: TieredSource[] | { url: string; title: string; snippet: string; content?: string; tier?: number }[],
+  geoffreyBlock: string,
+  evidenceWarnings?: string[]
 ): string {
-  const sourcesText = sources.map((s, i) =>
-    `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}${s.content ? `\nContent: ${s.content}` : ''}`
-  ).join('\n\n');
+  // Check if sources are tiered
+  const hasTiers = sources.length > 0 && 'tier' in sources[0] && 'tierReason' in sources[0];
+
+  let sourcesText: string;
+  if (hasTiers) {
+    sourcesText = formatSourcesForDossier(sources as TieredSource[]);
+  } else {
+    sourcesText = sources.map((s, i) => {
+      const tierLabel = s.tier ? ` [TIER ${s.tier}]` : '';
+      return `### Source ${i + 1}${tierLabel}: ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}${s.content ? `\nContent: ${s.content}` : ''}`;
+    }).join('\n\n');
+  }
+
+  // Build evidence gap block if there are warnings
+  const evidenceGapBlock = evidenceWarnings?.length
+    ? buildEvidenceGapBlock(evidenceWarnings)
+    : '';
 
   return `${geoffreyBlock}
 
 ---
+
+${hasTiers ? TIER_PREAMBLE : ''}
 
 Here are ${sources.length} research sources about ${donorName}:
 
 ${sourcesText}
 
 ---
+
+${evidenceGapBlock}
 
 ${DOSSIER_PROMPT}
 
@@ -204,6 +179,7 @@ type PipelineProgressCallback = (message: string, phase?: string, step?: number,
  * Main conversation pipeline - two-step architecture
  * Step 1: sources → dossier
  * Step 2: dossier → profile
+ * v3: Uses tiered sources with tier labels in dossier prompt
  */
 export async function runConversationPipeline(
   donorName: string,
@@ -213,7 +189,7 @@ export async function runConversationPipeline(
   onProgress: PipelineProgressCallback
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`CONVERSATION MODE (Two-Step): Processing ${donorName}`);
+  console.log(`CONVERSATION MODE (Two-Step v3): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
   const TOTAL_STEPS = 28;
@@ -224,8 +200,11 @@ export async function runConversationPipeline(
 
   const research = await conductResearch(donorName, seedUrls, searchFunction, fetchFunction, onProgress);
 
-  onProgress(`✓ Research complete — ${research.sources.length} verified sources`, 'research', 15, TOTAL_STEPS);
-  console.log(`[Conversation] Research complete: ${research.sources.length} sources`);
+  const t1 = research.tier1Count || 0;
+  const t2 = research.tier2Count || 0;
+  const t3 = research.tier3Count || 0;
+  onProgress(`✓ Research complete — ${research.sources.length} verified sources (${t1} T1, ${t2} T2, ${t3} T3)`, 'research', 15, TOTAL_STEPS);
+  console.log(`[Conversation] Research complete: ${research.sources.length} sources (T1:${t1} T2:${t2} T3:${t3})`);
 
   // ─── Phase 2: Analysis ───────────────────────────────────────────
   onProgress('', 'analysis'); // phase transition event
@@ -235,32 +214,44 @@ export async function runConversationPipeline(
   const exemplars = loadExemplars();
   console.log(`[Conversation] Loaded Geoffrey Block (${geoffreyBlock.length} chars) and exemplars (${exemplars.length} chars)`);
 
-  // Rank and sort sources
-  const rankedSources = rankAndSortSources(research.sources);
-  const tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  for (const s of rankedSources) tierCounts[s.tier as keyof typeof tierCounts]++;
+  // v3: Use tiered sources directly from research (already tiered by pipeline)
+  // Re-tier if sources don't have tier info (backward compat)
+  let tieredSources: TieredSource[];
+  if (research.sources.length > 0 && 'tier' in research.sources[0] && 'tierReason' in research.sources[0]) {
+    tieredSources = research.sources as TieredSource[];
+  } else {
+    tieredSources = tierSources(research.sources, donorName);
+  }
+
+  // Sort by tier for display
+  tieredSources.sort((a, b) => a.tier - b.tier);
+
+  const tierCounts = { 1: 0, 2: 0, 3: 0 };
+  for (const s of tieredSources) {
+    if (s.tier >= 1 && s.tier <= 3) tierCounts[s.tier as 1 | 2 | 3]++;
+  }
 
   onProgress(
-    `Ranking sources — ${tierCounts[1]} interviews, ${tierCounts[2]} profiles, ${tierCounts[3]} news, ${tierCounts[4]} bios`,
+    `Ranking sources — ${tierCounts[1]} subject's voice, ${tierCounts[2]} third-party quotes, ${tierCounts[3]} background`,
     'analysis', 16, TOTAL_STEPS
   );
 
   // Prepare sources with token budget management
   const MAX_TOKENS = 180000;
-  let dossierPrompt = buildDossierPrompt(donorName, rankedSources, geoffreyBlock);
+  let dossierPrompt = buildDossierPrompt(donorName, tieredSources, geoffreyBlock, research.evidenceWarnings);
   let estimatedTokens = estimateTokens(dossierPrompt);
 
   console.log(`[Conversation] Dossier prompt token estimate: ${estimatedTokens} (max: ${MAX_TOKENS})`);
 
-  let sourcesToUse = rankedSources;
+  let sourcesToUse = tieredSources;
   if (estimatedTokens > MAX_TOKENS) {
-    console.log(`[Conversation] Token budget exceeded, truncating sources...`);
-    while (estimatedTokens > MAX_TOKENS && sourcesToUse.length > 10) {
-      sourcesToUse = sourcesToUse.slice(0, Math.floor(sourcesToUse.length * 0.8));
-      dossierPrompt = buildDossierPrompt(donorName, sourcesToUse, geoffreyBlock);
-      estimatedTokens = estimateTokens(dossierPrompt);
-    }
-    console.log(`[Conversation] Truncated to ${sourcesToUse.length} sources, ~${estimatedTokens} tokens`);
+    console.log(`[Conversation] Token budget exceeded, using tier-aware truncation...`);
+    // v3: Use tier-aware truncation (drops Tier 3 first, preserves Tier 1)
+    const maxSourceTokens = MAX_TOKENS - estimateTokens(geoffreyBlock) - estimateTokens(DOSSIER_PROMPT) - 5000; // 5k buffer
+    sourcesToUse = truncateToTokenBudget(tieredSources, maxSourceTokens);
+    dossierPrompt = buildDossierPrompt(donorName, sourcesToUse, geoffreyBlock, research.evidenceWarnings);
+    estimatedTokens = estimateTokens(dossierPrompt);
+    console.log(`[Conversation] Tier-aware truncation: ${sourcesToUse.length} sources, ~${estimatedTokens} tokens`);
   }
 
   onProgress(`Preparing ${sourcesToUse.length} sources for behavioral analysis`, 'analysis', 17, TOTAL_STEPS);
