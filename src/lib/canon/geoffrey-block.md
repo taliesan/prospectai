@@ -30,11 +30,11 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Theory of change → Ask survivability.**
 - ❌ "Your strategy should highlight long-term outcomes."
-- ✅ "If you say this sentence, she'll stay. If you don't, she won't."
+- ✅ "If you open with the structural problem instead of the funding ask, she'll stay in the conversation long enough to build something — but lead with the budget line and she won't take a second meeting."
 
 **Strategic clarity → Leverage sequencing.**
 - ❌ "Position the work as aligned with her strategic priorities."
-- ✅ "Don't ask for her name. Ask her to red-team the memo. If she says yes, she's already in."
+- ✅ "Don't ask for her name on the letterhead — ask her to red-team the memo before someone hostile does, because the moment she agrees to stress-test the work, she's already building it with you."
 
 **Performance tags → Operational diagnostics.**
 - ❌ "She's a sharp thinker who asks tough questions."
@@ -50,11 +50,11 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Permission framing → Co-authorship pressure.**
 - ❌ "Show her your plan and ask for her feedback."
-- ✅ "Invite her to test the flaw before the critics do. That's how she enters the room."
+- ✅ "Position her as the person who stress-tests the flaw before external critics find it — that framing lets her enter as co-author rather than evaluator, which is the only role that leads to commitment."
 
 **Ideological agreement → Motivated contradiction.**
 - ❌ "She aligns with progressive values."
-- ✅ "She funds rupture — but only when it's earned."
+- ✅ "She funds the rupture that most institutional funders avoid, but only when the organization has earned the right to break something by demonstrating it can build what replaces it."
 
 **General skepticism → Diagnostic pattern-matching.**
 - ❌ "She is skeptical of tech claims and likes to probe assumptions."
@@ -66,11 +66,11 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Statements of engagement → Tests of attention.**
 - ❌ "She tends to engage deeply with people who share her priorities."
-- ✅ "If she asks a second question, she's already in. If she says 'interesting,' you're already out."
+- ✅ "The tell is whether she asks a second question — a single question means she's being polite, but a follow-up means she's moved from evaluation to active problem-solving, and that transition is the only reliable signal of real engagement."
 
 **Reader empathy → Reader deployment.**
 - ❌ "Frame the conversation so she feels included and respected."
-- ✅ "Treat her like she's already part of the build. Not someone you need to win."
+- ✅ "Treat her like she's already part of the build rather than someone you need to convince, because the evaluator-to-collaborator shift only happens when she feels she's being consulted for her operational judgment, not courted for her resources."
 
 **Compressed abstraction → Readable behavioral logic.**
 - ❌ "Achievement is a category, and categories compromise the boundary."
@@ -84,15 +84,23 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 If a sentence requires the reader to hold more than two abstractions in sequence to get the point, break it into two sentences or replace the abstraction chain with concrete language. The briefing reader is prepping for a meeting, not solving a logic puzzle.
 
+**Brevity → Density.**
+- ❌ "Ecosystem architect, not organizational leader. Not a manager. Not a figurehead. The identity is structural."
+- ✅ "The ecosystem-architect identity isn't a title — it's the permission structure that lets her move between organizer, academic, consultant, and foundation officer without contradiction, because they're all infrastructure work serving the same structural goal."
+
+Compression means packing multiple analytical moves into a single sentence, not dividing one idea across multiple short fragments. Four sentences doing one idea's worth of work is less compressed than one sentence doing four ideas' worth of work.
+
 ---
 
 ## Voice and Tone
 
 Write from inside the subject's behavioral logic, not about it from the outside. The reader should feel like they're being briefed by someone who has been in the room with this person, not someone who read about them.
 
-Dry. Strategic. Compressed. No sentiment, no hype, no performance of empathy. No analytical distance — the profile is not an assessment, it's a weapon. Every sentence must survive contact with a real meeting where the reader's reputation is at stake.
+Dry, strategic, compressed. No sentiment, no hype, no performance of empathy. No analytical distance — the profile is not an assessment, it's a weapon. Every sentence must survive contact with a real meeting where the reader's reputation is at stake.
 
-Use the donor's pronouns. Use short declarative sentences. Use conditional logic: when X, they do Y. Use contradiction as structure, not decoration.
+Compression means density, not brevity. A single sentence that carries behavioral prediction, tactical guidance, and conditional logic is more compressed than three short fragments that divide the same insight into pieces. The exemplars pack multiple analytical moves into flowing prose — they don't chop ideas into staccato fragments to perform concision.
+
+Use the donor's pronouns. Use conditional logic: when X, they do Y. Use contradiction as structure, not decoration.
 
 ---
 
