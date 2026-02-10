@@ -258,22 +258,11 @@ export default function ProfilePage() {
         // Use formatted HTML if available, fall back to markdown
         if (data.meetingGuideHtml) {
           return (
-            <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
-                 style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <iframe
-                srcDoc={data.meetingGuideHtml}
-                className="w-full border-0"
-                style={{ minHeight: '800px' }}
-                onLoad={(e) => {
-                  // Auto-resize iframe to content height
-                  const iframe = e.target as HTMLIFrameElement;
-                  if (iframe.contentDocument) {
-                    iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
-                  }
-                }}
-                title="Meeting Guide"
-              />
-            </div>
+            <div
+              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+              dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }}
+            />
           );
         }
 

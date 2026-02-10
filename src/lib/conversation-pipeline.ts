@@ -35,7 +35,7 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
-import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
+import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // STAGE 4b: Critique and Redraft Pass
@@ -466,11 +466,12 @@ export async function runConversationPipeline(
     writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
   } catch (e) { console.warn('[DEBUG] Failed to save meeting guide markdown:', e); }
 
-  // Format meeting guide to HTML
-  const meetingGuideHtml = formatMeetingGuide(meetingGuide);
+  // Format meeting guide to HTML — embeddable for frontend, full doc for debug file
+  const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
+  const meetingGuideHtmlFull = formatMeetingGuide(meetingGuide);
   try {
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtml);
-    console.log(`[Meeting Guide] HTML formatted: ${meetingGuideHtml.length} chars`);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtmlFull);
+    console.log(`[Meeting Guide] HTML formatted: ${meetingGuideHtml.length} chars (embeddable), ${meetingGuideHtmlFull.length} chars (full)`);
   } catch (e) { console.warn('[DEBUG] Failed to save meeting guide HTML:', e); }
 
   // Validation
