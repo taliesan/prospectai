@@ -444,6 +444,7 @@ export default function ProfilePage() {
               { file: 'first-draft', label: 'First Draft' },
               { file: 'critique-prompt', label: 'Critique Prompt' },
               { file: 'final', label: 'Final Profile' },
+              { file: 'meeting-guide-prompt', label: 'Meeting Guide Prompt' },
               { file: 'linkedin', label: 'LinkedIn Data' },
             ].map(({ file, label }) => (
               <a

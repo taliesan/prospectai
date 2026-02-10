@@ -422,6 +422,24 @@ export async function runConversationPipeline(
   const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
   console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
 
+  // Token ratio check
+  const voiceTokens = Math.round(meetingGuideBlock.length / 4);
+  const exemplarTokens = Math.round(meetingGuideExemplars.length / 4);
+  const inputTokens = Math.round(finalProfile.length / 4);
+  console.log(`[Meeting Guide] Token ratio check:`);
+  console.log(`  Voice + Exemplars: ~${voiceTokens + exemplarTokens} tokens`);
+  console.log(`  Input (profile): ~${inputTokens} tokens`);
+  console.log(`  Ratio healthy: ${(voiceTokens + exemplarTokens) >= inputTokens}`);
+  if (inputTokens > 10000) {
+    console.warn(`[Meeting Guide] WARNING: Profile exceeds 10,000 tokens (~${inputTokens})`);
+  }
+
+  // Save meeting guide prompt for debugging
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
+    console.log(`[DEBUG] Meeting guide prompt saved (${meetingGuidePrompt.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide prompt:', e); }
+
   onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 34, TOTAL_STEPS);
 
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
