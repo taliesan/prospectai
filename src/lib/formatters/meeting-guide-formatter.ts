@@ -285,19 +285,9 @@ function escapeHtml(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
-/**
- * Convert parsed guide to self-contained HTML
- */
-function renderHTML(guide: ParsedGuide): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meeting Guide — ${escapeHtml(guide.donorName)}</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root {
+/** Raw CSS for the meeting guide */
+function getCSS(): string {
+  return `:root {
   --advance: #1a7a3a;
   --advance-bg: #edf7f0;
   --adjust: #b45309;
@@ -819,13 +809,29 @@ body {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+}`;
 }
-</style>
-</head>
-<body>
-<div class="page">
 
-<div class="header">
+/** Scope CSS by prefixing every selector with `.mg-root` */
+function scopeCSS(css: string): string {
+  return css
+    // Replace :root with .mg-root
+    .replace(/:root/g, '.mg-root')
+    // Replace body { with .mg-root {
+    .replace(/^body\s*\{/gm, '.mg-root {')
+    // Replace * { reset with .mg-root * {
+    .replace(/^\*\s*\{/gm, '.mg-root * {')
+    // Prefix class selectors at start of line with .mg-root
+    .replace(/^(\.[a-z])/gm, '.mg-root $1')
+    // Prefix @media inner selectors
+    .replace(/^(\s+)(\.[a-z])/gm, '$1.mg-root $2')
+    // Prefix @media inner body references
+    .replace(/^(\s+)body\s*\{/gm, '$1.mg-root {');
+}
+
+/** Generate the body content HTML (no document wrapper) */
+function renderBodyContent(guide: ParsedGuide): string {
+  return `<div class="header">
   <h1>Meeting Guide &mdash; ${escapeHtml(guide.donorName)}</h1>
   <div class="subtitle">${escapeHtml(guide.subtitle)}</div>
 </div>
@@ -963,17 +969,63 @@ ${guide.beats.map((beat, idx) => `  <div class="beat">
   </div>
 </div>
 
+</div>`;
+}
+
+/**
+ * Convert parsed guide to self-contained HTML document (for file download)
+ */
+function renderHTML(guide: ParsedGuide): string {
+  const css = getCSS();
+  const body = renderBodyContent(guide);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meeting Guide — ${escapeHtml(guide.donorName)}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+${css}
+</style>
+</head>
+<body>
+<div class="page">
+${body}
 </div>
 </body>
 </html>`;
 }
 
 /**
- * Main export: convert meeting guide markdown to styled HTML
+ * Render embeddable HTML fragment with scoped CSS (no document wrapper)
+ */
+function renderEmbeddable(guide: ParsedGuide): string {
+  const css = scopeCSS(getCSS());
+  const body = renderBodyContent(guide);
+  return `<style>${css}</style>
+<div class="mg-root">
+<div class="page">
+${body}
+</div>
+</div>`;
+}
+
+/**
+ * Main export: convert meeting guide markdown to styled, self-contained HTML document
  */
 export function formatMeetingGuide(markdown: string): string {
   const parsed = parseMarkdown(markdown);
   return renderHTML(parsed);
+}
+
+/**
+ * Embeddable version: returns a <div> with scoped CSS, no <html>/<body> wrapper.
+ * Safe to inject via dangerouslySetInnerHTML without iframe.
+ */
+export function formatMeetingGuideEmbeddable(markdown: string): string {
+  const parsed = parseMarkdown(markdown);
+  return renderEmbeddable(parsed);
 }
 
 /**
