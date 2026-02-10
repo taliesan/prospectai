@@ -418,8 +418,8 @@ body {
 
 /* PREP CARDS */
 .prep-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 .prep-card {
@@ -793,7 +793,7 @@ body {
 }
 @media (max-width: 768px) {
   .lights-shuts { grid-template-columns: 1fr; }
-  .prep-row { grid-template-columns: 1fr; }
+
   .arc-prep-row { grid-template-columns: 1fr; }
   .reset-grid { grid-template-columns: 1fr; }
   .room-grid { grid-template-columns: 1fr; }
