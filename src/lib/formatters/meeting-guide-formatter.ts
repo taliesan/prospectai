@@ -786,10 +786,30 @@ body {
 
 /* PRINT + RESPONSIVE */
 @media print {
-  body { font-size: 11px; }
-  .page { padding: 20px; }
-  .beat { break-inside: avoid; }
-  .reset-card { break-inside: avoid; }
+  body {
+    font-size: 11px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  .page { padding: 20px; max-width: 100%; }
+  /* Allow beats and reset cards to break across pages — avoids empty pages */
+  .beat { break-inside: auto; }
+  .reset-card { break-inside: auto; }
+  /* Keep small elements together when possible */
+  .beat-header { break-inside: avoid; break-after: avoid; }
+  .signal { break-inside: avoid; }
+  .posture { break-inside: avoid; }
+  .prep-card { break-inside: avoid; }
+  .primary-territory { break-inside: avoid; }
+  .secondary-item { break-inside: avoid; }
+  .header { break-after: avoid; }
+  .section-header { break-after: avoid; }
+  /* Prevent orphaned section headers at bottom of page */
+  .room-legend { break-before: auto; }
+  .reset-section { break-before: auto; }
+  /* Keep connector with surrounding beats */
+  .connector { break-inside: avoid; break-before: avoid; break-after: avoid; }
 }
 @media (max-width: 768px) {
   .lights-shuts { grid-template-columns: 1fr; }
