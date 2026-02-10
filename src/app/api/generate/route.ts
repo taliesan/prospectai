@@ -315,6 +315,7 @@ export async function POST(request: NextRequest) {
                   status: 'complete'
                 },
                 meetingGuide: conversationResult.meetingGuide,
+                meetingGuideHtml: conversationResult.meetingGuideHtml,
                 fundraiserName,
               };
 
