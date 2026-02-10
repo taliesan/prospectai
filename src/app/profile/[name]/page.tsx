@@ -445,12 +445,14 @@ export default function ProfilePage() {
               { file: 'critique-prompt', label: 'Critique Prompt' },
               { file: 'final', label: 'Final Profile' },
               { file: 'meeting-guide-prompt', label: 'Meeting Guide Prompt' },
+              { file: 'meeting-guide', label: 'Meeting Guide (MD)' },
+              { file: 'meeting-guide-html', label: 'Meeting Guide (HTML)' },
               { file: 'linkedin', label: 'LinkedIn Data' },
             ].map(({ file, label }) => (
               <a
                 key={file}
                 href={`/api/debug-dump?file=${file}`}
-                download={`DEBUG-${file}.${file === 'linkedin' ? 'json' : 'txt'}`}
+                download={`DEBUG-${file}.${file === 'linkedin' ? 'json' : file === 'meeting-guide-html' ? 'html' : file === 'meeting-guide' ? 'md' : 'txt'}`}
                 className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
               >
                 {label}

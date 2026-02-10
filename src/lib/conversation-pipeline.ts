@@ -35,6 +35,7 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
+import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // STAGE 4b: Critique and Redraft Pass
@@ -56,6 +57,7 @@ export interface ConversationResult {
   profile: string;
   dossier: string;
   meetingGuide: string;
+  meetingGuideHtml: string;
   draft: string;
   critique: string;
 }
@@ -459,6 +461,29 @@ export async function runConversationPipeline(
   onProgress('✓ Meeting guide complete', 'writing', 37, TOTAL_STEPS);
   console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
 
+  // Save meeting guide markdown
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide markdown:', e); }
+
+  // Format meeting guide to HTML
+  const meetingGuideHtml = formatMeetingGuide(meetingGuide);
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtml);
+    console.log(`[Meeting Guide] HTML formatted: ${meetingGuideHtml.length} chars`);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide HTML:', e); }
+
+  // Validation
+  const hasAllSections = meetingGuideHtml.includes('donor-read') &&
+                         meetingGuideHtml.includes('alignment-map') &&
+                         meetingGuideHtml.includes('beat-number');
+  const beatCount = (meetingGuideHtml.match(/beat-number/g) || []).length;
+  const signalCount = (meetingGuideHtml.match(/signal-tag/g) || []).length;
+  console.log(`[Meeting Guide] Validation:`);
+  console.log(`  All major sections: ${hasAllSections}`);
+  console.log(`  Beats: ${beatCount}`);
+  console.log(`  Signals: ${signalCount}`);
+
   onProgress('✓ All documents ready — preparing download', undefined, 38, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
@@ -470,6 +495,7 @@ export async function runConversationPipeline(
     profile: finalProfile,              // Persuasion Profile (18-section, user-facing)
     dossier: finalProfile,              // Frontend reads dossier.rawMarkdown for display
     meetingGuide,
+    meetingGuideHtml,                   // Styled HTML version of meeting guide
     draft: extractionOutput,            // Extraction output (intermediate, for debug)
     critique: ''
   };
