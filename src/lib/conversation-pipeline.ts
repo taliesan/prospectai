@@ -35,6 +35,7 @@ import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
+import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // STAGE 4b: Critique and Redraft Pass
@@ -56,6 +57,7 @@ export interface ConversationResult {
   profile: string;
   dossier: string;
   meetingGuide: string;
+  meetingGuideHtml: string;
   draft: string;
   critique: string;
 }
@@ -422,6 +424,24 @@ export async function runConversationPipeline(
   const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
   console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
 
+  // Token ratio check
+  const voiceTokens = Math.round(meetingGuideBlock.length / 4);
+  const exemplarTokens = Math.round(meetingGuideExemplars.length / 4);
+  const inputTokens = Math.round(finalProfile.length / 4);
+  console.log(`[Meeting Guide] Token ratio check:`);
+  console.log(`  Voice + Exemplars: ~${voiceTokens + exemplarTokens} tokens`);
+  console.log(`  Input (profile): ~${inputTokens} tokens`);
+  console.log(`  Ratio healthy: ${(voiceTokens + exemplarTokens) >= inputTokens}`);
+  if (inputTokens > 10000) {
+    console.warn(`[Meeting Guide] WARNING: Profile exceeds 10,000 tokens (~${inputTokens})`);
+  }
+
+  // Save meeting guide prompt for debugging
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
+    console.log(`[DEBUG] Meeting guide prompt saved (${meetingGuidePrompt.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide prompt:', e); }
+
   onProgress(`Writing tactical meeting guide for ${donorName}`, 'writing', 34, TOTAL_STEPS);
 
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
@@ -441,6 +461,29 @@ export async function runConversationPipeline(
   onProgress('✓ Meeting guide complete', 'writing', 37, TOTAL_STEPS);
   console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
 
+  // Save meeting guide markdown
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide markdown:', e); }
+
+  // Format meeting guide to HTML
+  const meetingGuideHtml = formatMeetingGuide(meetingGuide);
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtml);
+    console.log(`[Meeting Guide] HTML formatted: ${meetingGuideHtml.length} chars`);
+  } catch (e) { console.warn('[DEBUG] Failed to save meeting guide HTML:', e); }
+
+  // Validation
+  const hasAllSections = meetingGuideHtml.includes('donor-read') &&
+                         meetingGuideHtml.includes('alignment-map') &&
+                         meetingGuideHtml.includes('beat-number');
+  const beatCount = (meetingGuideHtml.match(/beat-number/g) || []).length;
+  const signalCount = (meetingGuideHtml.match(/signal-tag/g) || []).length;
+  console.log(`[Meeting Guide] Validation:`);
+  console.log(`  All major sections: ${hasAllSections}`);
+  console.log(`  Beats: ${beatCount}`);
+  console.log(`  Signals: ${signalCount}`);
+
   onProgress('✓ All documents ready — preparing download', undefined, 38, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
@@ -452,6 +495,7 @@ export async function runConversationPipeline(
     profile: finalProfile,              // Persuasion Profile (18-section, user-facing)
     dossier: finalProfile,              // Frontend reads dossier.rawMarkdown for display
     meetingGuide,
+    meetingGuideHtml,                   // Styled HTML version of meeting guide
     draft: extractionOutput,            // Extraction output (intermediate, for debug)
     critique: ''
   };

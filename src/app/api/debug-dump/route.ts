@@ -11,6 +11,9 @@ import { readFileSync, existsSync } from 'fs';
  *   ?file=first-draft        — Stage 3 output (first draft profile)
  *   ?file=critique-prompt    — Stage 3b input (critique prompt, if enabled)
  *   ?file=final              — Stage 3b output (final profile, if enabled)
+ *   ?file=meeting-guide-prompt — Stage 4 input (meeting guide prompt)
+ *   ?file=meeting-guide       — Stage 4 output (meeting guide markdown)
+ *   ?file=meeting-guide-html  — Stage 4 output (meeting guide styled HTML)
  *   ?file=linkedin           — Parsed LinkedIn data (JSON)
  */
 export async function GET(request: NextRequest) {
@@ -23,6 +26,9 @@ export async function GET(request: NextRequest) {
     'first-draft': '/tmp/prospectai-outputs/DEBUG-profile-first-draft.txt',
     'critique-prompt': '/tmp/prospectai-outputs/DEBUG-critique-prompt.txt',
     'final': '/tmp/prospectai-outputs/DEBUG-profile-final.txt',
+    'meeting-guide-prompt': '/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt',
+    'meeting-guide': '/tmp/prospectai-outputs/DEBUG-meeting-guide.md',
+    'meeting-guide-html': '/tmp/prospectai-outputs/DEBUG-meeting-guide.html',
     linkedin: '/tmp/prospectai-outputs/DEBUG-linkedin-data.json',
   };
 
@@ -45,8 +51,13 @@ export async function GET(request: NextRequest) {
   }
 
   const content = readFileSync(path, 'utf-8');
-  const contentType = file === 'linkedin' ? 'application/json' : 'text/plain; charset=utf-8';
-  const ext = file === 'linkedin' ? 'json' : 'txt';
+  const contentType = file === 'linkedin' ? 'application/json'
+    : file === 'meeting-guide-html' ? 'text/html; charset=utf-8'
+    : 'text/plain; charset=utf-8';
+  const ext = file === 'linkedin' ? 'json'
+    : file === 'meeting-guide-html' ? 'html'
+    : file === 'meeting-guide' ? 'md'
+    : 'txt';
 
   return new Response(content, {
     headers: {
