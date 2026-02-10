@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProgressEvent {
@@ -13,6 +13,10 @@ interface ProgressEvent {
 }
 
 export default function Home() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
   const [donorName, setDonorName] = useState('');
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
@@ -25,6 +29,13 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(28);
   const router = useRouter();
+
+  useEffect(() => {
+    if (localStorage.getItem('prospectai_auth') === 'true') {
+      setAuthenticated(true);
+    }
+    setAuthChecked(true);
+  }, []);
 
   // Polish item 5: URL validation state
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
@@ -162,6 +173,66 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+
+  // Password gate
+  if (!authChecked) {
+    return <div className="min-h-screen bg-dtw-black" />;
+  }
+
+  if (!authenticated) {
+    const handleAuth = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (authPassword === 'profile') {
+        localStorage.setItem('prospectai_auth', 'true');
+        setAuthenticated(true);
+        setAuthError(false);
+      } else {
+        setAuthError(true);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-dtw-black flex flex-col items-center justify-center px-4">
+        <div
+          className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
+          style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-[500px] h-[500px] opacity-15"
+          style={{ background: 'radial-gradient(circle at 30% 70%, #2D6A4F, transparent 60%)' }}
+        />
+
+        <h1 className="font-serif text-[56px] leading-[1.05] text-white mb-10 relative z-10">
+          Prospect<span className="font-serif italic" style={{ color: '#D894E8' }}>AI</span>
+        </h1>
+
+        <form onSubmit={handleAuth} className="w-full max-w-xs relative z-10">
+          <input
+            type="password"
+            value={authPassword}
+            onChange={(e) => { setAuthPassword(e.target.value); setAuthError(false); }}
+            placeholder="Password"
+            autoFocus
+            className="w-full text-[15px] text-white border border-white/15 rounded-lg px-4 py-3.5
+                       focus:border-purple-400 focus:outline-none placeholder-white/30 transition-all"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
+          />
+          {authError && (
+            <p className="text-sm mt-2" style={{ color: '#E07A5F' }}>Incorrect password</p>
+          )}
+          <button
+            type="submit"
+            className="w-full mt-4 rounded-lg text-[15px] font-semibold text-white py-3.5 transition-all duration-300 hover:-translate-y-0.5"
+            style={{ background: '#6B21A8' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            Enter
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   // Loading state — full dark screen with progress
   if (isLoading) {
