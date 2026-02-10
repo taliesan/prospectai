@@ -21,6 +21,7 @@ interface ProfileData {
   dossier: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
   meetingGuide?: string;
+  meetingGuideHtml?: string;
 }
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
@@ -253,6 +254,30 @@ export default function ProfilePage() {
             </div>
           );
         }
+
+        // Use formatted HTML if available, fall back to markdown
+        if (data.meetingGuideHtml) {
+          return (
+            <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+                 style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <iframe
+                srcDoc={data.meetingGuideHtml}
+                className="w-full border-0"
+                style={{ minHeight: '800px' }}
+                onLoad={(e) => {
+                  // Auto-resize iframe to content height
+                  const iframe = e.target as HTMLIFrameElement;
+                  if (iframe.contentDocument) {
+                    iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
+                  }
+                }}
+                title="Meeting Guide"
+              />
+            </div>
+          );
+        }
+
+        // Fallback: render markdown directly
         return (
           <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
