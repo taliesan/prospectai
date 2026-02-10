@@ -815,17 +815,15 @@ body {
 /** Scope CSS by prefixing every selector with `.mg-root` */
 function scopeCSS(css: string): string {
   return css
-    // Replace :root with .mg-root
-    .replace(/:root/g, '.mg-root')
-    // Replace body { with .mg-root {
-    .replace(/^body\s*\{/gm, '.mg-root {')
-    // Replace * { reset with .mg-root * {
-    .replace(/^\*\s*\{/gm, '.mg-root * {')
-    // Prefix class selectors at start of line with .mg-root
+    // Prefix class selectors at start of line FIRST (before other replacements create .mg-root lines)
     .replace(/^(\.[a-z])/gm, '.mg-root $1')
-    // Prefix @media inner selectors
+    // Prefix @media inner class selectors
     .replace(/^(\s+)(\.[a-z])/gm, '$1.mg-root $2')
-    // Prefix @media inner body references
+    // Now replace :root, body, * — these won't be double-prefixed since they don't start with .
+    .replace(/:root/g, '.mg-root')
+    .replace(/^body\s*\{/gm, '.mg-root {')
+    .replace(/^\*\s*\{/gm, '.mg-root * {')
+    // @media inner body references
     .replace(/^(\s+)body\s*\{/gm, '$1.mg-root {');
 }
 
