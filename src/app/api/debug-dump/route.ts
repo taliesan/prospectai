@@ -2,10 +2,16 @@ import { NextRequest } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 
 /**
- * GET /api/debug-dump?file=extraction|prompt
+ * GET /api/debug-dump?file=<key>
  *
- * Returns the debug files saved during pipeline execution.
- * Temporary endpoint — remove after testing.
+ * Available files:
+ *   ?file=extraction-prompt  — Stage 2 input (extraction prompt)
+ *   ?file=extraction         — Stage 2 output (behavioral evidence)
+ *   ?file=prompt             — Stage 3 input (profile prompt)
+ *   ?file=first-draft        — Stage 3 output (first draft profile)
+ *   ?file=critique-prompt    — Stage 3b input (critique prompt, if enabled)
+ *   ?file=final              — Stage 3b output (final profile, if enabled)
+ *   ?file=linkedin           — Parsed LinkedIn data (JSON)
  */
 export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get('file');
@@ -14,12 +20,18 @@ export async function GET(request: NextRequest) {
     extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
     'extraction-prompt': '/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt',
     prompt: '/tmp/prospectai-outputs/DEBUG-prompt.txt',
+    'first-draft': '/tmp/prospectai-outputs/DEBUG-profile-first-draft.txt',
+    'critique-prompt': '/tmp/prospectai-outputs/DEBUG-critique-prompt.txt',
+    'final': '/tmp/prospectai-outputs/DEBUG-profile-final.txt',
     linkedin: '/tmp/prospectai-outputs/DEBUG-linkedin-data.json',
   };
 
   if (!file || !files[file]) {
     return new Response(
-      JSON.stringify({ error: 'Use ?file=extraction or ?file=extraction-prompt or ?file=prompt or ?file=linkedin' }),
+      JSON.stringify({
+        error: 'Invalid file parameter',
+        available: Object.keys(files),
+      }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
