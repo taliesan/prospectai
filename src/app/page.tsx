@@ -259,6 +259,13 @@ export default function Home() {
           }}
         />
 
+        {/* Version badge — loading screen */}
+        <div className="flex justify-end px-6 pt-4">
+          <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
+            v3
+          </span>
+        </div>
+
         <div className="flex flex-col items-center justify-center min-h-[90vh] px-4">
           <h1 className="font-serif text-5xl text-white mb-8">{donorName}</h1>
 
@@ -335,9 +342,12 @@ export default function Home() {
       />
 
       {/* Dark nav bar */}
-      <nav className="bg-dtw-black px-6 py-4">
+      <nav className="bg-dtw-black px-6 py-4 flex items-center justify-between">
         <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50">
           Democracy Takes Work
+        </span>
+        <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
+          v3
         </span>
       </nav>
 
