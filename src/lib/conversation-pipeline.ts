@@ -72,12 +72,19 @@ function estimateTokens(text: string): number {
 }
 
 async function parseLinkedInText(donorName: string, linkedinText: string): Promise<LinkedInData> {
+  // Step 1: Coded regex extraction for structured fields (slug, websites)
+  const codedFields = extractLinkedInCodedFields(linkedinText);
+  console.log(`[LinkedIn] Coded extraction: slug=${codedFields.linkedinSlug || 'none'}, websites=${codedFields.websites.join(', ') || 'none'}`);
+
+  // Step 2: LLM extraction for unstructured fields (career, education, boards)
   const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
 
 Return JSON in this exact format:
 {
   "currentTitle": "their current job title",
   "currentEmployer": "their current employer",
+  "linkedinSlug": "the handle from their LinkedIn URL (e.g. 'geoffreymacdougall' from linkedin.com/in/geoffreymacdougall)",
+  "websites": ["any personal websites listed, e.g. 'intangible.ca/about/', 'www.onepitch.org'"],
   "careerHistory": [
     {
       "title": "Job Title",
@@ -100,6 +107,7 @@ Return JSON in this exact format:
 }
 
 Parse carefully. The PDF text may have formatting artifacts. Extract all career history entries in chronological order (most recent first).
+Look for the LinkedIn profile URL (linkedin.com/in/...) and any personal websites or URLs that are NOT linkedin.com.
 
 LinkedIn Profile Text:
 ${linkedinText}`;
@@ -107,11 +115,64 @@ ${linkedinText}`;
   const response = await conversationTurn([{ role: 'user', content: parsePrompt }], { maxTokens: 4000 });
 
   const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]);
+  if (!jsonMatch) {
+    throw new Error('Failed to parse LinkedIn data');
   }
 
-  throw new Error('Failed to parse LinkedIn data');
+  const llmData: LinkedInData = JSON.parse(jsonMatch[0]);
+
+  // Step 3: Merge — coded regex wins for slug and websites (more reliable)
+  if (codedFields.linkedinSlug) {
+    llmData.linkedinSlug = codedFields.linkedinSlug;
+  }
+  if (codedFields.websites.length > 0) {
+    const allWebsites = new Set([...codedFields.websites, ...(llmData.websites || [])]);
+    llmData.websites = Array.from(allWebsites);
+  }
+
+  return llmData;
+}
+
+/**
+ * Extract LinkedIn slug and personal websites from raw PDF text using regex.
+ * More reliable than LLM for these structured fields.
+ */
+function extractLinkedInCodedFields(pdfText: string): { linkedinSlug: string | null; websites: string[] } {
+  let linkedinSlug: string | null = null;
+  const websites: string[] = [];
+
+  // Extract LinkedIn slug: linkedin.com/in/SLUG
+  const slugMatch = pdfText.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  if (slugMatch) {
+    linkedinSlug = slugMatch[1];
+  }
+
+  // Extract all URLs from the text
+  const urlPattern = /(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s,)]*)?)/gi;
+  let urlMatch;
+  while ((urlMatch = urlPattern.exec(pdfText)) !== null) {
+    const fullUrl = urlMatch[0];
+    // Skip LinkedIn URLs, social media, and common non-personal domains
+    if (/linkedin\.com|facebook\.com|twitter\.com|instagram\.com|github\.com|mailto:/i.test(fullUrl)) {
+      continue;
+    }
+    websites.push(fullUrl.startsWith('http') ? fullUrl : `https://${fullUrl}`);
+  }
+
+  // Deduplicate websites by hostname
+  const seenHosts = new Set<string>();
+  const dedupedWebsites = websites.filter(url => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      if (seenHosts.has(host)) return false;
+      seenHosts.add(host);
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
+  return { linkedinSlug, websites: dedupedWebsites };
 }
 
 // Progress callback type matching the new phase/step signature

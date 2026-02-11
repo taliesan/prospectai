@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { runFullPipeline } from '@/lib/pipeline';
-import { runConversationPipeline } from '@/lib/conversation-pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
@@ -114,7 +113,7 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation', linkedinPdf } = body;
+  const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf } = body;
   console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
 
   if (!donorName || typeof donorName !== 'string') {
@@ -124,8 +123,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const isConversationMode = mode === 'conversation';
-  console.log(`[API] Starting SSE profile generation for: ${donorName} (mode: ${mode})`);
+  console.log(`[API] Starting SSE profile generation for: ${donorName} (coded pipeline)`);
 
   // Create a readable stream for SSE
   const encoder = new TextEncoder();
@@ -270,84 +268,65 @@ export async function POST(request: NextRequest) {
 
             let result: any;
 
-            if (isConversationMode) {
-              // Conversation mode: agentic research → profile → meeting guide
-              console.log('[API] Running conversation mode pipeline (v6 agentic)...');
+            // CODED PIPELINE — no agent loops, no LLM driving searches
+            console.log('[API] Running coded pipeline (no agentic loops)...');
 
-              const conversationResult = await runConversationPipeline(
-                donorName,
-                seedUrls,
-                webSearch,
-                fetchUrl,
-                (message: string, phase?: string, step?: number, totalSteps?: number) => {
-                  if (phase && !message) {
-                    // Phase transition event
-                    sendEvent({ type: 'phase', message: '', phase: phase as any });
-                  } else {
-                    sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
-                  }
-                },
-                linkedinPdf
-              );
+            // Load exemplars
+            const exemplars = loadExemplars();
+            console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
 
-              // Save outputs — adapt new research shape for saveOutputs
-              const researchForSave = {
-                donorName,
-                rawMarkdown: conversationResult.research.researchPackage,
-                identity: {},
-                queries: [],
-                sources: [],
-              };
-              saveOutputs(researchForSave, conversationResult.profile, conversationResult.researchPackage);
-
-              // Save meeting guide using same requestId
-              if (conversationResult.meetingGuide) {
-                const outputDir = '/tmp/prospectai-outputs';
-                if (!existsSync(outputDir)) {
-                  mkdirSync(outputDir, { recursive: true });
+            const pipelineResult = await runFullPipeline(
+              donorName,
+              seedUrls,
+              webSearch,
+              { exemplars },
+              (message: string, phase?: string, step?: number, totalSteps?: number) => {
+                if (phase && !message) {
+                  sendEvent({ type: 'phase', message: '', phase: phase as any });
+                } else {
+                  sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
                 }
-                const meetingGuidePath = `${outputDir}/${requestId}-${safeName}-meeting-guide.md`;
-                writeFileSync(meetingGuidePath, conversationResult.meetingGuide);
-                console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${conversationResult.meetingGuide.length} chars)`);
+              },
+              linkedinPdf,
+              fetchUrl,
+            );
+
+            // Save outputs
+            saveOutputs(
+              { ...pipelineResult.research, rawMarkdown: pipelineResult.researchPackage },
+              pipelineResult.profile,
+              pipelineResult.researchPackage,
+            );
+
+            // Save meeting guide
+            if (pipelineResult.meetingGuide) {
+              const outputDir = '/tmp/prospectai-outputs';
+              if (!existsSync(outputDir)) {
+                mkdirSync(outputDir, { recursive: true });
               }
-
-              // Format result for frontend compatibility
-              result = {
-                research: {
-                  ...conversationResult.research,
-                  rawMarkdown: conversationResult.research.researchPackage,
-                  sources: [],
-                },
-                researchProfile: { rawMarkdown: conversationResult.profile },
-                profile: {
-                  donorName,
-                  profile: conversationResult.profile,
-                  validationPasses: 0,
-                  status: 'complete'
-                },
-                meetingGuide: conversationResult.meetingGuide,
-                meetingGuideHtml: conversationResult.meetingGuideHtml,
-                fundraiserName,
-              };
-
-            } else {
-              // Standard mode: existing multi-stage pipeline
-              console.log('[API] Running standard pipeline...');
-
-              // Load exemplars
-              const exemplars = loadExemplars();
-              console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
-
-              result = await runFullPipeline(
-                donorName,
-                seedUrls,
-                webSearch,
-                { exemplars }
-              );
-
-              // Save outputs
-              saveOutputs(result.research, result.profile.profile, result.extraction?.rawMarkdown);
+              const meetingGuidePath = `${outputDir}/${requestId}-${safeName}-meeting-guide.md`;
+              writeFileSync(meetingGuidePath, pipelineResult.meetingGuide);
+              console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${pipelineResult.meetingGuide.length} chars)`);
             }
+
+            // Format result for frontend compatibility
+            result = {
+              research: {
+                ...pipelineResult.research,
+                rawMarkdown: pipelineResult.researchPackage,
+                sources: pipelineResult.research.sources || [],
+              },
+              researchProfile: { rawMarkdown: pipelineResult.profile },
+              profile: {
+                donorName,
+                profile: pipelineResult.profile,
+                validationPasses: 0,
+                status: 'complete',
+              },
+              meetingGuide: pipelineResult.meetingGuide,
+              meetingGuideHtml: pipelineResult.meetingGuideHtml,
+              fundraiserName,
+            };
 
             STATUS.pipelineComplete();
 

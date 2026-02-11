@@ -50,6 +50,97 @@ export function detectBlog(url: string, content: string): BlogDetection {
   return { isBlog: false, platform: null, postUrls: [] };
 }
 
+// ── Coded regex URL extraction per platform ─────────────────────────
+
+/**
+ * Extract post URLs using coded regex patterns. No LLM needed.
+ * Processes the FULL content (not truncated), which is critical for
+ * large archive pages (e.g. Substack 220K chars).
+ */
+function extractUrlsWithRegex(
+  baseUrl: string,
+  content: string,
+  platform: string | null
+): { url: string; title: string }[] {
+  const posts: { url: string; title: string }[] = [];
+  const seenUrls = new Set<string>();
+
+  let baseHost: string;
+  try {
+    baseHost = new URL(baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`).origin;
+  } catch {
+    baseHost = baseUrl;
+  }
+
+  const addPost = (url: string, title: string) => {
+    // Resolve relative URLs
+    let absoluteUrl = url;
+    if (url.startsWith('/')) {
+      absoluteUrl = baseHost + url;
+    } else if (!url.startsWith('http')) {
+      absoluteUrl = baseHost + '/' + url;
+    }
+    // Deduplicate
+    if (!seenUrls.has(absoluteUrl)) {
+      seenUrls.add(absoluteUrl);
+      posts.push({ url: absoluteUrl, title: title || absoluteUrl });
+    }
+  };
+
+  if (platform === 'substack') {
+    // Substack post URLs: /p/slug-name (with optional query params)
+    const substackPattern = /(?:href=["']|)(\/p\/[a-z0-9][-a-z0-9]*[a-z0-9])(?:[?#"'\s]|$)/gi;
+    let match;
+    while ((match = substackPattern.exec(content)) !== null) {
+      const slug = match[1];
+      // Try to find a title near this URL in the content
+      const titleMatch = content.slice(Math.max(0, match.index - 200), match.index + 200)
+        .match(/(?:title=["']([^"']+)|>([^<]{5,80})<\/(?:a|h[1-6]))/i);
+      const title = titleMatch ? (titleMatch[1] || titleMatch[2] || '').trim() : '';
+      addPost(slug, title);
+    }
+    console.log(`[Blog Crawl] Substack regex: found ${posts.length} /p/ URLs in ${content.length} chars`);
+  }
+
+  if (platform === 'wordpress' || !platform) {
+    // WordPress: /YYYY/MM/DD/slug or /YYYY/MM/slug
+    const wpPattern = /(?:href=["']|)(\/\d{4}\/\d{2}(?:\/\d{2})?\/[a-z0-9][-a-z0-9]*[a-z0-9]\/?)(?:[?#"'\s]|$)/gi;
+    let match;
+    while ((match = wpPattern.exec(content)) !== null) {
+      addPost(match[1], '');
+    }
+  }
+
+  if (platform === 'medium') {
+    // Medium: /@author/slug-hexid or /slug-hexid
+    const mediumPattern = /(?:href=["']|)(\/(?:@[a-z0-9_-]+\/)?[a-z0-9][-a-z0-9]*-[a-f0-9]{8,12})(?:[?#"'\s]|$)/gi;
+    let match;
+    while ((match = mediumPattern.exec(content)) !== null) {
+      addPost(match[1], '');
+    }
+  }
+
+  if (platform === 'ghost') {
+    // Ghost: /slug-name/ (simple paths, not /tag/, /author/, /page/)
+    const ghostPattern = /(?:href=["']|)(\/(?!tag\/|author\/|page\/)[a-z0-9][-a-z0-9]*[a-z0-9]\/?)(?:[?#"'\s]|$)/gi;
+    let match;
+    while ((match = ghostPattern.exec(content)) !== null) {
+      addPost(match[1], '');
+    }
+  }
+
+  // Generic fallback: HTML anchor tags with article-like paths
+  if (posts.length === 0) {
+    const genericPattern = /href=["']((?:https?:\/\/[^"']*|\/[^"']*?)(?:\/(?:blog|post|article|news|story|writing)s?\/[^"']+|\/\d{4}\/[^"']+))["']/gi;
+    let match;
+    while ((match = genericPattern.exec(content)) !== null) {
+      addPost(match[1], '');
+    }
+  }
+
+  return posts;
+}
+
 // ── Post URL extraction ─────────────────────────────────────────────
 
 export async function extractPostUrls(
@@ -58,27 +149,39 @@ export async function extractPostUrls(
   platform: string | null,
   fetchFunction: (url: string) => Promise<string>
 ): Promise<{ url: string; title: string }[]> {
+  let contentToSearch = blogContent;
 
-  // Platform-specific extraction
+  // For Substack, fetch the archive page (has all posts)
   if (platform === 'substack') {
-    // Substack has a predictable archive structure
     try {
       const archiveUrl = blogUrl.replace(/\/$/, '') + '/archive';
-      const archiveContent = await fetchFunction(archiveUrl);
-      return extractUrlsWithLLM(archiveUrl, archiveContent);
+      contentToSearch = await fetchFunction(archiveUrl);
+      console.log(`[Blog Crawl] Fetched Substack archive: ${contentToSearch.length} chars`);
     } catch {
-      // Fall through to generic extraction
+      console.log('[Blog Crawl] Failed to fetch Substack archive, using homepage content');
     }
   }
 
-  // Generic extraction using LLM
-  return extractUrlsWithLLM(blogUrl, blogContent);
+  // Step 1: Try coded regex extraction on the FULL content
+  const regexResults = extractUrlsWithRegex(blogUrl, contentToSearch, platform);
+  console.log(`[Blog Crawl] Coded regex extracted ${regexResults.length} post URLs`);
+
+  if (regexResults.length > 0) {
+    return regexResults;
+  }
+
+  // Step 2: Fallback to LLM extraction with larger context
+  console.log(`[Blog Crawl] Regex found 0 URLs, falling back to LLM extraction`);
+  return extractUrlsWithLLM(blogUrl, contentToSearch);
 }
 
 async function extractUrlsWithLLM(
   pageUrl: string,
   pageContent: string
 ): Promise<{ url: string; title: string }[]> {
+  // Use a larger slice — 40K chars instead of 12K to catch more content
+  const contentSlice = pageContent.slice(0, 40000);
+
   const prompt = `Extract all individual blog post URLs from this page content.
 
 Look for:
@@ -91,7 +194,7 @@ Look for:
 
 Page URL: ${pageUrl}
 Page content (excerpt):
-${pageContent.slice(0, 12000)}
+${contentSlice}
 
 Return a JSON array of objects with url and title, most recent first:
 [
@@ -110,10 +213,15 @@ If no post URLs found, return: []`;
     );
 
     const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) {
+      console.log(`[Blog Crawl] LLM returned no JSON array. Response preview: ${response.slice(0, 200)}`);
+      return [];
+    }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return parsed.filter((p: any) => p.url && typeof p.url === 'string');
+    const filtered = parsed.filter((p: any) => p.url && typeof p.url === 'string');
+    console.log(`[Blog Crawl] LLM extracted ${filtered.length} post URLs`);
+    return filtered;
   } catch (err) {
     console.error('[Blog Crawl] Failed to extract post URLs:', err);
     return [];

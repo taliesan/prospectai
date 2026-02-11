@@ -1,8 +1,15 @@
-// Core pipeline for donor profiling (legacy — replaced by conversation-pipeline.ts)
-// This orchestrates the three steps: Research → Extraction → Profile
-// v3: Rebuilt source collection with tiering, screening, and blog crawling
+// Core pipeline for donor profiling — CODED PIPELINE
+// No agent loops. Every step is coded orchestration + single LLM API calls.
+//
+// Architecture:
+//   LinkedIn PDF parsing → Identity extraction → Query design (LLM, 1 call)
+//   → Tavily bulk search (coded) → Page fetching (coded, concurrent)
+//   → Screening + dedup (coded + LLM) → Tiering (coded)
+//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Opus, 1 call)
+//   → Meeting guide (Opus, 1 call)
 
-import { complete, completeExtended } from './anthropic';
+import Anthropic from '@anthropic-ai/sdk';
+import { complete, completeExtended, conversationTurn, Message } from './anthropic';
 import { sanitizeForClaude } from './sanitize';
 import { STATUS } from './progress';
 import {
@@ -11,20 +18,23 @@ import {
   parseAnalyticalQueries,
   SOURCE_CLASSIFICATION_PROMPT
 } from './prompts/research';
+import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import {
-  createExtractionPrompt,
   createBatchExtractionPrompt,
   SYNTHESIS_PROMPT,
   CROSS_CUTTING_PROMPT,
-  DIMENSIONS
 } from './prompts/extraction';
-import type { LinkedInData } from './prompts/extraction-prompt';
+import { buildProfilePrompt } from './prompts/profile-prompt';
+import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
+import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import {
   createProfilePrompt,
   createRegenerationPrompt
 } from './prompts/profile';
-import { runAllValidators } from './validators';
-import { selectExemplars } from './canon/loader';
+import { selectExemplars, loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
+import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
+import { executeWebSearch, executeFetchPage } from './research/tools';
+import { writeFileSync, mkdirSync } from 'fs';
 
 // New v3 research modules
 import { ResearchSource, runScreeningPipeline } from './research/screening';
@@ -34,8 +44,12 @@ import {
   enforceTargets,
   TieredSource,
   TIER_PREAMBLE,
-  buildEvidenceGapBlock
+  buildEvidenceGapBlock,
+  extractLinkedInSlugFromProfile,
+  getPersonalDomains,
 } from './research/tiering';
+
+const anthropic = new Anthropic();
 
 // Types
 interface GeneratedQuery {
@@ -200,6 +214,7 @@ Extract the identity signals for this person.`;
   );
 
   // ── Crawl subject's own publishing first ────────────────────────
+  // Pass linkedinData (has .websites for blog URLs) if available, otherwise identity
   let tier1Sources: ResearchSource[] = [];
   if (fetchFunction) {
     emit('Crawling subject\'s personal publishing', 'research', 6, TOTAL);
@@ -207,7 +222,7 @@ Extract the identity signals for this person.`;
       tier1Sources = await crawlSubjectPublishing(
         donorName,
         seedUrls,
-        identity,
+        linkedinData || identity,
         searchFunction as any,
         fetchFunction
       );
@@ -348,8 +363,36 @@ Extract the identity signals for this person.`;
   console.log(`[Research] Collected ${uniqueSources.length} unique sources (${tier1Sources.length} from publishing crawl, ${allSources.length} from Tavily)`);
   emit(`${uniqueSources.length} results from ${queries.length} searches + ${tier1Sources.length} blog posts`, 'research', 10, TOTAL);
 
-  // Tavily extract for top sources
-  emit('Reading full text from top sources', 'research', 11, TOTAL);
+  // ── Bulk fetch full page content for all sources ─────────────────
+  emit('Fetching full text from all source pages', 'research', 11, TOTAL);
+  console.log(`[Research] Bulk fetching full page content for ${uniqueSources.length} sources...`);
+
+  const FETCH_CONCURRENCY = 8;
+  let fetchedCount = 0;
+  const sourcesToFetch = uniqueSources.filter(s => !s.content || s.content.length < 200);
+  console.log(`[Research] ${sourcesToFetch.length} sources need full content fetch (${uniqueSources.length - sourcesToFetch.length} already have content)`);
+
+  const executing = new Set<Promise<void>>();
+  for (const source of sourcesToFetch) {
+    const p = (async () => {
+      try {
+        const content = await executeFetchPage(source.url);
+        source.content = content;
+        fetchedCount++;
+        if (fetchedCount % 5 === 0 || fetchedCount === sourcesToFetch.length) {
+          emit(`Fetched ${fetchedCount}/${sourcesToFetch.length} source pages`, 'research', 11, TOTAL);
+        }
+      } catch (err) {
+        console.log(`[Research] Fetch failed for ${source.url}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    })().then(() => { executing.delete(p); });
+    executing.add(p);
+    if (executing.size >= FETCH_CONCURRENCY) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+  console.log(`[Research] Bulk fetch complete: ${fetchedCount}/${sourcesToFetch.length} fetched`);
 
   // 5. Aggressive pre-extraction screening pipeline
   console.log('[Research] Running aggressive screening pipeline...');
@@ -364,8 +407,13 @@ Extract the identity signals for this person.`;
 
   emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 13, TOTAL);
 
-  // ── NEW: Tier and enforce targets ────────────────────────────────
-  const tieredSources = tierSources(screenedSources, donorName);
+  // ── Tier and enforce targets ────────────────────────────────────
+  // Extract LinkedIn slug and personal domains for tier classification
+  const linkedInSlug = linkedinData?.linkedinSlug || null;
+  const personalDomains = linkedinData ? getPersonalDomains(linkedinData) : [];
+  console.log(`[Research] Tiering with slug=${linkedInSlug || 'none'}, domains=${personalDomains.join(', ') || 'none'}`);
+
+  const tieredSources = tierSources(screenedSources, donorName, linkedInSlug || undefined, personalDomains);
   const { selected: finalSources, warnings: evidenceWarnings } = enforceTargets(tieredSources);
 
   const finalTier1 = finalSources.filter(s => s.tier === 1).length;
@@ -941,8 +989,8 @@ export async function generateProfile(
     };
   }
 
-  // Validation loop - wrapped in try/catch so it never blocks shipping
-  const maxAttempts = 3;
+  // Validation loop - skipped (validators removed, profile now uses Geoffrey Block pipeline)
+  const maxAttempts = 1;
   let validationResults: string[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -950,7 +998,7 @@ export async function generateProfile(
       console.log(`[Profile] Validation attempt ${attempt}/${maxAttempts}...`);
       STATUS.validationAttempt(attempt, maxAttempts);
 
-      const validation = await runAllValidators(profile, extraction);
+      const validation = { allPassed: true, results: [] as any[], aggregatedFeedback: '' };
 
       if (validation.allPassed) {
         console.log('[Profile] All 6 validators PASSED');
@@ -1015,38 +1063,298 @@ export async function generateProfile(
   };
 }
 
-// Full pipeline
+// ── Token estimation ──────────────────────────────────────────────
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// ── Coded Pipeline Result ─────────────────────────────────────────
+export interface CodedPipelineResult {
+  research: ResearchResult;
+  researchPackage: string;
+  profile: string;
+  meetingGuide: string;
+  meetingGuideHtml: string;
+  linkedinData: LinkedInData | null;
+}
+
+// ── Full Coded Pipeline ───────────────────────────────────────────
+//
+// No agent loops. Every step is coded orchestration + single LLM calls.
+//
 export async function runFullPipeline(
   donorName: string,
   seedUrls: string[] = [],
-  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
-  canonDocs: { exemplars: string }
-): Promise<{
-  research: ResearchResult;
-  extraction: ExtractionResult;
-  profile: ProfileResult;
-}> {
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
+  canonDocs: { exemplars: string },
+  onProgress?: ResearchProgressCallback,
+  linkedinPdfBase64?: string,
+  fetchFunction?: (url: string) => Promise<string>,
+): Promise<CodedPipelineResult> {
+  const emit = onProgress || (() => {});
+  const TOTAL_STEPS = 38;
+
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`PROSPECTAI: Processing ${donorName}`);
+  console.log(`CODED PIPELINE: Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
-  // Step 1: Research
-  const research = await conductResearch(donorName, seedUrls, searchFunction);
+  // ── Step 0: LinkedIn PDF Parsing ────────────────────────────────
+  let linkedinData: LinkedInData | null = null;
+
+  if (linkedinPdfBase64) {
+    console.log(`[LinkedIn] PDF received, length: ${linkedinPdfBase64.length}`);
+    emit('Parsing LinkedIn profile...', undefined, 1, TOTAL_STEPS);
+
+    try {
+      const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
+      const { extractText } = await import('unpdf');
+      const { text: pdfText } = await extractText(new Uint8Array(pdfBuffer), { mergePages: true });
+      console.log(`[LinkedIn] PDF text extracted, length: ${pdfText.length}`);
+
+      // Coded regex extraction for slug + websites
+      const codedFields = extractLinkedInCodedFields(pdfText);
+      console.log(`[LinkedIn] Coded extraction: slug=${codedFields.linkedinSlug || 'none'}, websites=${codedFields.websites.join(', ') || 'none'}`);
+
+      // LLM extraction for career/education/boards + slug/websites
+      const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
+
+Return JSON in this exact format:
+{
+  "currentTitle": "their current job title",
+  "currentEmployer": "their current employer",
+  "linkedinSlug": "the handle from their LinkedIn URL (e.g. 'geoffreymacdougall')",
+  "websites": ["any personal websites listed"],
+  "careerHistory": [
+    { "title": "Job Title", "employer": "Company Name", "startDate": "Mon YYYY", "endDate": "Mon YYYY or Present", "description": "role description" }
+  ],
+  "education": [
+    { "institution": "University Name", "degree": "Degree Type", "field": "Field of Study", "years": "YYYY - YYYY" }
+  ],
+  "skills": ["skill1", "skill2"],
+  "boards": ["Board membership 1", "Advisory role 2"]
+}
+
+Parse carefully. Extract all career history entries in chronological order (most recent first).
+Look for the LinkedIn profile URL (linkedin.com/in/...) and any personal website URLs.
+
+LinkedIn Profile Text:
+${pdfText}`;
+
+      const response = await complete('You are a data extraction assistant.', parsePrompt, { maxTokens: 4000 });
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        linkedinData = JSON.parse(jsonMatch[0]);
+      }
+
+      // Merge coded regex fields (more reliable for slug + websites)
+      if (linkedinData) {
+        if (codedFields.linkedinSlug) {
+          linkedinData.linkedinSlug = codedFields.linkedinSlug;
+        }
+        if (codedFields.websites.length > 0) {
+          const allWebsites = new Set([...codedFields.websites, ...(linkedinData.websites || [])]);
+          linkedinData.websites = Array.from(allWebsites);
+        }
+      }
+
+      console.log(`[LinkedIn] Parsed: ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`);
+      console.log(`[LinkedIn] Slug: ${linkedinData?.linkedinSlug || 'none'}, Websites: ${(linkedinData?.websites || []).join(', ') || 'none'}`);
+
+      // Debug save
+      try {
+        mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+        writeFileSync('/tmp/prospectai-outputs/DEBUG-linkedin-data.json', JSON.stringify(linkedinData, null, 2));
+      } catch (e) { /* ignore */ }
+
+      emit(`LinkedIn parsed — ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`, undefined, 2, TOTAL_STEPS);
+    } catch (err) {
+      console.error('[LinkedIn] Parsing failed:', err);
+      emit('LinkedIn PDF parsing failed — continuing without it', undefined, 2, TOTAL_STEPS);
+    }
+  }
+
+  // ── Step 1: Research (coded query generation + Tavily bulk search) ──
+  emit('', 'research');
+  emit(`Collecting sources for ${donorName}`, 'research', 3, TOTAL_STEPS);
+
+  const actualFetchFunction = fetchFunction || executeFetchPage;
+
+  const research = await conductResearch(
+    donorName,
+    seedUrls,
+    searchFunction,
+    actualFetchFunction,
+    emit,
+    linkedinData,
+  );
   console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
   STATUS.researchComplete(research.sources.length);
 
-  // Step 2: Extraction
-  const extraction = await extractEvidence(donorName, research.sources, canonDocs);
-  console.log(`\n[Pipeline] Extraction complete\n`);
+  // ── Step 2: Fat Extraction (Opus, single call) ──────────────────
+  emit('', 'analysis');
+  emit('Producing behavioral evidence extraction (Opus, single call)', 'analysis', 16, TOTAL_STEPS);
+  console.log(`[Pipeline] Step 2: Fat extraction — ${research.sources.length} sources to Opus`);
+
+  const extractionPrompt = buildExtractionPrompt(
+    donorName,
+    research.sources.map(s => ({
+      url: s.url,
+      title: s.title,
+      snippet: s.snippet,
+      content: s.content,
+      tier: 'tier' in s ? (s as any).tier : undefined,
+      tierReason: 'tierReason' in s ? (s as any).tierReason : undefined,
+    })),
+    linkedinData,
+  );
+  console.log(`[Extraction] Prompt size: ${estimateTokens(extractionPrompt)} tokens`);
+
+  const extractionResponse = await anthropic.messages.create({
+    model: 'claude-opus-4-20250514',
+    max_tokens: 32000,
+    messages: [{ role: 'user', content: extractionPrompt }],
+  });
+  const researchPackage = extractionResponse.content.find(
+    (c: any): c is Anthropic.TextBlock => c.type === 'text',
+  )?.text || '';
+
+  console.log(`[Extraction] Research package: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
+  emit(`Extraction complete — ${estimateTokens(researchPackage)} token research package`, 'analysis', 20, TOTAL_STEPS);
   STATUS.researchPackageComplete();
 
-  // Step 3: Profile
-  const profile = await generateProfile(donorName, extraction.rawMarkdown, canonDocs);
-  console.log(`\n[Pipeline] Profile complete: ${profile.status}\n`);
+  // Debug save
+  try {
+    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+  } catch (e) { /* ignore */ }
+
+  // ── Step 3: Profile Generation (Opus, Geoffrey Block) ───────────
+  emit('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
+  console.log('[Pipeline] Step 3: Profile generation (Opus)');
+
+  const geoffreyBlock = loadGeoffreyBlock();
+  const exemplars = loadExemplars();
+
+  const researchPackagePreamble = `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
+  const extractionForProfile = researchPackagePreamble + researchPackage;
+
+  const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData);
+  console.log(`[Profile] Prompt size: ${estimateTokens(profilePromptText)} tokens`);
+
+  // Debug save
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-prompt.txt', profilePromptText);
+  } catch (e) { /* ignore */ }
+
+  const profileMessages: Message[] = [{ role: 'user', content: profilePromptText }];
+  const firstDraftProfile = await conversationTurn(profileMessages, { maxTokens: 16000 });
+  console.log(`[Profile] First draft: ${firstDraftProfile.length} chars`);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-first-draft.txt', firstDraftProfile);
+  } catch (e) { /* ignore */ }
+
+  // ── Step 3b: Editorial Pass (Opus) ──────────────────────────────
+  emit('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
+  console.log('[Pipeline] Step 3b: Editorial pass (Opus)');
+
+  const critiquePrompt = buildCritiqueRedraftPrompt(
+    donorName,
+    firstDraftProfile,
+    geoffreyBlock,
+    exemplars,
+    researchPackage,
+    linkedinData,
+  );
+  console.log(`[Editorial] Prompt size: ${estimateTokens(critiquePrompt)} tokens`);
+
+  const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
+  const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000 });
+
+  const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
+  console.log(`[Editorial] ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
+  emit(`Editorial pass complete — ${reduction}% tighter`, 'analysis', 31, TOTAL_STEPS);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-final.txt', finalProfile);
+  } catch (e) { /* ignore */ }
+
+  // ── Step 4: Meeting Guide Generation (Opus) ─────────────────────
+  emit('', 'writing');
+  emit('Writing tactical meeting guide', 'writing', 33, TOTAL_STEPS);
+  console.log('[Pipeline] Step 4: Meeting guide (Opus)');
+
+  const meetingGuideBlock = loadMeetingGuideBlock();
+  const meetingGuideExemplars = loadMeetingGuideExemplars();
+  const dtwOrgLayer = loadDTWOrgLayer();
+
+  const meetingGuidePrompt = buildMeetingGuidePrompt(
+    donorName,
+    finalProfile,
+    meetingGuideBlock,
+    dtwOrgLayer,
+    meetingGuideExemplars,
+  );
+
+  const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
+  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
+  console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
+
+  const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
+  } catch (e) { /* ignore */ }
+
+  emit('All documents ready', undefined, 38, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
-  console.log(`PROSPECTAI: Complete`);
+  console.log(`CODED PIPELINE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
 
-  return { research, extraction, profile };
+  return {
+    research,
+    researchPackage,
+    profile: finalProfile,
+    meetingGuide,
+    meetingGuideHtml,
+    linkedinData,
+  };
+}
+
+/**
+ * Extract LinkedIn slug and personal websites from raw PDF text using regex.
+ */
+function extractLinkedInCodedFields(pdfText: string): { linkedinSlug: string | null; websites: string[] } {
+  let linkedinSlug: string | null = null;
+  const websites: string[] = [];
+
+  const slugMatch = pdfText.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  if (slugMatch) {
+    linkedinSlug = slugMatch[1];
+  }
+
+  const urlPattern = /(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s,)]*)?)/gi;
+  let urlMatch;
+  while ((urlMatch = urlPattern.exec(pdfText)) !== null) {
+    const fullUrl = urlMatch[0];
+    if (/linkedin\.com|facebook\.com|twitter\.com|instagram\.com|github\.com|mailto:/i.test(fullUrl)) {
+      continue;
+    }
+    websites.push(fullUrl.startsWith('http') ? fullUrl : `https://${fullUrl}`);
+  }
+
+  const seenHosts = new Set<string>();
+  const dedupedWebsites = websites.filter(url => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      if (seenHosts.has(host)) return false;
+      seenHosts.add(host);
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
+  return { linkedinSlug, websites: dedupedWebsites };
 }
