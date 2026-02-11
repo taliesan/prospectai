@@ -118,15 +118,46 @@ export interface LinkedInData {
   boards?: string[];
 }
 
+// Tier preamble for extraction — teaches the model to weight sources by tier
+const TIER_PREAMBLE = `
+## Source Tiering
+
+Sources are labeled Tier 1, 2, or 3:
+
+- **Tier 1** (Subject's own voice): Blog posts, interviews, podcasts, essays, social media posts where the subject speaks in first person. These reveal how they think, what they value, and how they make decisions. Weight heavily.
+
+- **Tier 2** (Third-party with quotes): Press coverage, profiles, event recaps that include direct quotes or behavioral descriptions. Secondary evidence. Weight moderately.
+
+- **Tier 3** (Institutional/background): Team pages, bios, press releases, tax filings. Confirms biographical facts but rarely contains behavioral evidence. Weight minimally.
+
+When making behavioral inferences, prioritize Tier 1 evidence. A quote from the subject's own blog post is stronger evidence than a paraphrase in a press release.
+`;
+
 export function buildExtractionPrompt(
   donorName: string,
-  sources: { url: string; title: string; snippet: string; content?: string }[],
+  sources: { url: string; title: string; snippet: string; content?: string; tier?: number; tierReason?: string }[],
   linkedinData?: LinkedInData | null
 ): string {
-  const sourcesText = sources.map((s, i) => {
-    const text = s.content || s.snippet;
-    return `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\n\n${text}`;
-  }).join('\n\n---\n\n');
+  // Check if sources have tier info
+  const hasTiers = sources.length > 0 && 'tier' in sources[0] && sources[0].tier;
+
+  // Format sources with tier labels if available
+  let sourcesText: string;
+  if (hasTiers) {
+    // Sort by tier (T1 first) for extraction
+    const sorted = [...sources].sort((a, b) => (a.tier || 3) - (b.tier || 3));
+    sourcesText = sorted.map((s, i) => {
+      const text = s.content || s.snippet;
+      const tierLabel = s.tier ? ` [TIER ${s.tier}]` : '';
+      const tierInfo = s.tierReason ? `\nTier reason: ${s.tierReason}` : '';
+      return `---\nSOURCE ${i + 1}${tierLabel}\nURL: ${s.url}\nTitle: ${s.title}${tierInfo}\n\n${text}\n---`;
+    }).join('\n\n');
+  } else {
+    sourcesText = sources.map((s, i) => {
+      const text = s.content || s.snippet;
+      return `### Source ${i + 1}: ${s.title}\nURL: ${s.url}\n\n${text}`;
+    }).join('\n\n---\n\n');
+  }
 
   let linkedinSection = '';
   if (linkedinData) {
@@ -154,13 +185,15 @@ ${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.board
 `;
   }
 
-  return `${EXTRACTION_PROMPT}
+  const tierPreambleSection = hasTiers ? TIER_PREAMBLE : '';
 
+  return `${EXTRACTION_PROMPT}
+${tierPreambleSection}
 ${linkedinSection}# SOURCES FOR ${donorName.toUpperCase()}
 
 ${sourcesText}
 
 ---
 
-Extract behavioral evidence for ${donorName} from the sources above.${linkedinData ? ' Use the LinkedIn data as the canonical source for biographical facts (title, employer, career history, education).' : ''}`;
+Extract behavioral evidence for ${donorName} from the sources above.${hasTiers ? ' Prioritize Tier 1 sources — these contain the subject\'s own voice and are the strongest evidence.' : ''}${linkedinData ? ' Use the LinkedIn data as the canonical source for biographical facts (title, employer, career history, education).' : ''}`;
 }

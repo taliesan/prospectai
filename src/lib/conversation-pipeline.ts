@@ -42,6 +42,7 @@ import {
   tierSources,
   TieredSource,
   truncateToTokenBudget,
+  buildEvidenceGapBlock,
 } from './research/tiering';
 
 // STAGE 4b: Critique and Redraft Pass
@@ -283,7 +284,17 @@ export async function runConversationPipeline(
   onProgress('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
   console.log('[Conversation] Stage 3: Generating Persuasion Profile...');
 
-  const profilePromptText = buildProfilePrompt(donorName, extractionOutput, geoffreyBlock, exemplars, linkedinData);
+  // Append evidence gap warnings to extraction output so profile writer knows about limitations
+  const evidenceWarnings = research.evidenceWarnings || [];
+  const evidenceGapBlock = buildEvidenceGapBlock(evidenceWarnings);
+  const extractionWithGaps = evidenceGapBlock
+    ? `${extractionOutput}\n\n${evidenceGapBlock}`
+    : extractionOutput;
+  if (evidenceWarnings.length > 0) {
+    console.log(`[Conversation] Evidence gaps surfaced to profile: ${evidenceWarnings.length} warnings`);
+  }
+
+  const profilePromptText = buildProfilePrompt(donorName, extractionWithGaps, geoffreyBlock, exemplars, linkedinData);
   const profileTokenEstimate = estimateTokens(profilePromptText);
   console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
 
