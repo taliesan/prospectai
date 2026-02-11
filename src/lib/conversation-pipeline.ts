@@ -1,85 +1,68 @@
 /**
- * Conversation Pipeline Architecture (v5 + v3 source collection)
+ * Conversation Pipeline Architecture (v6 — Agentic Research)
  *
- * Stage 1: Source Collection
- *   - Identity verification, blog crawl, analytical query generation
- *   - Aggressive screening pipeline, source tiering (T1/T2/T3)
- *   - Output: tiered sources with full content
+ * Stage 1: Research Agent
+ *   - Single LLM agent with web_search and fetch_page tools
+ *   - Agent reads, reasons, searches, and produces 24-dimension behavioral
+ *     evidence extraction directly
+ *   - Output: research package (summary, evidence gaps, sources, 24-dim extraction)
  *
- * Stage 2: Behavioral Evidence Extraction
- *   - Input: all sources with full content (tier-prioritized)
- *   - Process: extract behavioral evidence across 24 dimensions
- *   - Output: quote + source + context entries (no interpretation)
- *
- * Stage 3: Profile Generation
- *   - Input: Geoffrey Block + exemplars + extraction output + output instructions
+ * Stage 2: Profile Generation
+ *   - Input: Geoffrey Block + exemplars + research package + output instructions
  *   - Output: First draft Persuasion Profile (18 sections)
  *
- * Stage 3b: Critique and Redraft Pass (if ENABLE_CRITIQUE_REDRAFT)
- *   - Input: Geoffrey Block + exemplars + extraction output + first draft
+ * Stage 2b: Critique and Redraft Pass (if ENABLE_CRITIQUE_REDRAFT)
+ *   - Input: Geoffrey Block + exemplars + research package + first draft
  *   - Process: score for insight novelty and tactical value, cut/compress
  *   - Output: Final Persuasion Profile (18 sections, user-facing)
  *
- * Stage 4: Meeting Guide Generation
+ * Stage 3: Meeting Guide Generation
  *   - Input: Final Persuasion Profile + Meeting Guide Block + MG Exemplars + DTW Org Layer
  *   - Output: Meeting Guide (tactical choreography, user-facing)
  *
  * Key terms:
- *   - "Extraction" = behavioral evidence with quotes (intermediate, not user-facing)
+ *   - "Research package" = agent output with sources, evidence gaps, 24-dim extraction
  *   - "Persuasion Profile" = final 18-section output (user-facing)
  */
 
 import { conversationTurn, Message } from './anthropic';
-import { conductResearch } from './pipeline';
 import { loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
 import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
-import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
+import { LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
 import { writeFileSync, mkdirSync } from 'fs';
-import {
-  tierSources,
-  TieredSource,
-  truncateToTokenBudget,
-  buildEvidenceGapBlock,
-} from './research/tiering';
+import { runResearchAgent } from './research/agent';
 
-// STAGE 4b: Critique and Redraft Pass
+// STAGE 2b: Critique and Redraft Pass
 // Set to false to revert to single-pass profile generation
 // Added 2026-02-09 — if output quality degrades, set to false
 const ENABLE_CRITIQUE_REDRAFT = true;
 
-// Types (re-exported from pipeline.ts)
-export interface ResearchResult {
-  donorName: string;
-  identity: any;
-  queries: { query: string; tier: string; rationale: string }[];
-  sources: { url: string; title: string; snippet: string; content?: string }[];
-  rawMarkdown: string;
-  tier1Count?: number;
-  tier2Count?: number;
-  tier3Count?: number;
-  evidenceWarnings?: string[];
-}
-
 export interface ConversationResult {
-  research: ResearchResult;
+  research: {
+    donorName: string;
+    researchPackage: string;
+    searchCount: number;
+    fetchCount: number;
+    toolCallCount: number;
+  };
   profile: string;
-  dossier: string;
+  researchPackage: string;      // Frontend reads this for display
   meetingGuide: string;
   meetingGuideHtml: string;
-  draft: string;
+  draft: string;                // Research package (intermediate, for debug)
   critique: string;
 }
+
+// Re-export LinkedInData from canonical definition
+export type { LinkedInData } from './prompts/extraction-prompt';
 
 // Token estimation (rough: 4 chars per token)
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
-
-// Re-export LinkedInData from canonical definition
-export type { LinkedInData } from './prompts/extraction-prompt';
 
 async function parseLinkedInText(donorName: string, linkedinText: string): Promise<LinkedInData> {
   const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
@@ -129,6 +112,10 @@ type PipelineProgressCallback = (message: string, phase?: string, step?: number,
 
 /**
  * Main conversation pipeline — see architecture comment at top of file.
+ *
+ * searchFunction and fetchFunction are accepted for backward compatibility
+ * but are NOT used — the research agent handles search and fetch internally
+ * via its own tool calls to Tavily.
  */
 export async function runConversationPipeline(
   donorName: string,
@@ -139,12 +126,12 @@ export async function runConversationPipeline(
   linkedinPdfBase64?: string
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`CONVERSATION MODE (v5 extraction pipeline): Processing ${donorName}`);
+  console.log(`CONVERSATION MODE (v6 agentic research): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
   const TOTAL_STEPS = 38;
 
-  // ─── LinkedIn PDF Parsing (before research, so it informs identity & queries) ───
+  // ─── LinkedIn PDF Parsing (before research, so it informs the agent) ───
   let linkedinData: LinkedInData | null = null;
 
   if (linkedinPdfBase64) {
@@ -171,7 +158,7 @@ export async function runConversationPipeline(
         console.log('[DEBUG] LinkedIn data saved');
       } catch (e) { console.warn('[DEBUG] Failed to save LinkedIn data:', e); }
 
-      onProgress(`✓ LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, undefined, 2, TOTAL_STEPS);
+      onProgress(`LinkedIn parsed — ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`, undefined, 2, TOTAL_STEPS);
     } catch (err) {
       console.error('[LinkedIn] Parsing failed:', err);
       onProgress('LinkedIn PDF parsing failed — continuing without it', undefined, 2, TOTAL_STEPS);
@@ -180,123 +167,58 @@ export async function runConversationPipeline(
     console.log('[LinkedIn] No PDF provided in request');
   }
 
-  // ─── Stage 1: Source Collection ─────────────────────────────────────
+  // ─── Stage 1: Research Agent ──────────────────────────────────────
   onProgress(`Building intelligence profile for ${donorName}`, undefined, 3, TOTAL_STEPS);
   onProgress('', 'research'); // phase transition event
 
-  const research = await conductResearch(donorName, seedUrls, searchFunction, fetchFunction, onProgress, linkedinData);
+  console.log(`[Pipeline] Starting research agent for ${donorName}...`);
 
-  const t1 = research.tier1Count || 0;
-  const t2 = research.tier2Count || 0;
-  const t3 = research.tier3Count || 0;
-  onProgress(`✓ Research complete — ${research.sources.length} verified sources (${t1} T1, ${t2} T2, ${t3} T3)`, 'research', 15, TOTAL_STEPS);
-  console.log(`[Conversation] Research complete: ${research.sources.length} sources (T1:${t1} T2:${t2} T3:${t3})`);
+  const agentResult = await runResearchAgent(linkedinData, donorName, onProgress);
 
-  // ─── Stage 2: Behavioral Evidence Extraction ────────────────────────
+  const { researchPackage, searchCount, fetchCount, toolCallCount, conversationLog } = agentResult;
+
+  console.log(`[Pipeline] Research complete: ${searchCount} searches, ${fetchCount} page fetches`);
+  console.log(`[Pipeline] Research package: ${researchPackage.length} chars`);
+
+  onProgress(
+    `Research complete — ${searchCount} searches, ${fetchCount} pages read`,
+    'research', 15, TOTAL_STEPS
+  );
+
+  // [DEBUG] Save research agent outputs
+  try {
+    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+    console.log(`[DEBUG] Research package saved (${researchPackage.length} chars)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save research package:', e); }
+
+  try {
+    writeFileSync(
+      '/tmp/prospectai-outputs/DEBUG-research-conversation.json',
+      JSON.stringify(conversationLog, null, 2)
+    );
+    console.log(`[DEBUG] Research agent conversation saved (${conversationLog.length} messages)`);
+  } catch (e) { console.warn('[DEBUG] Failed to save research conversation:', e); }
+
+  // ─── Stage 2: Profile Generation ────────────────────────────────────
   onProgress('', 'analysis'); // phase transition event
+  onProgress('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
+  console.log('[Pipeline] Stage 2: Generating Persuasion Profile...');
 
   // Load canon documents
   const geoffreyBlock = loadGeoffreyBlock();
   const exemplars = loadExemplars();
-  console.log(`[Conversation] Loaded Geoffrey Block (${geoffreyBlock.length} chars) and exemplars (${exemplars.length} chars)`);
+  console.log(`[Pipeline] Loaded Geoffrey Block (${geoffreyBlock.length} chars) and exemplars (${exemplars.length} chars)`);
 
-  // v3: Use tiered sources from research pipeline (already tiered by conductResearch)
-  // Re-tier if sources don't have tier info (backward compat)
-  let tieredSources: TieredSource[];
-  if (research.sources.length > 0 && 'tier' in research.sources[0] && 'tierReason' in research.sources[0]) {
-    tieredSources = research.sources as TieredSource[];
-  } else {
-    tieredSources = tierSources(research.sources, donorName);
-  }
+  // The research package IS the extraction output — it contains the 24-dimension evidence
+  // The research package preamble tells the profile writer about evidence quality and gaps
+  const researchPackagePreamble = `The behavioral evidence below was extracted by a research agent that read and evaluated all available sources on the subject. The Research Summary and Evidence Gaps sections describe what was found and what wasn't. Where evidence is thin, the profile should acknowledge limits rather than extrapolating from weak data.\n\n`;
 
-  // Sort by tier for display (T1 first)
-  tieredSources.sort((a, b) => a.tier - b.tier);
+  const extractionForProfile = researchPackagePreamble + researchPackage;
 
-  const tierCounts = { 1: 0, 2: 0, 3: 0 };
-  for (const s of tieredSources) {
-    if (s.tier >= 1 && s.tier <= 3) tierCounts[s.tier as 1 | 2 | 3]++;
-  }
-
-  onProgress(
-    `Ranking sources — ${tierCounts[1]} subject's voice, ${tierCounts[2]} third-party quotes, ${tierCounts[3]} background`,
-    'analysis', 16, TOTAL_STEPS
-  );
-
-  // Build extraction prompt with token budget management
-  // Use tiered sources (sorted T1 first) for extraction
-  const MAX_TOKENS = 180000;
-  let sourcesToUse: { url: string; title: string; snippet: string; content?: string }[] = tieredSources;
-  let extractionPromptText = buildExtractionPrompt(donorName, sourcesToUse, linkedinData);
-  let extractionEstimate = estimateTokens(extractionPromptText);
-
-  console.log(`[Conversation] Extraction prompt token estimate: ${extractionEstimate} (max: ${MAX_TOKENS})`);
-  console.log(`[LinkedIn] LinkedIn data passed to extraction: ${linkedinData ? 'YES' : 'NO'}`);
-  if (linkedinData) {
-    console.log(`[LinkedIn] Extraction prompt contains CANONICAL BIOGRAPHICAL DATA: ${extractionPromptText.includes('CANONICAL BIOGRAPHICAL DATA')}`);
-  }
-
-  if (extractionEstimate > MAX_TOKENS) {
-    console.log(`[Conversation] Token budget exceeded, using tier-aware truncation...`);
-    // v3: Tier-aware truncation drops Tier 3 first, preserves Tier 1
-    const maxSourceTokens = MAX_TOKENS - 20000; // 20k buffer for prompt overhead
-    sourcesToUse = truncateToTokenBudget(tieredSources, maxSourceTokens);
-    extractionPromptText = buildExtractionPrompt(donorName, sourcesToUse, linkedinData);
-    extractionEstimate = estimateTokens(extractionPromptText);
-    console.log(`[Conversation] Tier-aware truncation: ${sourcesToUse.length} sources, ~${extractionEstimate} tokens`);
-  }
-
-  onProgress(`Extracting behavioral evidence from ${sourcesToUse.length} sources across 24 dimensions`, 'analysis', 17, TOTAL_STEPS);
-  console.log('[Conversation] Stage 2: Extracting behavioral evidence...');
-
-  // [DEBUG] Save extraction prompt (the input to Stage 2 LLM) for audit
-  try {
-    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt', extractionPromptText);
-    console.log(`[DEBUG] Extraction prompt saved (${extractionPromptText.length} chars)`);
-  } catch (e) { console.warn('[DEBUG] Failed to save extraction prompt:', e); }
-
-  const extractionMessages: Message[] = [{ role: 'user', content: extractionPromptText }];
-  const extractionPromise = conversationTurn(extractionMessages, { maxTokens: 16000 });
-
-  // Timed intermediate updates during extraction
-  let extractionDone = false;
-  const extractionTimers = [
-    setTimeout(() => { if (!extractionDone) onProgress('Scanning for decision-making patterns and trust signals', 'analysis', 18, TOTAL_STEPS); }, 15000),
-    setTimeout(() => { if (!extractionDone) onProgress('Mapping emotional triggers, contradiction patterns, and retreat behaviors', 'analysis', 19, TOTAL_STEPS); }, 30000),
-    setTimeout(() => { if (!extractionDone) onProgress('Extracting interpersonal tells, tempo signals, and conditional forks', 'analysis', 20, TOTAL_STEPS); }, 45000),
-  ];
-
-  const extractionOutput = await extractionPromise;
-  extractionDone = true;
-  extractionTimers.forEach(clearTimeout);
-
-  onProgress(`✓ Behavioral evidence extracted — ${extractionOutput.length} characters`, 'analysis', 21, TOTAL_STEPS);
-  console.log(`[Conversation] Extraction complete: ${extractionOutput.length} chars`);
-
-  // [DEBUG] Save extraction output for audit
-  try {
-    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-extraction.txt', extractionOutput);
-    console.log(`[DEBUG] Extraction output saved (${extractionOutput.length} chars)`);
-  } catch (e) { console.warn('[DEBUG] Failed to save extraction output:', e); }
-
-  // ─── Stage 3: Profile Generation ────────────────────────────────────
-  onProgress('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
-  console.log('[Conversation] Stage 3: Generating Persuasion Profile...');
-
-  // Append evidence gap warnings to extraction output so profile writer knows about limitations
-  const evidenceWarnings = research.evidenceWarnings || [];
-  const evidenceGapBlock = buildEvidenceGapBlock(evidenceWarnings);
-  const extractionWithGaps = evidenceGapBlock
-    ? `${extractionOutput}\n\n${evidenceGapBlock}`
-    : extractionOutput;
-  if (evidenceWarnings.length > 0) {
-    console.log(`[Conversation] Evidence gaps surfaced to profile: ${evidenceWarnings.length} warnings`);
-  }
-
-  const profilePromptText = buildProfilePrompt(donorName, extractionWithGaps, geoffreyBlock, exemplars, linkedinData);
+  const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData);
   const profileTokenEstimate = estimateTokens(profilePromptText);
-  console.log(`[Conversation] Profile prompt token estimate: ${profileTokenEstimate}`);
+  console.log(`[Pipeline] Profile prompt token estimate: ${profileTokenEstimate}`);
 
   // [DEBUG] Save full profile prompt for audit
   try {
@@ -319,7 +241,7 @@ export async function runConversationPipeline(
   profileDone = true;
   profileTimers.forEach(clearTimeout);
 
-  console.log(`[Stage 3] Profile generation complete: ${firstDraftProfile.length} chars`);
+  console.log(`[Stage 2] Profile generation complete: ${firstDraftProfile.length} chars`);
 
   // Save first draft debug output (ALWAYS, regardless of flag)
   try {
@@ -327,12 +249,12 @@ export async function runConversationPipeline(
     console.log(`[DEBUG] First draft profile saved (${firstDraftProfile.length} chars)`);
   } catch (e) { console.warn('[DEBUG] Failed to save first draft:', e); }
 
-  // ─── Stage 3b: Critique and Redraft Pass ─────────────────────────────
+  // ─── Stage 2b: Critique and Redraft Pass ─────────────────────────────
   // Revert by setting ENABLE_CRITIQUE_REDRAFT = false at top of file
   let finalProfile = firstDraftProfile;
 
   if (ENABLE_CRITIQUE_REDRAFT) {
-    console.log(`[Stage 3b] Starting critique and redraft pass...`);
+    console.log(`[Stage 2b] Starting critique and redraft pass...`);
     onProgress('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
 
     const critiquePrompt = buildCritiqueRedraftPrompt(
@@ -340,7 +262,7 @@ export async function runConversationPipeline(
       firstDraftProfile,
       geoffreyBlock,
       exemplars,
-      extractionOutput,
+      researchPackage,    // Use research package as behavioral evidence for critique
       linkedinData
     );
 
@@ -349,7 +271,7 @@ export async function runConversationPipeline(
       writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
       console.log(`[DEBUG] Critique prompt saved (${critiquePrompt.length} chars)`);
     } catch (e) { console.warn('[DEBUG] Failed to save critique prompt:', e); }
-    console.log(`[Stage 3b] Critique prompt token estimate: ${estimateTokens(critiquePrompt)}`);
+    console.log(`[Stage 2b] Critique prompt token estimate: ${estimateTokens(critiquePrompt)}`);
 
     onProgress('Applying editorial pass...', 'analysis', 28, TOTAL_STEPS);
 
@@ -374,23 +296,23 @@ export async function runConversationPipeline(
     } catch (e) { console.warn('[DEBUG] Failed to save final profile:', e); }
 
     const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
-    console.log(`[Stage 3b] Complete: ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
-    onProgress(`✓ Editorial pass complete — ${reduction}% tighter`, 'analysis', 31, TOTAL_STEPS);
+    console.log(`[Stage 2b] Complete: ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
+    onProgress(`Editorial pass complete — ${reduction}% tighter`, 'analysis', 31, TOTAL_STEPS);
   } else {
-    console.log(`[Stage 3b] Skipped (ENABLE_CRITIQUE_REDRAFT = false)`);
-    onProgress(`✓ Persuasion Profile complete — ${finalProfile.length} characters of insight`, 'analysis', 27, TOTAL_STEPS);
+    console.log(`[Stage 2b] Skipped (ENABLE_CRITIQUE_REDRAFT = false)`);
+    onProgress(`Persuasion Profile complete — ${finalProfile.length} characters of insight`, 'analysis', 27, TOTAL_STEPS);
   }
 
-  // ─── Stage 4: Meeting Guide Generation ──────────────────────────────
+  // ─── Stage 3: Meeting Guide Generation ──────────────────────────────
   onProgress('', 'writing'); // phase transition event
   onProgress('Loading meeting strategy framework', 'writing', 33, TOTAL_STEPS);
-  console.log('[Conversation] Stage 4: Generating meeting guide from profile...');
+  console.log('[Pipeline] Stage 3: Generating meeting guide from profile...');
 
   const meetingGuideBlock = loadMeetingGuideBlock();
   const meetingGuideExemplars = loadMeetingGuideExemplars();
   const dtwOrgLayer = loadDTWOrgLayer();
 
-  console.log(`[Conversation] Loaded Meeting Guide Block (${meetingGuideBlock.length} chars), Exemplars (${meetingGuideExemplars.length} chars), DTW Org Layer (${dtwOrgLayer.length} chars)`);
+  console.log(`[Pipeline] Loaded Meeting Guide Block (${meetingGuideBlock.length} chars), Exemplars (${meetingGuideExemplars.length} chars), DTW Org Layer (${dtwOrgLayer.length} chars)`);
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
     donorName,
@@ -401,7 +323,7 @@ export async function runConversationPipeline(
   );
 
   const meetingGuideTokenEstimate = estimateTokens(meetingGuidePrompt);
-  console.log(`[Conversation] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
+  console.log(`[Pipeline] Meeting guide prompt token estimate: ${meetingGuideTokenEstimate}`);
 
   // Token ratio check
   const voiceTokens = Math.round(meetingGuideBlock.length / 4);
@@ -437,8 +359,8 @@ export async function runConversationPipeline(
   meetingGuideDone = true;
   mgTimers.forEach(clearTimeout);
 
-  onProgress('✓ Meeting guide complete', 'writing', 37, TOTAL_STEPS);
-  console.log(`[Conversation] Meeting guide complete: ${meetingGuide.length} chars`);
+  onProgress('Meeting guide complete', 'writing', 37, TOTAL_STEPS);
+  console.log(`[Pipeline] Meeting guide complete: ${meetingGuide.length} chars`);
 
   // Save meeting guide markdown
   try {
@@ -464,19 +386,25 @@ export async function runConversationPipeline(
   console.log(`  Beats: ${beatCount}`);
   console.log(`  Signals: ${signalCount}`);
 
-  onProgress('✓ All documents ready — preparing download', undefined, 38, TOTAL_STEPS);
+  onProgress('All documents ready — preparing download', undefined, 38, TOTAL_STEPS);
 
   console.log(`${'='.repeat(60)}`);
   console.log(`CONVERSATION MODE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
 
   return {
-    research,
+    research: {
+      donorName,
+      researchPackage,
+      searchCount,
+      fetchCount,
+      toolCallCount,
+    },
     profile: finalProfile,              // Persuasion Profile (18-section, user-facing)
-    dossier: finalProfile,              // Frontend reads dossier.rawMarkdown for display
+    researchPackage: finalProfile,      // Frontend reads this for display
     meetingGuide,
     meetingGuideHtml,                   // Styled HTML version of meeting guide
-    draft: extractionOutput,            // Extraction output (intermediate, for debug)
+    draft: researchPackage,             // Research package (intermediate, for debug)
     critique: ''
   };
 }
