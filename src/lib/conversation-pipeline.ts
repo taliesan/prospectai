@@ -1,10 +1,10 @@
 /**
- * Conversation Pipeline Architecture (v6 — Agentic Research)
+ * Conversation Pipeline Architecture (v7 — Phased Research)
  *
- * Stage 1: Research Agent
- *   - Single LLM agent with web_search and fetch_page tools
- *   - Agent reads, reasons, searches, and produces 24-dimension behavioral
- *     evidence extraction directly
+ * Stage 1: Phased Research (3 sequential agentic sessions)
+ *   Phase 1: Own Voice — find everything the subject has written or said
+ *   Phase 2: Pressure & Context — external evidence, transitions, peer accounts
+ *   Phase 3: Extraction & Gap-Fill — read sources, extract 24-dim evidence, fill gaps
  *   - Output: research package (summary, evidence gaps, sources, 24-dim extraction)
  *
  * Stage 2: Profile Generation
@@ -21,7 +21,7 @@
  *   - Output: Meeting Guide (tactical choreography, user-facing)
  *
  * Key terms:
- *   - "Research package" = agent output with sources, evidence gaps, 24-dim extraction
+ *   - "Research package" = Phase 3 output with sources, evidence gaps, 24-dim extraction
  *   - "Persuasion Profile" = final 18-section output (user-facing)
  */
 
@@ -33,7 +33,7 @@ import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
 import { writeFileSync, mkdirSync } from 'fs';
-import { runResearchAgent } from './research/agent';
+import { runPhasedResearch } from './research/agent';
 
 // STAGE 2b: Critique and Redraft Pass
 // Set to false to revert to single-pass profile generation
@@ -167,38 +167,48 @@ export async function runConversationPipeline(
     console.log('[LinkedIn] No PDF provided in request');
   }
 
-  // ─── Stage 1: Research Agent ──────────────────────────────────────
+  // ─── Stage 1: Phased Research ──────────────────────────────────────
   onProgress(`Building intelligence profile for ${donorName}`, undefined, 3, TOTAL_STEPS);
   onProgress('', 'research'); // phase transition event
 
-  console.log(`[Pipeline] Starting research agent for ${donorName}...`);
+  console.log(`[Pipeline] Starting phased research for ${donorName}...`);
 
-  const agentResult = await runResearchAgent(linkedinData, donorName, onProgress);
+  const phasedResult = await runPhasedResearch(linkedinData, donorName, onProgress);
 
-  const { researchPackage, searchCount, fetchCount, toolCallCount, conversationLog } = agentResult;
+  const { researchPackage, phase1Sources, phase2Sources, phase1, phase2, phase3 } = phasedResult;
+  const { totalSearchCount: searchCount, totalFetchCount: fetchCount, totalToolCallCount: toolCallCount } = phasedResult;
 
-  console.log(`[Pipeline] Research complete: ${searchCount} searches, ${fetchCount} page fetches`);
+  console.log(`[Pipeline] Phased research complete: ${searchCount} searches, ${fetchCount} page fetches across 3 phases`);
   console.log(`[Pipeline] Research package: ${researchPackage.length} chars`);
 
   onProgress(
-    `Research complete — ${searchCount} searches, ${fetchCount} pages read`,
+    `Research complete — ${searchCount} searches, ${fetchCount} pages read across 3 phases`,
     'research', 15, TOTAL_STEPS
   );
 
-  // [DEBUG] Save research agent outputs
+  // [DEBUG] Save per-phase outputs
   try {
     mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
-    console.log(`[DEBUG] Research package saved (${researchPackage.length} chars)`);
-  } catch (e) { console.warn('[DEBUG] Failed to save research package:', e); }
 
-  try {
-    writeFileSync(
-      '/tmp/prospectai-outputs/DEBUG-research-conversation.json',
-      JSON.stringify(conversationLog, null, 2)
-    );
-    console.log(`[DEBUG] Research agent conversation saved (${conversationLog.length} messages)`);
-  } catch (e) { console.warn('[DEBUG] Failed to save research conversation:', e); }
+    // Phase 1 outputs
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase1-sources.txt', phase1Sources);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase1-conversation.json', JSON.stringify(phase1.conversationLog, null, 2));
+    console.log(`[DEBUG] Phase 1 saved: ${phase1Sources.length} chars, ${phase1.conversationLog.length} messages`);
+
+    // Phase 2 outputs
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase2-sources.txt', phase2Sources);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase2-conversation.json', JSON.stringify(phase2.conversationLog, null, 2));
+    console.log(`[DEBUG] Phase 2 saved: ${phase2Sources.length} chars, ${phase2.conversationLog.length} messages`);
+
+    // Phase 3 outputs (the research package)
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase3-research-package.txt', researchPackage);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-phase3-conversation.json', JSON.stringify(phase3.conversationLog, null, 2));
+    console.log(`[DEBUG] Phase 3 saved: ${researchPackage.length} chars, ${phase3.conversationLog.length} messages`);
+
+    // Backward-compatible combined files
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-conversation.json', JSON.stringify(phase3.conversationLog, null, 2));
+  } catch (e) { console.warn('[DEBUG] Failed to save research outputs:', e); }
 
   // ─── Stage 2: Profile Generation ────────────────────────────────────
   onProgress('', 'analysis'); // phase transition event
