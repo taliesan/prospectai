@@ -228,6 +228,202 @@ If no post URLs found, return: []`;
   }
 }
 
+// ── Generic internal link extraction (for custom/unknown platforms) ──
+
+/**
+ * Extract all same-domain internal links from HTML content.
+ * Returns URL + anchor text pairs for LLM classification.
+ */
+function extractInternalLinks(
+  baseUrl: string,
+  content: string
+): { url: string; text: string }[] {
+  let origin: string;
+  try {
+    origin = new URL(baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`).origin;
+  } catch {
+    return [];
+  }
+
+  const links: { url: string; text: string }[] = [];
+  const seenUrls = new Set<string>();
+
+  // Match <a href="...">text</a>
+  const linkPattern = /href=["']([^"'#]+)["'][^>]*>([^<]*)</gi;
+  let match;
+  while ((match = linkPattern.exec(content)) !== null) {
+    let href = match[1].trim();
+    const text = match[2].trim();
+
+    // Skip empty, javascript:, mailto:, tel:, anchors
+    if (!href || /^(javascript|mailto|tel):/i.test(href)) continue;
+
+    // Resolve relative URLs
+    if (href.startsWith('/')) {
+      href = origin + href;
+    } else if (!href.startsWith('http')) {
+      href = origin + '/' + href;
+    }
+
+    // Only keep same-domain links
+    try {
+      if (new URL(href).origin !== origin) continue;
+    } catch {
+      continue;
+    }
+
+    // Skip common non-content paths
+    if (/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|pdf|zip)(\?|$)/i.test(href)) continue;
+    if (/\/(wp-admin|wp-includes|wp-content\/plugins|feed|rss|login|signup|cart|checkout)\b/i.test(href)) continue;
+
+    if (!seenUrls.has(href)) {
+      seenUrls.add(href);
+      links.push({ url: href, text: text || '' });
+    }
+  }
+
+  return links;
+}
+
+/**
+ * LLM fallback: given a list of internal links from a personal domain,
+ * ask the LLM which are individual blog posts or essays.
+ * Receives only URLs + anchor text, NOT full page HTML — cheap call.
+ */
+async function classifyBlogLinksWithLLM(
+  siteUrl: string,
+  subjectName: string,
+  links: { url: string; text: string }[]
+): Promise<{ url: string; title: string }[]> {
+  if (links.length === 0) return [];
+
+  // Format link list compactly
+  const linkList = links
+    .map(l => `${l.url}${l.text ? ` — ${l.text}` : ''}`)
+    .join('\n');
+
+  const prompt = `Here are the internal links from ${subjectName}'s personal website (${siteUrl}).
+Which of these are individual blog posts, essays, or articles written by ${subjectName}?
+
+Exclude: navigation pages, about pages, contact pages, category/tag index pages, asset files, home page.
+Include: individual posts, essays, articles, letters, reviews, commentary.
+
+Links:
+${linkList}
+
+Return ONLY the blog post/essay URLs as a JSON array, most recent first:
+[
+  { "url": "https://example.com/2024/01/post-title", "title": "Post Title" },
+  ...
+]
+
+If the anchor text looks like a title, use it. Otherwise use an empty string.
+If none of these are blog posts, return: []`;
+
+  try {
+    const response = await complete(
+      'You are identifying blog posts from a list of website links.',
+      prompt,
+      { maxTokens: 4096 }
+    );
+
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.log(`[Blog Crawl] LLM link classifier returned no JSON. Preview: ${response.slice(0, 200)}`);
+      return [];
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const filtered = parsed.filter((p: any) => p.url && typeof p.url === 'string');
+    console.log(`[Blog Crawl] LLM classified ${filtered.length} links as blog posts`);
+    return filtered;
+  } catch (err) {
+    console.error('[Blog Crawl] LLM link classification failed:', err);
+    return [];
+  }
+}
+
+// ── Personal domain crawler (always fetch, never skip) ──────────────
+
+/**
+ * Crawl a personal domain URL (from LinkedIn websites field).
+ * Always fetches the page. Tries platform regex first, then falls back
+ * to generic link extraction + LLM classification.
+ * All results are Tier 1.
+ */
+export async function crawlPersonalDomain(
+  domainUrl: string,
+  subjectName: string,
+  fetchFunction: (url: string) => Promise<string>
+): Promise<ResearchSource[]> {
+  console.log(`[Blog Crawl] Crawling personal domain: ${domainUrl}`);
+
+  // Step 1: Always fetch the page
+  let pageContent: string;
+  try {
+    pageContent = await fetchFunction(domainUrl);
+  } catch (err) {
+    console.log(`[Blog Crawl] Failed to fetch personal domain ${domainUrl}, skipping`);
+    return [];
+  }
+
+  console.log(`[Blog Crawl] Fetched personal domain: ${pageContent.length} chars`);
+
+  // Step 2: Try platform-specific detection + regex extraction
+  const detection = detectBlog(domainUrl, pageContent);
+  let posts: { url: string; title: string }[] = [];
+
+  if (detection.isBlog && detection.platform) {
+    console.log(`[Blog Crawl] Personal domain matched platform: ${detection.platform}`);
+    posts = await extractPostUrls(domainUrl, pageContent, detection.platform, fetchFunction);
+  }
+
+  // Step 3: If platform regex found posts, use them
+  if (posts.length > 0) {
+    console.log(`[Blog Crawl] Platform regex found ${posts.length} posts on personal domain`);
+  } else {
+    // Step 4: Generic extraction — extract internal links, ask LLM to classify
+    console.log(`[Blog Crawl] No platform match — trying generic link extraction + LLM`);
+    const internalLinks = extractInternalLinks(domainUrl, pageContent);
+    console.log(`[Blog Crawl] Extracted ${internalLinks.length} internal links from ${domainUrl}`);
+
+    if (internalLinks.length > 0) {
+      posts = await classifyBlogLinksWithLLM(domainUrl, subjectName, internalLinks);
+    }
+
+    if (posts.length === 0) {
+      console.log(`[Blog Crawl] No blog posts found on personal domain ${domainUrl} (genuine gap)`);
+      return [];
+    }
+  }
+
+  // Step 5: Prioritize and fetch posts (cap at 12)
+  const prioritized = prioritizePosts(posts);
+  console.log(`[Blog Crawl] Prioritized to ${prioritized.length} posts from personal domain`);
+
+  const sources: ResearchSource[] = [];
+  const maxPosts = 12;
+
+  for (const post of prioritized.slice(0, maxPosts)) {
+    try {
+      const content = await fetchFunction(post.url);
+      sources.push({
+        url: post.url,
+        title: post.title || 'Blog Post',
+        snippet: content.slice(0, 300),
+        content,
+        source: 'blog_crawl',
+        bypassScreening: true,
+      });
+      console.log(`[Blog Crawl] Fetched personal domain post: ${post.url} (${content.length} chars)`);
+    } catch (err) {
+      console.log(`[Blog Crawl] Failed to fetch: ${post.url}`);
+    }
+  }
+
+  return sources;
+}
+
 // ── Post prioritization ─────────────────────────────────────────────
 
 interface PostPriority {
@@ -396,11 +592,11 @@ export async function crawlSubjectPublishing(
     tier1Sources.push(...blogSources);
   }
 
-  // 2. Check LinkedIn data for personal websites
+  // 2. Check LinkedIn data for personal websites — always crawl, never skip
   if (linkedinData?.websites) {
     for (const website of linkedinData.websites) {
       if (typeof website === 'string' && !website.includes('linkedin.com')) {
-        const blogSources = await crawlBlog(website, subjectName, fetchFunction);
+        const blogSources = await crawlPersonalDomain(website, subjectName, fetchFunction);
         tier1Sources.push(...blogSources);
       }
     }
