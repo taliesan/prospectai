@@ -21,6 +21,7 @@ interface ProfileData {
   dossier: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
   meetingGuide?: string;
+  meetingGuideHtml?: string;
 }
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
@@ -253,6 +254,19 @@ export default function ProfilePage() {
             </div>
           );
         }
+
+        // Use formatted HTML if available, fall back to markdown
+        if (data.meetingGuideHtml) {
+          return (
+            <div
+              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+              dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }}
+            />
+          );
+        }
+
+        // Fallback: render markdown directly
         return (
           <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
@@ -430,6 +444,36 @@ export default function ProfilePage() {
       {/* Content */}
       <main className="max-w-[800px] mx-auto px-4 py-10">
         {renderContent()}
+
+        {/* Debug Downloads */}
+        <details className="mt-8 border-t border-dtw-light-gray pt-4">
+          <summary className="cursor-pointer text-sm text-dtw-mid-gray hover:text-dtw-warm-gray transition-colors">
+            Debug Files
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { file: 'extraction-prompt', label: 'Extraction Prompt' },
+              { file: 'extraction', label: 'Extraction Output' },
+              { file: 'prompt', label: 'Profile Prompt' },
+              { file: 'first-draft', label: 'First Draft' },
+              { file: 'critique-prompt', label: 'Critique Prompt' },
+              { file: 'final', label: 'Final Profile' },
+              { file: 'meeting-guide-prompt', label: 'Meeting Guide Prompt' },
+              { file: 'meeting-guide', label: 'Meeting Guide (MD)' },
+              { file: 'meeting-guide-html', label: 'Meeting Guide (HTML)' },
+              { file: 'linkedin', label: 'LinkedIn Data' },
+            ].map(({ file, label }) => (
+              <a
+                key={file}
+                href={`/api/debug-dump?file=${file}`}
+                download={`DEBUG-${file}.${file === 'linkedin' ? 'json' : file === 'meeting-guide-html' ? 'html' : file === 'meeting-guide' ? 'md' : 'txt'}`}
+                className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </details>
       </main>
 
       {/* Footer */}

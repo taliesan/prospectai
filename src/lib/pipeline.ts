@@ -18,6 +18,7 @@ import {
   CROSS_CUTTING_PROMPT,
   DIMENSIONS
 } from './prompts/extraction';
+import type { LinkedInData } from './prompts/extraction-prompt';
 import {
   createProfilePrompt,
   createRegenerationPrompt
@@ -37,10 +38,16 @@ import {
 } from './research/tiering';
 
 // Types
+interface GeneratedQuery {
+  query: string;
+  tier: 'STANDARD' | 'TAILORED';
+  rationale: string;
+}
+
 interface ResearchResult {
   donorName: string;
   identity: any;
-  queries: { query: string; category: string }[];
+  queries: GeneratedQuery[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
   tier1Count?: number;
@@ -72,7 +79,8 @@ export async function conductResearch(
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
   fetchFunction?: (url: string) => Promise<string>,
-  onProgress?: ResearchProgressCallback
+  onProgress?: ResearchProgressCallback,
+  linkedinData?: LinkedInData | null
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
   const emit = onProgress || (() => {});
@@ -125,12 +133,73 @@ Extract the identity signals for this person.`;
     }
   }
 
+  // Enrich identity with LinkedIn data (authoritative for biographical facts)
+  // Step 1 (above): Always extract identity from seed URL — provides affiliations, unique identifiers, context
+  // Step 2 (here): LinkedIn overrides biographical facts (title, employer, career, education)
+  if (linkedinData) {
+    console.log(`[Research] Enriching identity with LinkedIn data: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
+
+    // LinkedIn is authoritative for current role/org — always override
+    identity.currentRole = linkedinData.currentTitle || identity.currentRole;
+    identity.currentOrg = linkedinData.currentEmployer || identity.currentOrg;
+
+    // Career history from LinkedIn (authoritative)
+    if (linkedinData.careerHistory?.length) {
+      identity.pastRoles = linkedinData.careerHistory.map(j => ({
+        role: j.title,
+        org: j.employer,
+        years: `${j.startDate} - ${j.endDate}`
+      }));
+    }
+
+    // Education from LinkedIn (authoritative)
+    if (linkedinData.education?.length) {
+      identity.education = linkedinData.education.map(e => ({
+        school: e.institution,
+        degree: e.degree,
+        year: e.years
+      }));
+    }
+
+    // Add LinkedIn boards to affiliations (merge, don't replace)
+    const existingAffiliations = new Set((identity.affiliations || []).map((a: string) => a.toLowerCase()));
+    for (const board of (linkedinData.boards || [])) {
+      if (!existingAffiliations.has(board.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(board);
+        existingAffiliations.add(board.toLowerCase());
+      }
+    }
+
+    // Add past employers to affiliations (merge, don't replace)
+    for (const job of (linkedinData.careerHistory || [])) {
+      if (job.employer && job.employer !== linkedinData.currentEmployer && !existingAffiliations.has(job.employer.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(job.employer);
+        existingAffiliations.add(job.employer.toLowerCase());
+      }
+    }
+
+    // Add education institutions to uniqueIdentifiers (helps disambiguation)
+    for (const edu of (linkedinData.education || [])) {
+      if (edu.institution) {
+        identity.uniqueIdentifiers = identity.uniqueIdentifiers || [];
+        if (!identity.uniqueIdentifiers.includes(edu.institution)) {
+          identity.uniqueIdentifiers.push(edu.institution);
+        }
+      }
+    }
+
+    // Keep uniqueIdentifiers from seed URL — LinkedIn doesn't provide these
+    console.log(`[Research] Identity after LinkedIn enrichment:`, JSON.stringify(identity, null, 2));
+  }
+
   emit(
     `Identified: ${identity.fullName || donorName} — ${identity.currentRole || 'unknown role'} at ${identity.currentOrg || 'unknown org'}`,
     'research', 5, TOTAL
   );
 
-  // ── NEW: Crawl subject's own publishing first ────────────────────
+  // ── Crawl subject's own publishing first ────────────────────────
   let tier1Sources: ResearchSource[] = [];
   if (fetchFunction) {
     emit('Crawling subject\'s personal publishing', 'research', 6, TOTAL);
@@ -151,21 +220,28 @@ Extract the identity signals for this person.`;
     }
   }
 
-  // 3. Generate targeted search queries using identity signals (v3: analytical categories)
+  // 3. Generate targeted search queries using identity signals (analytical categories A-E)
   console.log('[Research] Generating analytical search queries...');
   emit('Designing research strategy with analytical categories', 'research', 7, TOTAL);
   const queryPrompt = generateResearchQueries(donorName, identity, seedContent.slice(0, 3000));
   const queryResponse = await complete('You are a research analyst designing search queries for behavioral evidence.', queryPrompt);
 
-  // Parse queries with new analytical format
-  let queries: { query: string; category: string; hypothesis?: string }[] = [];
+  // Parse queries — analytical categories internally, mapped to GeneratedQuery for pipeline compat
+  let queries: GeneratedQuery[] = [];
   const analyticalQueries = parseAnalyticalQueries(queryResponse);
+
+  // Map analytical categories to STANDARD/TAILORED tiers:
+  // A (known outputs) + C (community) → STANDARD (identity-linked searches)
+  // B (pressure points) + D (org context) + E (gap-filling) → TAILORED (investigative)
+  const categoryToTier = (cat: string): 'STANDARD' | 'TAILORED' => {
+    return (cat === 'A' || cat === 'C') ? 'STANDARD' : 'TAILORED';
+  };
 
   if (analyticalQueries.length > 0) {
     queries = analyticalQueries.map(q => ({
       query: q.query,
-      category: q.category,
-      hypothesis: q.hypothesis,
+      tier: categoryToTier(q.category),
+      rationale: `[Cat ${q.category}] ${q.hypothesis}`,
     }));
 
     // Log category distribution
@@ -183,25 +259,40 @@ Extract the identity signals for this person.`;
     // Fallback: try old format parsing
     try {
       const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
-      queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      queries = parsed.map((q: any) => ({
+        query: q.query,
+        tier: q.tier || categoryToTier(q.category || 'E'),
+        rationale: q.rationale || q.hypothesis || '',
+      }));
     } catch {
       // Fallback queries with identity context
-      const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
+      const org = identity.currentOrg || '';
       queries = [
-        { query: `"${donorName}"${orgSuffix} interview`, category: 'A' },
-        { query: `"${donorName}"${orgSuffix} podcast`, category: 'A' },
-        { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'C' },
-        { query: `"${donorName}"${orgSuffix} profile`, category: 'C' },
+        { query: `"${donorName}" ${org} interview`, tier: 'STANDARD', rationale: 'Basic interview search' },
+        { query: `"${donorName}" ${org} podcast`, tier: 'STANDARD', rationale: 'Podcast appearances' },
+        { query: `"${donorName}" ${org} philanthropy`, tier: 'STANDARD', rationale: 'Philanthropic activity' },
+        { query: `"${donorName}" ${org} profile`, tier: 'STANDARD', rationale: 'Profile at current org' },
+        { query: `${org || donorName} grants 2024`, tier: 'TAILORED', rationale: 'Recent org activity' },
+        { query: `${org || donorName} announcement`, tier: 'TAILORED', rationale: 'Org press releases' },
       ];
     }
     console.log(`[Research] Generated ${queries.length} queries (fallback format)`);
   }
 
-  emit(`Researching ${queries.length} angles across ${new Set(queries.map(q => q.category)).size} categories`, 'research', 7, TOTAL);
+  const standardCount = queries.filter(q => q.tier === 'STANDARD').length;
+  const tailoredCount = queries.filter(q => q.tier === 'TAILORED').length;
+  console.log(`[Research] ${standardCount} standard, ${tailoredCount} tailored`);
+  queries.forEach((q, i) => {
+    console.log(`  ${i + 1}. [${q.tier}] ${q.query}`);
+    console.log(`      Rationale: ${q.rationale}`);
+  });
+  emit(`Researching ${queries.length} angles — ${standardCount} standard, ${tailoredCount} tailored`, 'research', 7, TOTAL);
 
   // 4. Execute searches
   console.log('[Research] Executing searches...');
   const allSources: ResearchSource[] = [];
+  const tailoredUrls = new Set<string>(); // Track which URLs came from TAILORED queries
   let searchedCount = 0;
 
   for (const q of queries) {
@@ -212,13 +303,16 @@ Extract the identity signals for this person.`;
       const results = await searchFunction(q.query);
       for (const r of results) {
         allSources.push({
-          ...r,
-          content: (r as any).fullContent || undefined,
+          url: r.url,
+          title: r.title,
+          snippet: r.snippet,
+          content: (r as any).fullContent || (r as any).content || undefined,
           query: q.query,
-          queryCategory: q.category as any,
-          queryHypothesis: q.hypothesis,
           source: 'tavily',
         });
+        if (q.tier === 'TAILORED') {
+          tailoredUrls.add(r.url);
+        }
       }
       searchedCount++;
       if (searchedCount % 3 === 0 || searchedCount === queries.length) {
@@ -250,8 +344,9 @@ Extract the identity signals for this person.`;
   // Tavily extract for top sources
   emit('Reading full text from top sources', 'research', 11, TOTAL);
 
-  // ── NEW: Aggressive pre-extraction screening ─────────────────────
+  // 5. Aggressive pre-extraction screening pipeline
   console.log('[Research] Running aggressive screening pipeline...');
+  console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
   emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 12, TOTAL);
 
   const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
@@ -308,6 +403,7 @@ async function screenSourcesForRelevance(
   sources: { url: string; title: string; snippet: string }[],
   identity: any,
   donorName: string,
+  tailoredUrls: Set<string>,
   emit?: ResearchProgressCallback
 ): Promise<{ url: string; title: string; snippet: string }[]> {
 
@@ -355,7 +451,7 @@ async function screenSourcesForRelevance(
     for (let i = 0; i < needsScreening.length; i += BATCH_SIZE) {
       const batch = needsScreening.slice(i, i + BATCH_SIZE);
 
-      const screenPrompt = `Screen these search results to determine if they are about the correct person.
+      const screenPrompt = `Screen these search results to determine if they are relevant to research about the target person.
 
 TARGET PERSON:
 - Name: ${donorName}
@@ -366,15 +462,28 @@ TARGET PERSON:
 - Unique Identifiers: ${(identity.uniqueIdentifiers || []).join(', ') || 'None'}
 
 SEARCH RESULTS TO SCREEN:
-${batch.map((s, idx) => `
-[${idx}]
+${batch.map((s, idx) => {
+  const isTailored = tailoredUrls.has(s.url);
+  return `
+[${idx}]${isTailored ? ' [TAILORED QUERY RESULT]' : ''}
 URL: ${s.url}
 Title: ${s.title}
-Snippet: ${s.snippet}
-`).join('\n')}
+Snippet: ${s.snippet}`;
+}).join('\n')}
 
-For each result, determine if it's about the TARGET PERSON or a different person.
-Be conservative - if uncertain, mark as not a match.
+For each result, determine if it is RELEVANT to researching the target person.
+
+IMPORTANT: Some sources are relevant even if they don't mention the donor by name directly. Accept sources that:
+- Show decisions, grants, investments, or actions from the donor's organization or program
+- Cover the donor's domain, sector, or program area during their tenure
+- Include perspectives from collaborators, grantees, or critics of the donor's organization
+- Discuss controversies or debates in the donor's professional domain
+
+The goal is behavioral signal — understanding how this person thinks and operates. Institutional decisions reflect their judgment even when they're not named personally.
+
+Sources marked [TAILORED QUERY RESULT] were found through targeted research into the person's institutional footprint. These deserve extra consideration — they may not mention the person by name but can reveal how they operate through organizational actions.
+
+REJECT sources that are clearly about a DIFFERENT person with the same or similar name (wrong company, wrong field, wrong location). Be conservative about wrong-person matches, but inclusive about institutional and domain sources.
 
 Output as JSON array (one entry per result, in order):
 [
@@ -383,14 +492,20 @@ Output as JSON array (one entry per result, in order):
 ]`;
 
       try {
-        const response = await complete('You are screening search results for identity matching.', screenPrompt);
+        const response = await complete('You are screening search results for relevance to a donor research profile.', screenPrompt);
         const jsonMatch = response.match(/\[[\s\S]*\]/);
 
         if (jsonMatch) {
           const results = JSON.parse(jsonMatch[0]);
           for (const r of results) {
-            if (r.isMatch && (r.confidence === 'high' || r.confidence === 'medium')) {
-              screened.push(batch[r.index]);
+            if (r.isMatch) {
+              const source = batch[r.index];
+              const isTailored = tailoredUrls.has(source.url);
+              // Standard sources: require high or medium confidence
+              // Tailored sources: accept any confidence level (the query was targeted)
+              if (isTailored || r.confidence === 'high' || r.confidence === 'medium') {
+                screened.push(source);
+              }
             }
           }
         }
@@ -407,13 +522,14 @@ Output as JSON array (one entry per result, in order):
     }
   }
 
+  console.log(`[Research] Screening complete: ${screened.length} accepted (${screened.length - dominated.length} via LLM, ${dominated.length} fast-path)`);
   return screened;
 }
 
 function generateResearchMarkdown(
   donorName: string,
   identity: any,
-  queries: { query: string; category: string }[],
+  queries: GeneratedQuery[],
   sources: (TieredSource | { url: string; title: string; snippet: string })[]
 ): string {
   const sections = [
@@ -427,7 +543,7 @@ function generateResearchMarkdown(
     '```',
     '',
     '## Search Queries',
-    ...queries.map(q => `- [${q.category}] ${q.query}`),
+    ...queries.map(q => `- [${q.tier}] ${q.query} — ${q.rationale}`),
     '',
     '## Sources',
     ...sources.map((s, i) => {
