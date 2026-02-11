@@ -10,6 +10,8 @@ SITUATE WITH FACTS, NOT INTERPRETATION. For each entry, describe the factual sit
 
 NOTE THE SOURCE SHAPE. One sentence: was this the thesis of a long essay, a throwaway aside, a live interview answer, a prepared talk? The writer needs to know how much weight the quote can bear.
 
+USE TIER LABELS. Sources are labeled Tier 1 (subject's own voice), Tier 2 (third-party with quotes or behavioral descriptions), or Tier 3 (institutional/background). Invest extraction effort proportionally. A Tier 1 blog post deserves 300-token entries with long quotes. A Tier 3 org bio page might deserve a single factual sentence or nothing at all. When evidence conflicts between tiers, Tier 1 wins — the subject's own account of their values or decisions outweighs a third party's description.
+
 PRIORITIZE FIRST-PERSON VOICE. Blog posts, interviews, essays, talks where the subject speaks in their own words are worth far more than institutional bios or press releases that describe them. If a dimension has both, lead with own-voice material.
 
 INVEST UNEQUALLY. Some dimensions have rich evidence. Some are thin. Don't pad thin dimensions with weak entries. Concentrate your effort on the dimensions where the source material is strongest. Mark genuine evidence gaps as gaps.

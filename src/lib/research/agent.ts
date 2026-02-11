@@ -1,15 +1,20 @@
 /**
  * Phased Research + Single-Call Extraction
  *
+ * Pre-Phase: Blog Crawl (coded) — systematically find subject's own publishing
  * Phase 1: Own Voice (Sonnet, agentic) — find everything the subject has written or said
  * Phase 2: Pressure & Context (Sonnet, agentic) — find external evidence, transitions, peer accounts
  * Bulk Fetch: (coded) — parse URLs from Phase 1+2 output, fetch all pages in parallel
+ * Screen + Tier: (coded) — automatic/LLM screening, Tier 1/2/3 classification, dedup, enforce targets
  * Extraction: (Opus, single call) — read all source texts, produce 25-30K token research package
  *
  * Phase 3 was previously an agentic Opus session with tools (search + fetch in a loop).
  * It has been replaced by a coded bulk-fetch step followed by a single Opus API call.
  * This eliminates token compounding from the agentic loop and produces a larger, richer
  * extraction at comparable or lower cost.
+ *
+ * Source quality infrastructure (screening, tiering, blog-crawler) was originally built
+ * for the legacy pipeline.ts. It's now wired into this active pipeline path.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -19,6 +24,14 @@ import { buildResearchBrief } from '../prompts/research-agent-prompt';
 import { PHASE_1_SYSTEM_PROMPT } from '../prompts/phase-1-prompt';
 import { PHASE_2_SYSTEM_PROMPT } from '../prompts/phase-2-prompt';
 import { RESEARCH_TOOLS, executeWebSearch, executeFetchPage } from './tools';
+import { runScreeningPipeline, ResearchSource } from './screening';
+import {
+  tierSources,
+  enforceTargets,
+  extractLinkedInSlugFromProfile,
+  getPersonalDomains,
+} from './tiering';
+import { crawlSubjectPublishing } from './blog-crawler';
 
 const anthropic = new Anthropic();
 
@@ -334,7 +347,7 @@ async function bulkFetchSources(
  */
 async function runExtractionCall(
   donorName: string,
-  sources: FetchedSource[],
+  sources: { url: string; title: string; snippet: string; content?: string; tier?: number; tierReason?: string }[],
   linkedinData: LinkedInData | null,
 ): Promise<string> {
   const prompt = buildExtractionPrompt(donorName, sources, linkedinData);
@@ -374,9 +387,43 @@ export async function runPhasedResearch(
   const TOTAL_STEPS = 38;
 
   console.log(`[Research] Starting phased research for: ${subjectName}`);
-  emit('Research starting — Phase 1: discovering subject\'s own voice...', 'research', 3, TOTAL_STEPS);
 
   const briefBase = buildResearchBrief(linkedinData, subjectName);
+
+  // Derive subject's LinkedIn slug and personal domains for tiering
+  const linkedInSlug = linkedinData
+    ? extractLinkedInSlugFromProfile(`/in/${(linkedinData as any).linkedinSlug || ''}`)
+    : null;
+  const personalDomains = linkedinData ? getPersonalDomains(linkedinData) : [];
+  console.log(`[Research] LinkedIn slug: ${linkedInSlug || 'none'}, personal domains: ${personalDomains.join(', ') || 'none'}`);
+
+  // ── Pre-Phase: Blog Crawl (coded, before agentic discovery) ────
+  emit('Crawling subject\'s own publishing...', 'research', 3, TOTAL_STEPS);
+  console.log(`[Research] Pre-phase: Blog crawl for ${subjectName}`);
+
+  let blogCrawlSources: ResearchSource[] = [];
+  try {
+    blogCrawlSources = await crawlSubjectPublishing(
+      subjectName,
+      [],   // seed URLs — could pass from pipeline if available
+      linkedinData,
+      async (query: string) => {
+        const results = await executeWebSearch(query);
+        return results.map(r => ({ url: r.url, title: r.title, snippet: r.snippet }));
+      },
+      executeFetchPage,
+    );
+    console.log(`[Research] Blog crawl found ${blogCrawlSources.length} Tier 1 sources`);
+  } catch (err) {
+    console.error(`[Research] Blog crawl failed:`, err);
+  }
+
+  emit(
+    blogCrawlSources.length > 0
+      ? `Found ${blogCrawlSources.length} sources from subject's own publishing. Starting Phase 1...`
+      : 'No personal publishing found. Starting Phase 1...',
+    'research', 4, TOTAL_STEPS,
+  );
 
   // ── Phase 1: Own Voice (Sonnet — source discovery, not extraction) ─
   console.log(`[Research] Phase 1: Own Voice (Sonnet)`);
@@ -457,24 +504,67 @@ export async function runPhasedResearch(
   const bulkFetchCount = fetchedSources.length;
   console.log(`[Research] Bulk fetch complete: ${bulkFetchCount} sources with content`);
 
-  // ── Extraction: Single Opus call (no tools, no loop) ───────────
-  console.log(`[Research] Extraction: single Opus call with ${fetchedSources.length} sources`);
-  emit(
-    `Extracting behavioral evidence from ${fetchedSources.length} sources (Opus)...`,
-    'research', 13, TOTAL_STEPS,
+  // ── Merge blog crawl sources with bulk-fetched sources ─────────
+  // Blog crawl sources are already fetched with content — add them
+  const blogCrawlUrls = new Set(blogCrawlSources.map(s => s.url));
+  const mergedSources: ResearchSource[] = [
+    // Blog crawl sources first (already Tier 1, already fetched)
+    ...blogCrawlSources,
+    // Then bulk-fetched sources (skip duplicates from blog crawl)
+    ...fetchedSources.filter(s => !blogCrawlUrls.has(s.url)),
+  ];
+  console.log(`[Research] Merged sources: ${blogCrawlSources.length} blog crawl + ${fetchedSources.length - (fetchedSources.length - mergedSources.length + blogCrawlSources.length)} bulk fetch = ${mergedSources.length} total`);
+
+  // ── Screening: automatic + LLM screening + dedup ───────────────
+  emit('Screening and classifying sources...', 'research', 13, TOTAL_STEPS);
+  console.log(`[Research] Running screening pipeline on ${mergedSources.length} sources`);
+
+  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+    mergedSources,
+    subjectName,
+    linkedinData,
   );
 
-  const researchPackage = await runExtractionCall(subjectName, fetchedSources, linkedinData);
+  console.log(`[Research] Screening: ${mergedSources.length} → ${screenedSources.length} sources`);
+  console.log(`[Research] Screening stats: ${JSON.stringify(screeningStats)}`);
+
+  // ── Tiering: classify Tier 1/2/3 + enforce targets ─────────────
+  const tieredSources = tierSources(screenedSources, subjectName, linkedInSlug || undefined, personalDomains);
+  const { selected: selectedSources, warnings: tierWarnings } = enforceTargets(tieredSources);
+
+  const tier1Count = selectedSources.filter(s => s.tier === 1).length;
+  const tier2Count = selectedSources.filter(s => s.tier === 2).length;
+  const tier3Count = selectedSources.filter(s => s.tier === 3).length;
+  console.log(`[Research] Tiered: ${tier1Count} T1, ${tier2Count} T2, ${tier3Count} T3 (${selectedSources.length} total)`);
+
+  if (tierWarnings.length > 0) {
+    for (const w of tierWarnings) console.log(`[Research] ${w}`);
+  }
+
+  emit(
+    `${selectedSources.length} sources selected (${tier1Count} own voice, ${tier2Count} third-party, ${tier3Count} background). Extracting...`,
+    'research', 14, TOTAL_STEPS,
+  );
+
+  // ── Extraction: Single Opus call (no tools, no loop) ───────────
+  console.log(`[Research] Extraction: single Opus call with ${selectedSources.length} sources`);
+  emit(
+    `Extracting behavioral evidence from ${selectedSources.length} sources (Opus)...`,
+    'research', 14, TOTAL_STEPS,
+  );
+
+  const researchPackage = await runExtractionCall(subjectName, selectedSources, linkedinData);
 
   const totalSearches = phase1.searchCount + phase2.searchCount;
-  const totalFetches = phase1.fetchCount + phase2.fetchCount + bulkFetchCount;
+  const totalFetches = phase1.fetchCount + phase2.fetchCount + bulkFetchCount + blogCrawlSources.length;
   const totalTools = phase1.toolCallCount + phase2.toolCallCount;
 
   console.log(`[Research] Extraction complete: ${researchPackage.length} chars (~${Math.ceil(researchPackage.length / 4)} tokens)`);
   console.log(`[Research] All phases complete: ${totalSearches} total searches, ${totalFetches} total fetches, ${totalTools} total tool calls`);
+  console.log(`[Research] Source composition: ${tier1Count} T1, ${tier2Count} T2, ${tier3Count} T3 → ${selectedSources.length} to extraction`);
 
   emit(
-    `Research complete — ${totalSearches} searches, ${totalFetches} pages read, extraction: ~${Math.ceil(researchPackage.length / 4)} tokens`,
+    `Research complete — ${totalSearches} searches, ${totalFetches} pages read, ${selectedSources.length} sources selected, extraction: ~${Math.ceil(researchPackage.length / 4)} tokens`,
     'research', 15, TOTAL_STEPS,
   );
 

@@ -45,9 +45,61 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// ── LinkedIn author slug extraction ─────────────────────────────────
+
+/**
+ * Extract the author slug from a LinkedIn post or pulse URL.
+ * Examples:
+ *   /posts/geoffreymacdougall_some-activity-id → geoffreymacdougall
+ *   /pulse/title-here-geoffrey-macdougall-xxxxx → geoffrey-macdougall (less reliable)
+ */
+function extractLinkedInAuthorSlug(url: string): string | null {
+  // /posts/{slug}_{activity-id}
+  const postsMatch = url.match(/linkedin\.com\/posts\/([a-zA-Z0-9_-]+?)_/i);
+  if (postsMatch) return postsMatch[1];
+
+  // /posts/{slug} (without underscore separator)
+  const postsMatch2 = url.match(/linkedin\.com\/posts\/([a-zA-Z0-9-]+)/i);
+  if (postsMatch2) return postsMatch2[1];
+
+  return null;
+}
+
+/**
+ * Extract LinkedIn slug from a LinkedIn profile URL.
+ * /in/geoffreymacdougall → geoffreymacdougall
+ */
+export function extractLinkedInSlugFromProfile(linkedinUrl: string): string | null {
+  const match = linkedinUrl.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract personal domain(s) from LinkedIn data.
+ * Returns hostnames (e.g., ['intangible.ca', 'geoffrey.blog']).
+ */
+export function getPersonalDomains(linkedinData: any): string[] {
+  const domains: string[] = [];
+  if (linkedinData?.websites) {
+    for (const website of linkedinData.websites) {
+      if (typeof website === 'string' && !website.includes('linkedin.com')) {
+        try {
+          domains.push(new URL(website.startsWith('http') ? website : `https://${website}`).hostname);
+        } catch { /* skip invalid URLs */ }
+      }
+    }
+  }
+  return domains;
+}
+
 // ── Tier classification ─────────────────────────────────────────────
 
-export function classifyTier(source: ResearchSource, subjectName: string): { tier: SourceTier; reason: string } {
+export function classifyTier(
+  source: ResearchSource,
+  subjectName: string,
+  subjectLinkedInSlug?: string,
+  personalDomains?: string[],
+): { tier: SourceTier; reason: string } {
   const content = source.content || source.snippet || '';
   const url = source.url || '';
   const title = source.title || '';
@@ -60,6 +112,19 @@ export function classifyTier(source: ResearchSource, subjectName: string): { tie
   }
   if (source.source === 'linkedin_post') {
     return { tier: 1, reason: 'LinkedIn post by subject' };
+  }
+
+  // Subject's personal domain → Tier 1 (Bug 3 fix)
+  if (personalDomains && personalDomains.length > 0) {
+    try {
+      const sourceHost = new URL(url).hostname.replace(/^www\./, '');
+      const isPersonalDomain = personalDomains.some(d =>
+        sourceHost === d.replace(/^www\./, '') || sourceHost.endsWith('.' + d.replace(/^www\./, ''))
+      );
+      if (isPersonalDomain) {
+        return { tier: 1, reason: 'Source on subject\'s personal domain' };
+      }
+    } catch { /* invalid URL, continue */ }
   }
 
   // Personal blog platforms
@@ -76,9 +141,30 @@ export function classifyTier(source: ResearchSource, subjectName: string): { tie
     return { tier: 1, reason: 'Authored by subject' };
   }
 
-  // LinkedIn posts
+  // LinkedIn posts — verify author slug matches subject (Bug 1 fix)
   if (/linkedin\.com\/posts\/|linkedin\.com\/pulse\//i.test(url)) {
-    return { tier: 1, reason: 'LinkedIn post by subject' };
+    if (subjectLinkedInSlug) {
+      // Extract author slug from URL: /posts/authorslug_... or /pulse/title-authorslug
+      const slugFromUrl = extractLinkedInAuthorSlug(url);
+      if (slugFromUrl && slugFromUrl.toLowerCase() === subjectLinkedInSlug.toLowerCase()) {
+        return { tier: 1, reason: 'LinkedIn post by subject (author slug verified)' };
+      }
+      // Slug doesn't match — check content for subject's name in first 500 chars
+      if (content.slice(0, 500).toLowerCase().includes(subjectName.toLowerCase())) {
+        return { tier: 2, reason: 'LinkedIn post mentioning subject (author not verified)' };
+      }
+      return { tier: 2, reason: 'LinkedIn post by different author' };
+    }
+    // No slug available — check content for first-person + subject name
+    const hasName = content.slice(0, 500).toLowerCase().includes(subjectName.toLowerCase());
+    const firstPerson = countFirstPersonPronouns(content, subjectName);
+    if (hasName && firstPerson > 5) {
+      return { tier: 1, reason: 'LinkedIn post (likely by subject — high first-person content)' };
+    }
+    if (hasName) {
+      return { tier: 2, reason: 'LinkedIn post mentioning subject' };
+    }
+    return { tier: 3, reason: 'LinkedIn post (cannot verify author)' };
   }
 
   // Interview/podcast format with high first-person density
@@ -162,9 +248,14 @@ export function classifyTier(source: ResearchSource, subjectName: string): { tie
 
 // ── Batch tier classification ───────────────────────────────────────
 
-export function tierSources(sources: ResearchSource[], subjectName: string): TieredSource[] {
+export function tierSources(
+  sources: ResearchSource[],
+  subjectName: string,
+  subjectLinkedInSlug?: string,
+  personalDomains?: string[],
+): TieredSource[] {
   return sources.map(source => {
-    const { tier, reason } = classifyTier(source, subjectName);
+    const { tier, reason } = classifyTier(source, subjectName, subjectLinkedInSlug, personalDomains);
     return { ...source, tier, tierReason: reason };
   });
 }
