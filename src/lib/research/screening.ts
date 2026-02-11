@@ -142,7 +142,9 @@ export function automaticScreen(
   // 1. Name check (skip for Category D org-context queries)
   if (!isOrgContextQuery) {
     const nameVariants = getNameVariants(subjectName);
-    const searchText = `${content} ${source.title || ''}`.toLowerCase();
+    // Include snippet + content + title — bulk-fetched content may not contain the name
+    // even though the original Tavily search snippet does
+    const searchText = `${source.content || ''} ${source.snippet || ''} ${source.title || ''}`.toLowerCase();
     const hasName = nameVariants.some(v => searchText.includes(v.toLowerCase()));
     if (!hasName) {
       return { accepted: false, rejectionReason: 'Subject name not found in content', needsLLMScreen: false };
@@ -202,7 +204,7 @@ export async function llmScreenSources(
     return { accepted: [], rejected: [] };
   }
 
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 20;
   const accepted: ResearchSource[] = [];
   const rejected: ResearchSource[] = [];
 
