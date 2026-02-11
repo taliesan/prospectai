@@ -310,41 +310,49 @@ Extract the identity signals for this person.`;
   const tailoredUrls = new Set<string>(); // Track which URLs came from TAILORED queries
   let searchedCount = 0;
 
+  // Run searches in parallel (3 concurrent) to reduce total search time
+  const SEARCH_CONCURRENCY = 3;
+  const searchPromises = new Set<Promise<void>>();
+  emit(`Searching ${queries.length} queries (${SEARCH_CONCURRENCY} concurrent)`, 'research', 8, TOTAL);
+
   for (const q of queries) {
-    try {
-      if (searchedCount === 0) {
-        emit(`Searching: "${q.query}"`, 'research', 8, TOTAL);
-      }
-      const results = await searchFunction(q.query);
+    const p = (async () => {
+      try {
+        const results = await searchFunction(q.query);
 
-      // Extract analytical category from rationale (format: "[Cat X] hypothesis")
-      const catMatch = q.rationale.match(/^\[Cat ([A-E])\]/);
-      const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' | 'D' | 'E' : undefined;
+        // Extract analytical category from rationale (format: "[Cat X] hypothesis")
+        const catMatch = q.rationale.match(/^\[Cat ([A-E])\]/);
+        const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' | 'D' | 'E' : undefined;
 
-      for (const r of results) {
-        allSources.push({
-          url: r.url,
-          title: r.title,
-          snippet: r.snippet,
-          content: (r as any).fullContent || (r as any).content || undefined,
-          query: q.query,
-          queryCategory,
-          queryHypothesis: q.rationale,
-          source: 'tavily',
-        });
-        if (q.tier === 'TAILORED') {
-          tailoredUrls.add(r.url);
+        for (const r of results) {
+          allSources.push({
+            url: r.url,
+            title: r.title,
+            snippet: r.snippet,
+            content: (r as any).fullContent || (r as any).content || undefined,
+            query: q.query,
+            queryCategory,
+            queryHypothesis: q.rationale,
+            source: 'tavily',
+          });
+          if (q.tier === 'TAILORED') {
+            tailoredUrls.add(r.url);
+          }
         }
+      } catch (err) {
+        console.error(`[Research] Search failed for: ${q.query}`, err);
       }
       searchedCount++;
-      if (searchedCount % 3 === 0 || searchedCount === queries.length) {
+      if (searchedCount % 5 === 0 || searchedCount === queries.length) {
         emit(`Searched ${searchedCount} of ${queries.length} queries — ${allSources.length} results so far`, 'research', 9, TOTAL);
       }
-    } catch (err) {
-      console.error(`[Research] Search failed for: ${q.query}`, err);
-      searchedCount++;
+    })().then(() => { searchPromises.delete(p); });
+    searchPromises.add(p);
+    if (searchPromises.size >= SEARCH_CONCURRENCY) {
+      await Promise.race(searchPromises);
     }
   }
+  await Promise.all(searchPromises);
 
   // Deduplicate by URL
   const urlMap = new Map<string, ResearchSource>();
@@ -363,15 +371,28 @@ Extract the identity signals for this person.`;
   console.log(`[Research] Collected ${uniqueSources.length} unique sources (${tier1Sources.length} from publishing crawl, ${allSources.length} from Tavily)`);
   emit(`${uniqueSources.length} results from ${queries.length} searches + ${tier1Sources.length} blog posts`, 'research', 10, TOTAL);
 
-  // ── Bulk fetch full page content for all sources ─────────────────
-  emit('Fetching full text from all source pages', 'research', 11, TOTAL);
-  console.log(`[Research] Bulk fetching full page content for ${uniqueSources.length} sources...`);
+  // 5. Screen sources BEFORE bulk fetch (saves fetching rejected pages)
+  // Screening runs on snippets from Tavily search — no full page fetch needed
+  console.log('[Research] Running screening pipeline (snippet-based, pre-fetch)...');
+  console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
+  emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 11, TOTAL);
+
+  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+    uniqueSources,
+    donorName,
+    identity
+  );
+
+  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 12, TOTAL);
+
+  // ── Bulk fetch full content for SCREENED sources only ─────────────
+  // Only fetch sources that passed screening and lack content (saves 100+ API calls)
+  emit('Fetching full text from screened sources', 'research', 13, TOTAL);
+  const sourcesToFetch = screenedSources.filter(s => !s.content || s.content.length < 200);
+  console.log(`[Research] Bulk fetching ${sourcesToFetch.length} screened sources (${screenedSources.length - sourcesToFetch.length} already have content)`);
 
   const FETCH_CONCURRENCY = 8;
   let fetchedCount = 0;
-  const sourcesToFetch = uniqueSources.filter(s => !s.content || s.content.length < 200);
-  console.log(`[Research] ${sourcesToFetch.length} sources need full content fetch (${uniqueSources.length - sourcesToFetch.length} already have content)`);
-
   const executing = new Set<Promise<void>>();
   for (const source of sourcesToFetch) {
     const p = (async () => {
@@ -380,7 +401,7 @@ Extract the identity signals for this person.`;
         source.content = content;
         fetchedCount++;
         if (fetchedCount % 5 === 0 || fetchedCount === sourcesToFetch.length) {
-          emit(`Fetched ${fetchedCount}/${sourcesToFetch.length} source pages`, 'research', 11, TOTAL);
+          emit(`Fetched ${fetchedCount}/${sourcesToFetch.length} source pages`, 'research', 13, TOTAL);
         }
       } catch (err) {
         console.log(`[Research] Fetch failed for ${source.url}: ${err instanceof Error ? err.message : String(err)}`);
@@ -393,19 +414,6 @@ Extract the identity signals for this person.`;
   }
   await Promise.all(executing);
   console.log(`[Research] Bulk fetch complete: ${fetchedCount}/${sourcesToFetch.length} fetched`);
-
-  // 5. Aggressive pre-extraction screening pipeline
-  console.log('[Research] Running aggressive screening pipeline...');
-  console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
-  emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 12, TOTAL);
-
-  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
-    uniqueSources,
-    donorName,
-    identity
-  );
-
-  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 13, TOTAL);
 
   // ── Tier and enforce targets ────────────────────────────────────
   // Extract LinkedIn slug and personal domains for tier classification
