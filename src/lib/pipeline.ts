@@ -1,5 +1,5 @@
-// Core pipeline for donor profiling
-// This orchestrates the three steps: Research → Dossier → Profile
+// Core pipeline for donor profiling (legacy — replaced by conversation-pipeline.ts)
+// This orchestrates the three steps: Research → Extraction → Profile
 // v3: Rebuilt source collection with tiering, screening, and blog crawling
 
 import { complete, completeExtended } from './anthropic';
@@ -56,7 +56,7 @@ interface ResearchResult {
   evidenceWarnings?: string[];
 }
 
-interface DossierResult {
+interface ExtractionResult {
   donorName: string;
   dimensions: any[];
   crossCutting: any;
@@ -582,7 +582,7 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Source ranking by behavioral signal value (kept for backward compat with extractDossier)
+// Source ranking by behavioral signal value (kept for backward compat with extractEvidence)
 // TIER 1: Interviews, podcasts, personal writing (highest behavioral signal)
 // TIER 2: Speeches, talks, in-depth profiles
 // TIER 3: News coverage, press releases
@@ -685,14 +685,14 @@ export function rankAndSortSources(
   return ranked;
 }
 
-// Step 2: Dossier Extraction
-export async function extractDossier(
+// Step 2: Evidence Extraction
+export async function extractEvidence(
   donorName: string,
   sources: { url: string; title: string; snippet: string; content?: string }[],
   canonDocs: { exemplars: string }
-): Promise<DossierResult> {
-  console.log(`[Dossier] Starting extraction for: ${donorName}`);
-  console.log(`[Dossier] Total sources available: ${sources.length}`);
+): Promise<ExtractionResult> {
+  console.log(`[Extraction] Starting extraction for: ${donorName}`);
+  console.log(`[Extraction] Total sources available: ${sources.length}`);
 
   // Rank sources by behavioral signal value before processing
   const rankedSources = rankAndSortSources(sources);
@@ -702,19 +702,19 @@ export async function extractDossier(
   for (const s of rankedSources) {
     tierCounts[s.tier as keyof typeof tierCounts]++;
   }
-  console.log(`[Dossier] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
+  console.log(`[Extraction] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
   STATUS.tiersPrioritized(tierCounts[1], tierCounts[2], tierCounts[3], tierCounts[4]);
 
   // Log top 5 sources to verify ranking
-  console.log(`[Dossier] Top 5 sources by behavioral value:`);
+  console.log(`[Extraction] Top 5 sources by behavioral value:`);
   for (const s of rankedSources.slice(0, 5)) {
-    console.log(`[Dossier]   [T${s.tier}] ${s.title?.slice(0, 60) || s.url}`);
+    console.log(`[Extraction]   [T${s.tier}] ${s.title?.slice(0, 60) || s.url}`);
   }
 
   // Cap at 50 sources maximum to prevent timeouts and rate limits
   const MAX_SOURCES = 50;
   const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
-  console.log(`[Dossier] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
+  console.log(`[Extraction] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
   STATUS.processingTop(sourcesToProcess.length);
 
   // Filter sources with meaningful content
@@ -722,7 +722,7 @@ export async function extractDossier(
     source.content || source.snippet.length >= 100
   );
   const skipped = sourcesToProcess.length - validSources.length;
-  console.log(`[Dossier] ${validSources.length} sources with content, ${skipped} skipped`);
+  console.log(`[Extraction] ${validSources.length} sources with content, ${skipped} skipped`);
 
   // 1. Batch extract from sources (10 sources per batch = ~5 API calls for 50 sources)
   const BATCH_SIZE = 10;
@@ -736,7 +736,7 @@ export async function extractDossier(
     const batch = validSources.slice(i, i + BATCH_SIZE);
     const batchEnd = Math.min(i + BATCH_SIZE, validSources.length);
 
-    console.log(`[Dossier] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
+    console.log(`[Extraction] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
     STATUS.batchStarted(batchNumber, i + 1, batchEnd);
 
     // Prepare batch sources with sanitized content
@@ -804,11 +804,11 @@ export async function extractDossier(
           totalProcessed++;
         }
 
-        console.log(`[Dossier] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
+        console.log(`[Extraction] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
         STATUS.batchComplete(batchNumber, i + 1, batchEnd);
       } catch (parseErr) {
         // If JSON parsing fails, use raw response as single extraction
-        console.warn(`[Dossier] Batch ${batchNumber}: JSON parse failed, using raw response`);
+        console.warn(`[Extraction] Batch ${batchNumber}: JSON parse failed, using raw response`);
         for (const source of batchSources) {
           allEvidence.push({
             source: source.url,
@@ -820,7 +820,7 @@ export async function extractDossier(
     } catch (err) {
       failed += batch.length;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`[Dossier] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
+      console.error(`[Extraction] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
       STATUS.batchFailed(batchNumber, errorMessage);
     }
 
@@ -830,10 +830,10 @@ export async function extractDossier(
     }
   }
 
-  console.log(`[Dossier] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
+  console.log(`[Extraction] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
 
   // 2. Synthesize by dimension
-  console.log('[Dossier] Synthesizing dimensions...');
+  console.log('[Extraction] Synthesizing dimensions...');
   STATUS.synthesizing();
   const combinedEvidence = allEvidence.map(e => e.extraction).join('\n\n---\n\n');
 
@@ -853,7 +853,7 @@ Synthesize the evidence across all 17 dimensions. For each dimension, provide th
   );
 
   // 3. Cross-cutting analysis
-  console.log('[Dossier] Generating cross-cutting analysis...');
+  console.log('[Extraction] Generating cross-cutting analysis...');
   STATUS.crossCutting();
   const crossCuttingPrompt = `${CROSS_CUTTING_PROMPT}
 
@@ -870,8 +870,8 @@ Generate the cross-cutting analysis: core contradiction, dangerous truth, and su
     { maxTokens: 4096 }
   );
 
-  // 4. Generate dossier document
-  const rawMarkdown = generateDossierMarkdown(donorName, synthesis, crossCutting, allEvidence);
+  // 4. Generate extraction document
+  const rawMarkdown = generateExtractionMarkdown(donorName, synthesis, crossCutting, allEvidence);
 
   return {
     donorName,
@@ -881,13 +881,13 @@ Generate the cross-cutting analysis: core contradiction, dangerous truth, and su
   };
 }
 
-function generateDossierMarkdown(
+function generateExtractionMarkdown(
   donorName: string,
   synthesis: string,
   crossCutting: string,
   evidence: any[]
 ): string {
-  return `# BEHAVIORAL DOSSIER: ${donorName}
+  return `# BEHAVIORAL EXTRACTION: ${donorName}
 
 Generated: ${new Date().toISOString()}
 Sources Analyzed: ${evidence.length}
@@ -916,12 +916,12 @@ ${evidence.map((e, i) => `### Source ${i + 1}: ${e.source}\n\n${e.extraction}`).
 // Profile ALWAYS ships - validation is informational, never blocks
 export async function generateProfile(
   donorName: string,
-  dossier: string,
+  extraction: string,
   canonDocs: { exemplars: string }
 ): Promise<ProfileResult> {
   console.log(`[Profile] Starting generation for: ${donorName}`);
 
-  const exemplars = selectExemplars(dossier, canonDocs.exemplars);
+  const exemplars = selectExemplars(extraction, canonDocs.exemplars);
   const systemPrompt = 'You are writing a donor persuasion profile.';
 
   // Initial generation
@@ -929,7 +929,7 @@ export async function generateProfile(
   STATUS.generatingDraft();
   let profile: string;
   try {
-    const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
+    const profilePrompt = createProfilePrompt(donorName, extraction, exemplars);
     profile = await completeExtended(systemPrompt, profilePrompt, { maxTokens: 10000 });
   } catch (err) {
     console.error('[Profile] Initial generation failed:', err);
@@ -950,7 +950,7 @@ export async function generateProfile(
       console.log(`[Profile] Validation attempt ${attempt}/${maxAttempts}...`);
       STATUS.validationAttempt(attempt, maxAttempts);
 
-      const validation = await runAllValidators(profile, dossier);
+      const validation = await runAllValidators(profile, extraction);
 
       if (validation.allPassed) {
         console.log('[Profile] All 6 validators PASSED');
@@ -982,7 +982,7 @@ export async function generateProfile(
         try {
           const regenPrompt = createRegenerationPrompt(
             donorName,
-            dossier,
+            extraction,
             exemplars,
             profile,
             validation.aggregatedFeedback
@@ -1023,7 +1023,7 @@ export async function runFullPipeline(
   canonDocs: { exemplars: string }
 ): Promise<{
   research: ResearchResult;
-  dossier: DossierResult;
+  extraction: ExtractionResult;
   profile: ProfileResult;
 }> {
   console.log(`\n${'='.repeat(60)}`);
@@ -1035,18 +1035,18 @@ export async function runFullPipeline(
   console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
   STATUS.researchComplete(research.sources.length);
 
-  // Step 2: Dossier
-  const dossier = await extractDossier(donorName, research.sources, canonDocs);
-  console.log(`\n[Pipeline] Dossier complete\n`);
-  STATUS.dossierComplete();
+  // Step 2: Extraction
+  const extraction = await extractEvidence(donorName, research.sources, canonDocs);
+  console.log(`\n[Pipeline] Extraction complete\n`);
+  STATUS.researchPackageComplete();
 
   // Step 3: Profile
-  const profile = await generateProfile(donorName, dossier.rawMarkdown, canonDocs);
+  const profile = await generateProfile(donorName, extraction.rawMarkdown, canonDocs);
   console.log(`\n[Pipeline] Profile complete: ${profile.status}\n`);
 
   console.log(`${'='.repeat(60)}`);
   console.log(`PROSPECTAI: Complete`);
   console.log(`${'='.repeat(60)}\n`);
 
-  return { research, dossier, profile };
+  return { research, extraction, profile };
 }

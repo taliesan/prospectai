@@ -23,7 +23,7 @@ export interface OrchestratorResult {
 
 export async function runAllValidators(
   profile: string,
-  dossier: string
+  researchPackage: string
 ): Promise<OrchestratorResult> {
   console.log('[Validators] Running 6 validators sequentially...');
 
@@ -84,7 +84,7 @@ export async function runAllValidators(
   try {
     console.log('[Validators] 5/6 Evidence Grounding...');
     STATUS.validatorRunning('evidence grounding');
-    const evidenceResult = await validateEvidence(profile, dossier);
+    const evidenceResult = await validateEvidence(profile, researchPackage);
     results.push({ agent: 'Evidence Grounding', ...evidenceResult });
     console.log(`[Validators] Evidence: ${evidenceResult.passed ? '✓ PASS' : '✗ FAIL'}`);
     if (evidenceResult.passed) STATUS.validatorPassed('Evidence grounding');

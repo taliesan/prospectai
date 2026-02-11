@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
             const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
 
             // Save outputs helper
-            const saveOutputs = (research: any, profile: string, dossier?: string) => {
+            const saveOutputs = (research: any, profile: string, researchPackage?: string) => {
               const outputDir = '/tmp/prospectai-outputs';
               if (!existsSync(outputDir)) {
                 mkdirSync(outputDir, { recursive: true });
@@ -208,10 +208,10 @@ export async function POST(request: NextRequest) {
               console.log(`[OUTPUT] Research saved to ${researchPath} (${research.rawMarkdown.length} chars)`);
               console.log(`[OUTPUT] Profile saved to ${profilePath} (${profile.length} chars)`);
 
-              if (dossier) {
-                const dossierPath = `${outputDir}/${requestId}-${safeName}-dossier.md`;
-                writeFileSync(dossierPath, dossier);
-                console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
+              if (researchPackage) {
+                const researchPackagePath = `${outputDir}/${requestId}-${safeName}-research-package.md`;
+                writeFileSync(researchPackagePath, researchPackage);
+                console.log(`[OUTPUT] Research package saved to ${researchPackagePath} (${researchPackage.length} chars)`);
               }
 
               // Save full research JSON with all source content and excerpts
@@ -318,7 +318,7 @@ export async function POST(request: NextRequest) {
                   rawMarkdown: conversationResult.research.researchPackage,
                   sources: [],
                 },
-                dossier: { rawMarkdown: conversationResult.profile },
+                researchProfile: { rawMarkdown: conversationResult.profile },
                 profile: {
                   donorName,
                   profile: conversationResult.profile,
@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
               );
 
               // Save outputs
-              saveOutputs(result.research, result.profile.profile, result.dossier.rawMarkdown);
+              saveOutputs(result.research, result.profile.profile, result.extraction?.rawMarkdown);
             }
 
             STATUS.pipelineComplete();

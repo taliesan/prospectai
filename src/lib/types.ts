@@ -121,7 +121,7 @@ export interface CrossCuttingAnalysis {
   };
 }
 
-export interface Dossier {
+export interface ResearchPackageOutput {
   id: string;
   donorName: string;
   status: 'complete' | 'weak_signal' | 'error';
@@ -184,12 +184,12 @@ export interface ExtractRequest {
 }
 
 export interface GenerateRequest {
-  dossierId: string;
-  dossier: string;
+  researchPackageId: string;
+  researchPackage: string;
 }
 
 export interface ProfileOutput {
   research: ResearchResult;
-  dossier: Dossier;
+  researchPackageOutput: ResearchPackageOutput;
   profile: Profile;
 }

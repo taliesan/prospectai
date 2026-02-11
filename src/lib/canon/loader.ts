@@ -29,7 +29,7 @@ export function loadExemplars(): string {
 /**
  * Returns all exemplars. No selection logic - the model needs to see the full range.
  */
-export function selectExemplars(_dossier: string, allExemplars: string): string {
+export function selectExemplars(_researchPackage: string, allExemplars: string): string {
   return allExemplars;
 }
 
