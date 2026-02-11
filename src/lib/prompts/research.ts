@@ -30,66 +30,75 @@ Output as JSON:
   "uniqueIdentifiers": ["Specific facts that distinguish this person"]
 }`;
 
-export const QUERY_GENERATION_PROMPT = `You are a profiler researching a donor for a high-stakes meeting. Your queries will feed into a system that builds a behavioral profile — how this person thinks, decides, and operates under pressure.
+export const QUERY_GENERATION_PROMPT = `You are a research analyst designing search queries to find the richest behavioral evidence about a specific person.
 
-Generate 20-30 search queries in two tiers:
+## Your Task
 
-## TIER 1 — STANDARD (10-15 queries)
+Design search queries in five categories. Each query should have a specific research hypothesis — what kind of source you expect to find and why it would contain behavioral evidence.
 
-The basics that work for anyone. Use their name + organization + specifics from the identity signals to disambiguate from other people with similar names.
+Do NOT generate generic "[name] interview" queries when you have enough information to search for specific interviews, projects, or publications by name.
 
-Cover these areas:
-- Interviews, podcasts, video Q&As
-- Personal writing (Substack, Medium, op-eds, personal blog)
-- Speeches, keynotes, conference panels
-- News profiles and feature articles
-- Recent coverage (last 12 months — use "2024" or "2025")
-- Controversy, criticism, conflicts, or public disputes
+### Category A — The Subject's Known Outputs (8-12 queries)
+Search for things the subject has CREATED: workshops they facilitated, podcasts they hosted or guested on, books they wrote, talks they gave, tools or frameworks they launched.
 
-Keep queries concise (4-8 words). Use quotes around full name when helpful.
+Look at their LinkedIn/identity for:
+- Named projects, initiatives, or programs they led
+- Publications or media appearances mentioned
+- Self-descriptions that suggest a methodology or approach
+- Workshop, course, or training facilitation
 
-## TIER 2 — TAILORED (10-15 queries)
+For each, search by the specific name, not generic terms.
 
-Now think like a PI. Based on who this person is and what role they hold, get creative:
+### Category B — Behavioral Pressure Points (5-8 queries)
+Search for moments that reveal values under stress: career transitions, departures, controversies, public positions, organizational crises during their tenure.
 
-**Where does someone in THIS role leave traces?**
-- Foundation officer → grants, program reports, grantee announcements, RFP documents
-- CEO/founder → earnings calls, investor letters, company announcements, employee reviews on Glassdoor
-- Board member → proxy statements, nonprofit 990s, organizational decisions during their tenure
-- Investor/VC → portfolio company announcements, investment thesis posts, founder testimonials
-- Low-profile donor → the organizations they fund, boards they sit on, causes they back
+Look for:
+- Gaps or short tenures that might indicate conflict or pivot
+- Departures from long tenures (5+ years)
+- Sector transitions (nonprofit → corporate, etc.)
+- Roles at organizations with known public controversies
 
-**What has their organization done during their tenure?**
-- Decisions, grants, investments, or public positions attributed to them or their program
-- Strategic shifts that happened while they were in charge
-- "[Organization] [program area] grants [year]" or "[Organization] annual report [year]"
+### Category C — Professional Community (5-8 queries)
+Search for the subject within their field's discourse: panel appearances, peer citations, industry commentary, co-authored work.
 
-**Who are their collaborators, grantees, critics, or opponents?**
-- What have those people said publicly?
-- "[Collaborator name] AND [organization]" or "[Grantee org] AND [funder org]"
+Look for:
+- Their field/industry terminology
+- Named collaborators or co-authors
+- Professional associations or communities
+- Conference speaking
 
-**What controversies touched their domain?**
-- How did they respond — or conspicuously NOT respond?
-- Industry or sector debates where they would have had to take a position
+### Category D — Organizational Context During Tenure (6-10 queries)
+For subjects who work behind the scenes, their organization's actions are a proxy for their decisions. Search for what their employers DID while they were there.
 
-**What would a journalist investigating this person look for?**
-- Public records, filings, disclosed conflicts of interest
-- Patterns across their career moves or funding decisions
+Focus on 2-3 most significant roles. For each:
+- Search for the org's major actions during that date range
+- Search for the org's public positions, campaigns, or pivots
+- Search for coverage of programs or initiatives they led
 
-Generate queries a lazy researcher would miss. The goal is behavioral signal — how they think, what they value, how they handle pressure — not just biography.
+Even if the subject isn't named in results, organizational actions during their tenure reveal their environment and likely contributions.
 
-## OUTPUT FORMAT
+### Category E — Gap-Filling (only if A-D produce < 20 quality sources)
+Generic queries for breadth: alternate name spellings, conference speaker lists, academic citations.
 
-Return a JSON array:
-[
-  {
-    "query": "search query text",
-    "tier": "STANDARD" or "TAILORED",
-    "rationale": "brief note on what this might reveal"
-  }
-]
+## Output Format
 
-Generate 20-30 queries total. Tier 1 and Tier 2 should each have 10-15 queries.`;
+For each query, provide:
+- Category (A/B/C/D/E)
+- Query text
+- Hypothesis: What source you expect to find and why it would contain behavioral evidence
+
+Format as JSON:
+{
+  "queries": [
+    {
+      "category": "A",
+      "query": "\\"Jane Smith\\" \\"leadership laboratory\\" workshop",
+      "hypothesis": "Workshop participants often write testimonials describing teaching style and methodology"
+    }
+  ]
+}
+
+Generate 25-35 queries total across categories A-D. Only add Category E if needed.`;
 
 export const SOURCE_RELEVANCE_PROMPT = `You are screening search results to verify they are about the correct person.
 
@@ -115,25 +124,81 @@ Output as JSON:
   "reason": "Brief explanation"
 }`;
 
-export function generateResearchQueries(donorName: string, identity: any): string {
-  const orgContext = identity.currentOrg ? ` at ${identity.currentOrg}` : '';
-  const roleContext = identity.currentRole ? ` (${identity.currentRole})` : '';
-  const locationContext = identity.locations?.length ? ` in ${identity.locations[0]}` : '';
+export function generateResearchQueries(donorName: string, identity: any, seedUrlExcerpt?: string): string {
+  const formatLinkedIn = () => {
+    const lines: string[] = [];
+    lines.push(`Name: ${identity.fullName || donorName}`);
+    lines.push(`Current Role: ${identity.currentRole || 'Unknown'}`);
+    lines.push(`Current Organization: ${identity.currentOrg || 'Unknown'}`);
 
-  return `Generate search queries for researching this donor:
+    if (identity.pastRoles?.length) {
+      lines.push('Past Roles:');
+      for (const r of identity.pastRoles) {
+        lines.push(`  - ${r.role} at ${r.org}${r.years ? ` (${r.years})` : ''}`);
+      }
+    }
 
-Name: ${donorName}${roleContext}${orgContext}${locationContext}
+    if (identity.locations?.length) {
+      lines.push(`Locations: ${identity.locations.join(', ')}`);
+    }
+    if (identity.education?.length) {
+      lines.push(`Education: ${identity.education.map((e: any) => `${e.school}${e.degree ? ` (${e.degree})` : ''}`).join(', ')}`);
+    }
+    if (identity.affiliations?.length) {
+      lines.push(`Affiliations: ${identity.affiliations.join(', ')}`);
+    }
+    if (identity.uniqueIdentifiers?.length) {
+      lines.push(`Unique Identifiers: ${identity.uniqueIdentifiers.join(', ')}`);
+    }
 
-IDENTITY SIGNALS (use these to make queries specific):
-- Current Organization: ${identity.currentOrg || 'Unknown'}
-- Current Role: ${identity.currentRole || 'Unknown'}
-- Past Roles: ${identity.pastRoles?.map((r: any) => `${r.role} at ${r.org}`).join(', ') || 'Unknown'}
-- Locations: ${identity.locations?.join(', ') || 'Unknown'}
-- Education: ${identity.education?.map((e: any) => e.school).join(', ') || 'Unknown'}
-- Affiliations: ${identity.affiliations?.join(', ') || 'Unknown'}
-- Unique Identifiers: ${identity.uniqueIdentifiers?.join(', ') || 'None'}
+    return lines.join('\n');
+  };
+
+  return `## Subject Information
+
+${formatLinkedIn()}
+
+${seedUrlExcerpt ? `Seed URL Content (excerpt):\n${seedUrlExcerpt.slice(0, 3000)}\n` : ''}
 
 ${QUERY_GENERATION_PROMPT}`;
+}
+
+// Categorized query interface for the new pipeline
+export interface CategorizedQuery {
+  category: 'A' | 'B' | 'C' | 'D' | 'E';
+  query: string;
+  hypothesis: string;
+}
+
+export function parseAnalyticalQueries(response: string): CategorizedQuery[] {
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      // Try array format as fallback
+      const arrayMatch = response.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        const parsed = JSON.parse(arrayMatch[0]);
+        return parsed.map((q: any) => ({
+          category: q.category || 'E',
+          query: q.query,
+          hypothesis: q.hypothesis || '',
+        }));
+      }
+      return [];
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.queries && Array.isArray(parsed.queries)) {
+      return parsed.queries.map((q: any) => ({
+        category: q.category || 'E',
+        query: q.query,
+        hypothesis: q.hypothesis || '',
+      }));
+    }
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 // Keep SOURCE_CLASSIFICATION_PROMPT for backward compatibility if used elsewhere
