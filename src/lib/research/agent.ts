@@ -59,6 +59,7 @@ async function runAgentSession(
   systemPrompt: string,
   userMessage: string,
   onProgress?: (loopCount: number, searchCount: number, fetchCount: number) => void,
+  model: string = 'claude-opus-4-20250514',
 ): Promise<AgentSessionResult> {
   const messages: Anthropic.Messages.MessageParam[] = [
     { role: 'user', content: userMessage },
@@ -77,7 +78,7 @@ async function runAgentSession(
     }
 
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-20250514',
+      model,
       max_tokens: 16000,
       system: systemPrompt,
       tools: RESEARCH_TOOLS as any,
@@ -203,8 +204,8 @@ export async function runPhasedResearch(
 
   const briefBase = buildResearchBrief(linkedinData, subjectName);
 
-  // ── Phase 1: Own Voice ──────────────────────────────────────────
-  console.log(`[Research] Phase 1: Own Voice`);
+  // ── Phase 1: Own Voice (Sonnet — source discovery, not extraction) ─
+  console.log(`[Research] Phase 1: Own Voice (Sonnet)`);
 
   const phase1 = await runAgentSession(
     PHASE_1_SYSTEM_PROMPT,
@@ -217,6 +218,7 @@ export async function runPhasedResearch(
         TOTAL_STEPS,
       );
     },
+    'claude-sonnet-4-20250514',
   );
 
   console.log(`[Research] Phase 1 complete: ${phase1.searchCount} searches, ${phase1.fetchCount} fetches, ${phase1.output.length} chars`);
@@ -225,8 +227,8 @@ export async function runPhasedResearch(
     'research', 8, TOTAL_STEPS,
   );
 
-  // ── Phase 2: Pressure & Context ─────────────────────────────────
-  console.log(`[Research] Phase 2: Pressure & Context`);
+  // ── Phase 2: Pressure & Context (Sonnet — source discovery) ────
+  console.log(`[Research] Phase 2: Pressure & Context (Sonnet)`);
 
   const phase2 = await runAgentSession(
     PHASE_2_SYSTEM_PROMPT,
@@ -241,6 +243,7 @@ export async function runPhasedResearch(
         TOTAL_STEPS,
       );
     },
+    'claude-sonnet-4-20250514',
   );
 
   console.log(`[Research] Phase 2 complete: ${phase2.searchCount} searches, ${phase2.fetchCount} fetches, ${phase2.output.length} chars`);
@@ -249,8 +252,8 @@ export async function runPhasedResearch(
     'research', 12, TOTAL_STEPS,
   );
 
-  // ── Phase 3: Extraction & Gap-Fill ──────────────────────────────
-  console.log(`[Research] Phase 3: Extraction & Gap-Fill`);
+  // ── Phase 3: Extraction & Gap-Fill (Opus — behavioral judgment) ─
+  console.log(`[Research] Phase 3: Extraction & Gap-Fill (Opus)`);
 
   const phase3 = await runAgentSession(
     PHASE_3_SYSTEM_PROMPT,
@@ -266,6 +269,7 @@ export async function runPhasedResearch(
         TOTAL_STEPS,
       );
     },
+    'claude-opus-4-20250514',
   );
 
   const totalSearches = phase1.searchCount + phase2.searchCount + phase3.searchCount;
