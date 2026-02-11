@@ -110,7 +110,7 @@ export async function executeFetchPage(url: string): Promise<string> {
       if (response.ok) {
         const data = await response.json();
         if (data.results && data.results.length > 0) {
-          const content = sanitizeForClaude(data.results[0].raw_content);
+          const content = sanitizeForClaude(data.results[0].raw_content, url);
           console.log(`[Research Agent] Fetched via Tavily Extract: ${content.length} chars`);
           return content;
         }
@@ -124,7 +124,7 @@ export async function executeFetchPage(url: string): Promise<string> {
   try {
     const response = await fetch(url);
     const text = await response.text();
-    const content = sanitizeForClaude(text);
+    const content = sanitizeForClaude(text, url);
     console.log(`[Research Agent] Fetched via direct fetch: ${content.length} chars`);
     return content;
   } catch (err) {

@@ -49,9 +49,54 @@ export function stripImages(content: string): string {
 }
 
 /**
+ * Strips LinkedIn boilerplate that pollutes fetched content.
+ * LinkedIn post pages include "More Relevant Posts" by other people,
+ * "People Also Viewed" sections, sign-in prompts, and navigation chrome.
+ * Only the primary post content should survive.
+ */
+export function stripLinkedInBoilerplate(content: string, url: string): string {
+  if (!/linkedin\.com/i.test(url)) return content;
+
+  let result = content;
+
+  // Remove "More Relevant Posts" / "Relevant posts" section and everything after
+  result = result.replace(/(?:More Relevant Posts|Relevant posts|People also viewed|Others also viewed|Explore topics)[\s\S]*/i, '');
+
+  // Remove "Recommended by LinkedIn" section
+  result = result.replace(/Recommended by LinkedIn[\s\S]*/i, '');
+
+  // Remove sign-in prompts
+  result = result.replace(/Sign in to view [\s\S]{0,500}/gi, '');
+  result = result.replace(/Join now to see [\s\S]{0,300}/gi, '');
+  result = result.replace(/Sign in[\s\S]{0,100}to view/gi, '');
+
+  // Remove "You might also like" section
+  result = result.replace(/You might also like[\s\S]*/i, '');
+
+  // Remove LinkedIn navigation/chrome
+  result = result.replace(/(?:Home|My Network|Jobs|Messaging|Notifications)\s*[\|\/]\s*/gi, '');
+
+  // Remove cookie/privacy banners
+  result = result.replace(/(?:LinkedIn Corporation|©\s*\d{4}[\s\S]{0,200}(?:User Agreement|Privacy Policy|Cookie Policy))/gi, '');
+
+  // Remove LinkedIn engagement UI
+  result = result.replace(/\d+\s*(?:likes?|comments?|reposts?|reactions?)\s*/gi, '');
+  result = result.replace(/(?:Like|Comment|Repost|Send)\s*(?:\||\s)+(?:Like|Comment|Repost|Send)\s*/gi, '');
+
+  // Clean up resulting whitespace
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result.trim();
+}
+
+/**
  * Sanitizes content for use in Claude API prompts.
  * This is the main function to call before embedding web content in prompts.
  */
-export function sanitizeForClaude(content: string): string {
-  return stripImages(content);
+export function sanitizeForClaude(content: string, url?: string): string {
+  let result = stripImages(content);
+  if (url) {
+    result = stripLinkedInBoilerplate(result, url);
+  }
+  return result;
 }

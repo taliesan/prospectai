@@ -1,10 +1,11 @@
 /**
- * Conversation Pipeline Architecture (v7 — Phased Research)
+ * Conversation Pipeline Architecture (v8 — Single-Call Extraction)
  *
- * Stage 1: Phased Research (3 sequential agentic sessions)
- *   Phase 1: Own Voice — find everything the subject has written or said
- *   Phase 2: Pressure & Context — external evidence, transitions, peer accounts
- *   Phase 3: Extraction & Gap-Fill — read sources, extract 24-dim evidence, fill gaps
+ * Stage 1: Source Discovery + Extraction
+ *   Phase 1: Own Voice (Sonnet, agentic) — find everything the subject has written or said
+ *   Phase 2: Pressure & Context (Sonnet, agentic) — external evidence, transitions, peer accounts
+ *   Bulk Fetch: (coded) — parse URLs from Phase 1+2, fetch all pages in parallel
+ *   Extraction: (Opus, single call) — read all source texts, produce 25-30K token research package
  *   - Output: research package (summary, evidence gaps, sources, 24-dim extraction)
  *
  * Stage 2: Profile Generation
@@ -21,8 +22,14 @@
  *   - Output: Meeting Guide (tactical choreography, user-facing)
  *
  * Key terms:
- *   - "Research package" = Phase 3 output with sources, evidence gaps, 24-dim extraction
+ *   - "Research package" = extraction output with sources, evidence gaps, 24-dim extraction (~25-30K tokens)
  *   - "Persuasion Profile" = final 18-section output (user-facing)
+ *
+ * Cost per profile: ~$9-10
+ *   - Tavily searches: ~$0.50-1.00
+ *   - Extraction (Opus, single call): ~$4.50
+ *   - Profile generation (Opus): ~$2.00
+ *   - Editorial pass (Opus): ~$2.00
  */
 
 import { conversationTurn, Message } from './anthropic';
@@ -126,7 +133,7 @@ export async function runConversationPipeline(
   linkedinPdfBase64?: string
 ): Promise<ConversationResult> {
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`CONVERSATION MODE (v6 agentic research): Processing ${donorName}`);
+  console.log(`CONVERSATION MODE (v8 single-call extraction): Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
 
   const TOTAL_STEPS = 38;
@@ -221,8 +228,8 @@ export async function runConversationPipeline(
   console.log(`[Pipeline] Loaded Geoffrey Block (${geoffreyBlock.length} chars) and exemplars (${exemplars.length} chars)`);
 
   // The research package IS the extraction output — it contains the 24-dimension evidence
-  // The research package preamble tells the profile writer about evidence quality and gaps
-  const researchPackagePreamble = `The behavioral evidence below was extracted by a research agent that read and evaluated all available sources on the subject. The Research Summary and Evidence Gaps sections describe what was found and what wasn't. Where evidence is thin, the profile should acknowledge limits rather than extrapolating from weak data.\n\n`;
+  // Extraction entries are ~250 tokens each with long quotes, surrounding text, and source shape
+  const researchPackagePreamble = `The behavioral evidence below was curated from ${fetchCount} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape. The Research Summary and Evidence Gaps sections describe what was found and what wasn't. Where evidence is thin, the profile should acknowledge limits rather than extrapolating from weak data.\n\n`;
 
   const extractionForProfile = researchPackagePreamble + researchPackage;
 
