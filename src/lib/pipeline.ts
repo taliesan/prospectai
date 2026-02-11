@@ -301,6 +301,11 @@ Extract the identity signals for this person.`;
         emit(`Searching: "${q.query}"`, 'research', 8, TOTAL);
       }
       const results = await searchFunction(q.query);
+
+      // Extract analytical category from rationale (format: "[Cat X] hypothesis")
+      const catMatch = q.rationale.match(/^\[Cat ([A-E])\]/);
+      const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' | 'D' | 'E' : undefined;
+
       for (const r of results) {
         allSources.push({
           url: r.url,
@@ -308,6 +313,8 @@ Extract the identity signals for this person.`;
           snippet: r.snippet,
           content: (r as any).fullContent || (r as any).content || undefined,
           query: q.query,
+          queryCategory,
+          queryHypothesis: q.rationale,
           source: 'tavily',
         });
         if (q.tier === 'TAILORED') {
