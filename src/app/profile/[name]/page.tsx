@@ -18,7 +18,7 @@ interface ProfileData {
     rawMarkdown: string;
     sources?: Source[];
   };
-  dossier: { rawMarkdown: string };
+  researchProfile: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
   meetingGuide?: string;
   meetingGuideHtml?: string;
@@ -57,7 +57,7 @@ export default function ProfilePage() {
       const downloadData: DownloadableProfile = {
         donorName,
         fundraiserName,
-        profile: data.dossier.rawMarkdown,
+        profile: data.researchProfile.rawMarkdown,
         meetingGuide: data.meetingGuide,
         sources: extractSources(),
       };
@@ -87,7 +87,7 @@ export default function ProfilePage() {
       const profileData = parseProfileForPDF(
         donorName,
         fundraiserName,
-        data.dossier.rawMarkdown,
+        data.researchProfile.rawMarkdown,
         data.meetingGuide,
         sources
       );
@@ -222,7 +222,7 @@ export default function ProfilePage() {
           "Contradiction Patterns": "Where to Start",
         };
 
-        let displayMarkdown = data.dossier.rawMarkdown;
+        let displayMarkdown = data.researchProfile.rawMarkdown;
         for (const [original, replacement] of Object.entries(headingMap)) {
           displayMarkdown = displayMarkdown.replace(original, replacement);
         }
@@ -452,8 +452,8 @@ export default function ProfilePage() {
           </summary>
           <div className="mt-4 flex flex-wrap gap-2">
             {[
-              { file: 'extraction-prompt', label: 'Extraction Prompt' },
-              { file: 'extraction', label: 'Extraction Output' },
+              { file: 'research-package', label: 'Research Package' },
+              { file: 'research-conversation', label: 'Agent Conversation' },
               { file: 'prompt', label: 'Profile Prompt' },
               { file: 'first-draft', label: 'First Draft' },
               { file: 'critique-prompt', label: 'Critique Prompt' },

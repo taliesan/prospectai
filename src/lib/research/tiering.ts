@@ -287,15 +287,6 @@ ${source.content || source.snippet || ''}
 `).join('\n');
 }
 
-export function formatSourcesForDossier(sources: TieredSource[]): string {
-  // Sort by tier for the dossier prompt
-  const sorted = [...sources].sort((a, b) => a.tier - b.tier);
-
-  return sorted.map((s, i) =>
-    `### Source ${i + 1} [TIER ${s.tier}]: ${s.title || 'Untitled'}\nURL: ${s.url}\nTier: ${s.tierReason}\nSnippet: ${s.snippet}${s.content ? `\nContent: ${s.content}` : ''}`
-  ).join('\n\n');
-}
-
 // ── Tier-aware token budget truncation ──────────────────────────────
 
 function estimateTokens(text: string): number {
