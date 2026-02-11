@@ -238,6 +238,8 @@ Your target output is 25,000-30,000 tokens. This is intentionally large. The pro
 export interface LinkedInData {
   currentTitle: string;
   currentEmployer: string;
+  linkedinSlug?: string;
+  websites?: string[];
   careerHistory: Array<{
     title: string;
     employer: string;
