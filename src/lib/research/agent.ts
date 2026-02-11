@@ -1,49 +1,67 @@
 /**
- * Research Agent — Agentic loop that replaces the entire research-through-extraction pipeline.
+ * Phased Research Agent — Three sequential agentic sessions.
  *
- * Sends a system prompt + research brief to Claude Opus with web_search and fetch_page tools.
- * The agent reads, reasons, searches, and produces the 24-dimension behavioral evidence
- * extraction directly. When it responds with text (not a tool call), that text is the
- * research package.
+ * Phase 1: Own Voice — find everything the subject has written or said
+ * Phase 2: Pressure & Context — find external evidence, transitions, peer accounts
+ * Phase 3: Extraction & Gap-Fill — read all sources, extract 24-dim evidence, fill gaps
+ *
+ * Each phase is a separate API conversation with its own system prompt.
+ * The same agent loop runner handles all three.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { LinkedInData } from '../prompts/extraction-prompt';
-import { RESEARCH_AGENT_SYSTEM_PROMPT, buildResearchBrief } from '../prompts/research-agent-prompt';
+import { PHASE_3_SYSTEM_PROMPT, buildResearchBrief } from '../prompts/research-agent-prompt';
+import { PHASE_1_SYSTEM_PROMPT } from '../prompts/phase-1-prompt';
+import { PHASE_2_SYSTEM_PROMPT } from '../prompts/phase-2-prompt';
 import { RESEARCH_TOOLS, executeWebSearch, executeFetchPage } from './tools';
 
 const anthropic = new Anthropic();
 
 // ── Types ───────────────────────────────────────────────────────────
 
+export interface AgentSessionResult {
+  output: string;
+  toolCallCount: number;
+  searchCount: number;
+  fetchCount: number;
+  conversationLog: any[];
+}
+
+export interface PhasedResearchResult {
+  researchPackage: string;
+  phase1Sources: string;
+  phase2Sources: string;
+  phase1: AgentSessionResult;
+  phase2: AgentSessionResult;
+  phase3: AgentSessionResult;
+  totalSearchCount: number;
+  totalFetchCount: number;
+  totalToolCallCount: number;
+}
+
+// Backward-compatible type alias
 export interface ResearchAgentResult {
   researchPackage: string;
   toolCallCount: number;
   searchCount: number;
   fetchCount: number;
-  conversationLog: any[];  // Full message history for debug output
+  conversationLog: any[];
 }
 
 type ProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
-// ── Agent loop ──────────────────────────────────────────────────────
+// ── Generic Agent Session Runner ────────────────────────────────────
 
-export async function runResearchAgent(
-  linkedinData: LinkedInData | null,
-  subjectName: string,
-  onProgress?: ProgressCallback,
-): Promise<ResearchAgentResult> {
-  const emit = onProgress || (() => {});
-  const TOTAL_STEPS = 38;
+const MAX_LOOPS = 100;
 
-  console.log(`[Research Agent] Starting for: ${subjectName}`);
-  emit('Research agent starting...', 'research', 3, TOTAL_STEPS);
-
-  const brief = buildResearchBrief(linkedinData, subjectName);
-
-  // Build message history — system prompt is separate, user message starts the conversation
+async function runAgentSession(
+  systemPrompt: string,
+  userMessage: string,
+  onProgress?: (loopCount: number, searchCount: number, fetchCount: number) => void,
+): Promise<AgentSessionResult> {
   const messages: Anthropic.Messages.MessageParam[] = [
-    { role: 'user', content: brief },
+    { role: 'user', content: userMessage },
   ];
 
   let toolCallCount = 0;
@@ -51,50 +69,28 @@ export async function runResearchAgent(
   let fetchCount = 0;
   let loopCount = 0;
 
-  // Safety limit — prevent infinite loops
-  const MAX_LOOPS = 100;
-
   while (loopCount < MAX_LOOPS) {
     loopCount++;
 
-    // Periodic progress updates
-    if (loopCount % 3 === 0) {
-      emit(
-        `Research agent: ${searchCount} searches, ${fetchCount} pages read...`,
-        'research',
-        Math.min(3 + Math.floor(loopCount / 3), 14),
-        TOTAL_STEPS,
-      );
+    if (onProgress && loopCount % 3 === 0) {
+      onProgress(loopCount, searchCount, fetchCount);
     }
 
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-20250514',
       max_tokens: 16000,
-      system: RESEARCH_AGENT_SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: RESEARCH_TOOLS as any,
       messages,
     });
 
-    // Check if we're done — text response with end_turn means the agent is finished
+    // Done — text response with end_turn
     if (response.stop_reason === 'end_turn') {
       const textBlock = response.content.find(
         (c: any): c is Anthropic.Messages.TextBlock => c.type === 'text',
       );
-
-      const researchPackage = textBlock?.text || '';
-
-      console.log(`[Research Agent] Complete: ${loopCount} loops, ${toolCallCount} tool calls (${searchCount} searches, ${fetchCount} fetches)`);
-      console.log(`[Research Agent] Research package: ${researchPackage.length} chars`);
-
-      emit(
-        `Research complete: ${searchCount} searches, ${fetchCount} pages read`,
-        'research',
-        15,
-        TOTAL_STEPS,
-      );
-
       return {
-        researchPackage,
+        output: textBlock?.text || '',
         toolCallCount,
         searchCount,
         fetchCount,
@@ -108,26 +104,21 @@ export async function runResearchAgent(
     );
 
     if (toolUseBlocks.length === 0) {
-      // No tool calls and not end_turn — extract any text and return
       const textBlock = response.content.find(
         (c: any): c is Anthropic.Messages.TextBlock => c.type === 'text',
       );
       if (textBlock) {
-        console.log(`[Research Agent] Stopped without end_turn, using text response`);
         return {
-          researchPackage: textBlock.text,
+          output: textBlock.text,
           toolCallCount,
           searchCount,
           fetchCount,
           conversationLog: messages,
         };
       }
-      // No text and no tools — something went wrong
-      console.error('[Research Agent] No text and no tool calls in response');
       break;
     }
 
-    // Execute each tool call and collect results
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
     for (const toolUse of toolUseBlocks) {
@@ -155,7 +146,6 @@ export async function runResearchAgent(
         fetchCount++;
         try {
           const content = await executeFetchPage(input.url);
-          // Truncate very long pages to avoid context window pressure
           const maxChars = 40000;
           const truncated =
             content.length > maxChars
@@ -184,24 +174,143 @@ export async function runResearchAgent(
       }
     }
 
-    // Append assistant response + tool results to conversation
     messages.push({ role: 'assistant', content: response.content });
     messages.push({ role: 'user', content: toolResults });
-
-    console.log(
-      `[Research Agent] Loop ${loopCount}: ${toolUseBlocks.length} tool calls (total: ${searchCount} searches, ${fetchCount} fetches)`,
-    );
   }
 
-  // If we hit the loop limit, return whatever we have
-  console.warn(`[Research Agent] Hit max loop limit (${MAX_LOOPS})`);
-  emit('Research agent reached iteration limit', 'research', 15, TOTAL_STEPS);
-
+  // Hit loop limit
   return {
-    researchPackage: `[Research agent reached ${MAX_LOOPS} iteration limit. Partial results may be available in the conversation log.]`,
+    output: `[Agent reached ${MAX_LOOPS} iteration limit. Partial results may be available in the conversation log.]`,
     toolCallCount,
     searchCount,
     fetchCount,
     conversationLog: messages,
+  };
+}
+
+// ── Phased Research Orchestration ───────────────────────────────────
+
+export async function runPhasedResearch(
+  linkedinData: LinkedInData | null,
+  subjectName: string,
+  onProgress?: ProgressCallback,
+): Promise<PhasedResearchResult> {
+  const emit = onProgress || (() => {});
+  const TOTAL_STEPS = 38;
+
+  console.log(`[Research] Starting phased research for: ${subjectName}`);
+  emit('Research starting — Phase 1: discovering subject\'s own voice...', 'research', 3, TOTAL_STEPS);
+
+  const briefBase = buildResearchBrief(linkedinData, subjectName);
+
+  // ── Phase 1: Own Voice ──────────────────────────────────────────
+  console.log(`[Research] Phase 1: Own Voice`);
+
+  const phase1 = await runAgentSession(
+    PHASE_1_SYSTEM_PROMPT,
+    briefBase + '\n\nBegin your research.',
+    (loop, searches, fetches) => {
+      emit(
+        `Phase 1 (own voice): ${searches} searches, ${fetches} pages...`,
+        'research',
+        Math.min(3 + Math.floor(loop / 3), 7),
+        TOTAL_STEPS,
+      );
+    },
+  );
+
+  console.log(`[Research] Phase 1 complete: ${phase1.searchCount} searches, ${phase1.fetchCount} fetches, ${phase1.output.length} chars`);
+  emit(
+    `Phase 1 complete — ${phase1.searchCount} searches, ${phase1.fetchCount} pages. Starting Phase 2...`,
+    'research', 8, TOTAL_STEPS,
+  );
+
+  // ── Phase 2: Pressure & Context ─────────────────────────────────
+  console.log(`[Research] Phase 2: Pressure & Context`);
+
+  const phase2 = await runAgentSession(
+    PHASE_2_SYSTEM_PROMPT,
+    briefBase +
+      '\n\n## Sources Already Found (Phase 1)\n\n' + phase1.output +
+      '\n\nBegin your research.',
+    (loop, searches, fetches) => {
+      emit(
+        `Phase 2 (external evidence): ${searches} searches, ${fetches} pages...`,
+        'research',
+        Math.min(8 + Math.floor(loop / 3), 11),
+        TOTAL_STEPS,
+      );
+    },
+  );
+
+  console.log(`[Research] Phase 2 complete: ${phase2.searchCount} searches, ${phase2.fetchCount} fetches, ${phase2.output.length} chars`);
+  emit(
+    `Phase 2 complete — ${phase2.searchCount} searches, ${phase2.fetchCount} pages. Starting Phase 3...`,
+    'research', 12, TOTAL_STEPS,
+  );
+
+  // ── Phase 3: Extraction & Gap-Fill ──────────────────────────────
+  console.log(`[Research] Phase 3: Extraction & Gap-Fill`);
+
+  const phase3 = await runAgentSession(
+    PHASE_3_SYSTEM_PROMPT,
+    briefBase +
+      '\n\n## Sources Found (Phase 1 — Subject\'s Own Voice)\n\n' + phase1.output +
+      '\n\n## Sources Found (Phase 2 — External Evidence)\n\n' + phase2.output +
+      '\n\nBegin your extraction.',
+    (loop, searches, fetches) => {
+      emit(
+        `Phase 3 (extraction): reading sources, ${searches} gap-fill searches...`,
+        'research',
+        Math.min(12 + Math.floor(loop / 3), 14),
+        TOTAL_STEPS,
+      );
+    },
+  );
+
+  const totalSearches = phase1.searchCount + phase2.searchCount + phase3.searchCount;
+  const totalFetches = phase1.fetchCount + phase2.fetchCount + phase3.fetchCount;
+  const totalTools = phase1.toolCallCount + phase2.toolCallCount + phase3.toolCallCount;
+
+  console.log(`[Research] Phase 3 complete: ${phase3.searchCount} searches, ${phase3.fetchCount} fetches`);
+  console.log(`[Research] All phases complete: ${totalSearches} total searches, ${totalFetches} total fetches, ${totalTools} total tool calls`);
+  console.log(`[Research] Research package: ${phase3.output.length} chars`);
+
+  emit(
+    `Research complete — ${totalSearches} searches, ${totalFetches} pages across 3 phases`,
+    'research', 15, TOTAL_STEPS,
+  );
+
+  return {
+    researchPackage: phase3.output,
+    phase1Sources: phase1.output,
+    phase2Sources: phase2.output,
+    phase1,
+    phase2,
+    phase3,
+    totalSearchCount: totalSearches,
+    totalFetchCount: totalFetches,
+    totalToolCallCount: totalTools,
+  };
+}
+
+// ── Backward-compatible wrapper ─────────────────────────────────────
+
+/**
+ * @deprecated Use runPhasedResearch() instead. This wrapper exists for
+ * backward compatibility during migration.
+ */
+export async function runResearchAgent(
+  linkedinData: LinkedInData | null,
+  subjectName: string,
+  onProgress?: ProgressCallback,
+): Promise<ResearchAgentResult> {
+  const result = await runPhasedResearch(linkedinData, subjectName, onProgress);
+  return {
+    researchPackage: result.researchPackage,
+    toolCallCount: result.totalToolCallCount,
+    searchCount: result.totalSearchCount,
+    fetchCount: result.totalFetchCount,
+    conversationLog: result.phase3.conversationLog,
   };
 }

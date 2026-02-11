@@ -1,16 +1,19 @@
 /**
- * Research Agent System Prompt
+ * Phase 3: Extraction & Gap-Fill — System Prompt
  *
- * This is the full system prompt for the agentic research loop.
- * The agent has two tools: web_search and fetch_page.
- * It reads, reasons, searches, and produces the 24-dimension behavioral
- * evidence extraction directly — replacing query generation, search execution,
- * content fetching, screening/tiering, source assembly, and extraction.
+ * Receives source lists from Phases 1 and 2. Reads all sources, extracts
+ * behavioral evidence into 24 dimensions, searches specifically for thin spots.
+ * Produces the final Research Package.
+ *
+ * Also exports calibration signal generation and research brief builder
+ * used by all three phases.
  */
 
 import type { LinkedInData } from './extraction-prompt';
 
-export const RESEARCH_AGENT_SYSTEM_PROMPT = `You are a senior behavioral research analyst. You have been hired — at significant expense — because your research is the foundation on which a persuasion profile will be built. The profile writer cannot invent evidence. They can only work with what you give them. If your research is thin, the profile is thin. If you miss the subject's own writing, the profile reads like an institutional bio instead of a behavioral map. The entire downstream product depends on you doing exceptional work.
+// ── Phase 3 System Prompt ────────────────────────────────────────────
+
+export const PHASE_3_SYSTEM_PROMPT = `You are a senior behavioral research analyst. You have been hired — at significant expense — because your research is the foundation on which a persuasion profile will be built. The profile writer cannot invent evidence. They can only work with what you give them. If your research is thin, the profile is thin. If you miss the subject's own writing, the profile reads like an institutional bio instead of a behavioral map. The entire downstream product depends on you doing exceptional work.
 
 Your output will be scored. Here is the rubric:
 
@@ -45,25 +48,23 @@ You are targeting EXCEPTIONAL. Not because we told you to, but because adequate 
 
 You have two tools:
 
-**web_search(query)** — Returns search results with titles, URLs, and snippets. Keep queries short and specific (3-8 words). You'll use this many times. A thorough research session involves 15-30 searches. If you've done fewer than 10, you're probably not done.
+**web_search(query)** — Returns search results with titles, URLs, and snippets. Keep queries short and specific (3-8 words). Use this for targeted gap-fill searches after your initial extraction.
 
-**fetch_page(url)** — Returns the full text content of a page. Use this to read sources that look promising from search snippets. Not every search result needs a full fetch — use your judgment about which results are worth reading in full.
+**fetch_page(url)** — Returns the full text content of a page. Use this to read sources from the Phase 1 and Phase 2 lists. Not every source needs a full fetch — use the annotations to prioritize.
 
 ---
 
-## Your Research Approach
+## Your Research Approach (Phase 3)
 
-You'll receive the subject's parsed LinkedIn data. This is your starting intelligence — it tells you who they are professionally, where they've worked, what they've built. Use it to design your research, not as your evidence.
+Two previous research phases have already found sources. You have their combined source list below. Your job has three parts:
 
-**Start with their own voice.** This is the single most important thing you do. If the subject has a personal website, go there first. If it's a blog, find the archive or index page and read it. Select the posts most likely to reveal behavioral patterns — the ones about their philosophy, their methodology, their career decisions, their reactions to events. If you find a rich personal site and stop after reading one or two pages, you have failed at the most basic level.
+**Part 1: Read.** Fetch and read every source on the list that looks likely to contain behavioral evidence. Not every source needs a full read — use the annotations from Phases 1 and 2 to prioritize. But the subject's own blog posts, interviews, and long-form writing should all be read in full.
 
-Search for their LinkedIn articles and long-form posts. Search for podcast appearances, interviews, conference talks. Search for op-eds or guest columns. Every source where the subject speaks in their own words at length is more valuable than any amount of third-party coverage.
+**Part 2: Extract.** Organize the strongest behavioral evidence into the 24 dimensions. You have context that no downstream model will have — you've read the full sources and understand why specific quotes matter. Use that understanding.
 
-**Then search for behavioral pressure points.** The LinkedIn career history shows you where to look — transitions, controversies, departures. Search for coverage of those moments. How did they handle a public controversy? Why did they leave a major role? What happened when their venture failed? People reveal their real values when things go wrong.
+**Part 3: Gap-fill.** After extraction, look at your 24 dimensions. Which are thin? Which have no evidence? For the thin ones, design targeted searches to find evidence specifically for those dimensions. Not broad searches — searches designed to surface evidence about how this person makes decisions, handles conflict, builds trust, etc. Search, read, and add to the extraction.
 
-**Then fill in context.** What do peers say about them? What did their organizations accomplish during their tenure? What does their field talk about that they'd have an opinion on?
-
-**Then assess your gaps.** After your first research pass, look at what you have. Where is the evidence thin? What behavioral dimensions have you not found evidence for? Design searches specifically targeted at those gaps. A senior analyst doesn't stop when the easy evidence is collected — they stop when additional searching produces genuinely diminishing returns.
+When gap-filling is genuinely producing diminishing returns — you've tried specific searches and the evidence simply isn't public — stop and report the gaps honestly.
 
 **When you read LinkedIn post pages,** ignore the "More Relevant Posts" section and similar feed content — those are other people's posts, not the subject's.
 
@@ -204,9 +205,89 @@ Aim for 2-4 entries per dimension where evidence exists. Leave dimensions empty 
 
 The profile writer who receives your research package will be able to tell immediately whether you did exceptional work or adequate work. If the extraction is built on three sources and an About page, they'll know. If half the dimensions are thin because you stopped after ten searches, they'll know. If the subject has a blog with thirty posts and you only read two, they'll know.
 
-Do the work that makes the profile writer's job easy, not possible.
-`;
+Do the work that makes the profile writer's job easy, not possible.`;
 
+// Keep backward-compatible export name
+export const RESEARCH_AGENT_SYSTEM_PROMPT = PHASE_3_SYSTEM_PROMPT;
+
+// ── Calibration Signal ───────────────────────────────────────────────
+
+export function generateCalibration(linkedin: LinkedInData): string {
+  let score = 0;
+
+  // Career breadth
+  const employers = linkedin.careerHistory?.length || 0;
+  if (employers >= 6) score += 3;
+  else if (employers >= 3) score += 2;
+  else score += 1;
+
+  // Career seniority (VP/Director/C-suite titles)
+  const seniorRoles = (linkedin.careerHistory || []).filter(role =>
+    /\b(vp|vice president|director|chief|head of|founder|ceo|coo|cfo|president)\b/i
+      .test(role.title)
+  ).length;
+  if (seniorRoles >= 3) score += 3;
+  else if (seniorRoles >= 1) score += 2;
+  else score += 1;
+
+  // Public presence indicators
+  const hasBoards = !!(linkedin.boards && linkedin.boards.length > 0);
+  const hasDescription = (linkedin.careerHistory || []).some(
+    role => role.description && role.description.length > 200
+  );
+  if (hasBoards) score += 1;
+  if (hasDescription) score += 1;
+
+  // Personal website found
+  const websites = (linkedin as any).websites as string[] | undefined;
+  const hasPersonalSite = !!(websites && websites.length > 0);
+  if (hasPersonalSite) score += 2;
+
+  // Compute career span in years
+  const dates = (linkedin.careerHistory || [])
+    .flatMap(r => [r.startDate, r.endDate])
+    .filter(d => d && d !== 'Present')
+    .map(d => {
+      const match = d.match(/(\d{4})/);
+      return match ? parseInt(match[1]) : null;
+    })
+    .filter((y): y is number => y !== null);
+  const careerYears = dates.length >= 2 ? Math.max(...dates) - Math.min(...dates) : 0;
+
+  // Notable organizations (first 3 employers with senior roles)
+  const notableOrgs = (linkedin.careerHistory || [])
+    .filter(role =>
+      /\b(vp|vice president|director|chief|head of|founder|ceo|coo|cfo|president)\b/i
+        .test(role.title)
+    )
+    .slice(0, 3)
+    .map(r => r.employer)
+    .join(', ');
+
+  const boardCount = linkedin.boards?.length || 0;
+  const personalSiteNote = hasPersonalSite
+    ? ` and maintains a personal website (${websites![0]})`
+    : '';
+
+  // Map score to calibration tier
+  if (score >= 8) {
+    return `RESEARCH CALIBRATION: This subject has a ${employers}-employer career spanning ${careerYears} years, with senior roles at ${notableOrgs}. They hold ${boardCount} board/advisory positions${personalSiteNote}. A subject with this level of public engagement typically generates 25-40 substantive sources including: personal blog posts (often 10+ if they maintain a blog), press coverage of major career transitions, interviews and podcast appearances, conference talks, organizational publications, and peer testimonials. If you are finding significantly fewer sources than this, you are likely not searching thoroughly enough — try different query formulations, search for specific career events by name, and check for content on organizational websites from their tenure.`;
+  }
+
+  if (score >= 5) {
+    return `RESEARCH CALIBRATION: This subject has a ${employers}-employer career with ${seniorRoles} senior roles${personalSiteNote}. A subject with this profile typically generates 12-25 substantive sources. Some may be harder to find — search for organizational publications from their tenure, panel appearances, grant announcements, and co-authored reports. Not all sources will be first-person voice; third-party coverage and organizational context become more important for subjects who write less publicly.`;
+  }
+
+  return `RESEARCH CALIBRATION: This subject has limited public indicators. Expect 8-15 substantive sources, possibly fewer. Prioritize any first-person writing you find — even a single blog post or long LinkedIn article is high-value for a subject with sparse coverage. Search for organizational publications from their employers, event panels, grant databases, and co-authored work. Thin evidence is an accurate finding for low-profile subjects — report gaps honestly rather than stretching weak sources.`;
+}
+
+// ── Research Brief Builder ───────────────────────────────────────────
+
+/**
+ * Build the base research brief from LinkedIn data.
+ * Returns the brief WITHOUT "Begin your research/extraction." —
+ * the orchestration code appends the phase-specific ending.
+ */
 export function buildResearchBrief(
   linkedinData: LinkedInData | null,
   subjectName: string
@@ -216,9 +297,7 @@ export function buildResearchBrief(
 
 SUBJECT: ${subjectName}
 
-No LinkedIn data is available. Start by searching for their current role and organization, then proceed with the research priorities described in your instructions.
-
-Begin your research.`;
+No LinkedIn data is available. Start by searching for their current role and organization, then proceed with the research priorities described in your instructions.`;
   }
 
   const careerSection = linkedinData.careerHistory?.length
@@ -243,6 +322,8 @@ Begin your research.`;
     ? (linkedinData as any).websites.join(', ')
     : 'none found';
 
+  const calibration = generateCalibration(linkedinData);
+
   return `Research the following person for a behavioral persuasion profile.
 
 SUBJECT: ${subjectName}
@@ -261,5 +342,5 @@ ${linkedinData.boards?.join('\n') || 'None listed'}
 SKILLS / SELF-DESCRIBED EXPERTISE:
 ${linkedinData.skills?.join(', ') || 'Not available'}
 
-Begin your research.`;
+${calibration}`;
 }
