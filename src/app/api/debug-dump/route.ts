@@ -5,21 +5,25 @@ import { readFileSync, existsSync } from 'fs';
  * GET /api/debug-dump?file=<key>
  *
  * Available files:
- *   ?file=extraction-prompt  — Stage 2 input (extraction prompt)
- *   ?file=extraction         — Stage 2 output (behavioral evidence)
- *   ?file=prompt             — Stage 3 input (profile prompt)
- *   ?file=first-draft        — Stage 3 output (first draft profile)
- *   ?file=critique-prompt    — Stage 3b input (critique prompt, if enabled)
- *   ?file=final              — Stage 3b output (final profile, if enabled)
- *   ?file=meeting-guide-prompt — Stage 4 input (meeting guide prompt)
- *   ?file=meeting-guide       — Stage 4 output (meeting guide markdown)
- *   ?file=meeting-guide-html  — Stage 4 output (meeting guide styled HTML)
- *   ?file=linkedin           — Parsed LinkedIn data (JSON)
+ *   ?file=research-package      — Research agent output (24-dim behavioral evidence)
+ *   ?file=research-conversation — Full agent conversation log (JSON, for debugging)
+ *   ?file=extraction-prompt     — Legacy: Stage 2 input (extraction prompt)
+ *   ?file=extraction            — Legacy: Stage 2 output (behavioral evidence)
+ *   ?file=prompt                — Profile generation input (profile prompt)
+ *   ?file=first-draft           — Profile generation output (first draft)
+ *   ?file=critique-prompt       — Critique/redraft input (if enabled)
+ *   ?file=final                 — Critique/redraft output (final profile, if enabled)
+ *   ?file=meeting-guide-prompt  — Meeting guide input
+ *   ?file=meeting-guide         — Meeting guide output (markdown)
+ *   ?file=meeting-guide-html    — Meeting guide output (styled HTML)
+ *   ?file=linkedin              — Parsed LinkedIn data (JSON)
  */
 export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get('file');
 
   const files: Record<string, string> = {
+    'research-package': '/tmp/prospectai-outputs/DEBUG-research-package.txt',
+    'research-conversation': '/tmp/prospectai-outputs/DEBUG-research-conversation.json',
     extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
     'extraction-prompt': '/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt',
     prompt: '/tmp/prospectai-outputs/DEBUG-prompt.txt',
@@ -51,10 +55,11 @@ export async function GET(request: NextRequest) {
   }
 
   const content = readFileSync(path, 'utf-8');
-  const contentType = file === 'linkedin' ? 'application/json'
+  const jsonFiles = ['linkedin', 'research-conversation'];
+  const contentType = jsonFiles.includes(file) ? 'application/json'
     : file === 'meeting-guide-html' ? 'text/html; charset=utf-8'
     : 'text/plain; charset=utf-8';
-  const ext = file === 'linkedin' ? 'json'
+  const ext = jsonFiles.includes(file) ? 'json'
     : file === 'meeting-guide-html' ? 'html'
     : file === 'meeting-guide' ? 'md'
     : 'txt';

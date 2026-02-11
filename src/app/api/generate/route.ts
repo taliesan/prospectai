@@ -271,8 +271,8 @@ export async function POST(request: NextRequest) {
             let result: any;
 
             if (isConversationMode) {
-              // Conversation mode: two-step pipeline (sources → dossier → profile)
-              console.log('[API] Running conversation mode pipeline (two-step)...');
+              // Conversation mode: agentic research → profile → meeting guide
+              console.log('[API] Running conversation mode pipeline (v6 agentic)...');
 
               const conversationResult = await runConversationPipeline(
                 donorName,
@@ -290,8 +290,15 @@ export async function POST(request: NextRequest) {
                 linkedinPdf
               );
 
-              // Save outputs including dossier and meeting guide
-              saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
+              // Save outputs — adapt new research shape for saveOutputs
+              const researchForSave = {
+                donorName,
+                rawMarkdown: conversationResult.research.researchPackage,
+                identity: {},
+                queries: [],
+                sources: [],
+              };
+              saveOutputs(researchForSave, conversationResult.profile, conversationResult.researchPackage);
 
               // Save meeting guide using same requestId
               if (conversationResult.meetingGuide) {
@@ -306,8 +313,12 @@ export async function POST(request: NextRequest) {
 
               // Format result for frontend compatibility
               result = {
-                research: conversationResult.research,
-                dossier: { rawMarkdown: conversationResult.dossier },
+                research: {
+                  ...conversationResult.research,
+                  rawMarkdown: conversationResult.research.researchPackage,
+                  sources: [],
+                },
+                dossier: { rawMarkdown: conversationResult.profile },
                 profile: {
                   donorName,
                   profile: conversationResult.profile,
