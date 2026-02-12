@@ -278,14 +278,15 @@ When making behavioral inferences, prioritize Tier 1 evidence. A quote from the 
  * This assembles the full source texts (not snippets) into a single prompt
  * that Opus reads in one pass to produce a 25-30K token research package.
  *
- * Context window budget:
- *   - Extraction instructions: ~3K tokens
- *   - Source texts: target 100-150K tokens (Opus 200K context)
- *   - Output: 25-30K tokens
- *   - Safety margin: ~20K tokens
+ * Context window budget (200K total):
+ *   - Extraction instructions: ~5K tokens
+ *   - Source texts: target 100-130K tokens
+ *   - Output (max_tokens): 32K tokens
+ *   - Safety margin: ~33K tokens
  *
- * If sources exceed ~150K tokens, the lowest-tier/shortest sources are
- * truncated or dropped to fit.
+ * Individual sources are capped at 50K chars (~12.5K tokens) to prevent
+ * a single bloated page from dominating the budget. Sources exceeding the
+ * total budget are dropped lowest-tier-first.
  */
 export function buildExtractionPrompt(
   donorName: string,
@@ -300,14 +301,24 @@ export function buildExtractionPrompt(
     ? [...sources].sort((a, b) => (a.tier || 3) - (b.tier || 3))
     : [...sources];
 
-  // Token budget for source texts: ~150K tokens ≈ 600K chars
-  const MAX_SOURCE_CHARS = 600_000;
+  // Token budget for source texts: ~130K tokens ≈ 520K chars
+  // Context window: 200K tokens, max_tokens: 32K, prompt template: ~5K → 163K available
+  // Using 520K chars (~130K tokens) leaves ~33K token safety margin
+  const MAX_SOURCE_CHARS = 520_000;
+  const MAX_SINGLE_SOURCE_CHARS = 50_000; // Cap individual sources to ~12.5K tokens
   let totalChars = 0;
   const includedSources: typeof sorted = [];
 
   for (const s of sorted) {
-    const text = s.content || s.snippet || '';
-    const charCount = text.length;
+    let text = s.content || s.snippet || '';
+    let charCount = text.length;
+    // Truncate oversized individual sources (e.g. bloated Substack pages)
+    if (charCount > MAX_SINGLE_SOURCE_CHARS) {
+      console.log(`[Extraction] Truncating source ${s.url} from ${charCount} to ${MAX_SINGLE_SOURCE_CHARS} chars`);
+      text = text.slice(0, MAX_SINGLE_SOURCE_CHARS);
+      charCount = MAX_SINGLE_SOURCE_CHARS;
+      s.content = text;
+    }
     if (totalChars + charCount > MAX_SOURCE_CHARS && includedSources.length > 0) {
       console.log(`[Extraction] Dropping source ${s.url} (${charCount} chars) — would exceed ${MAX_SOURCE_CHARS} char budget`);
       continue;

@@ -158,7 +158,7 @@ export function generateResearchQueries(donorName: string, identity: any, seedUr
 
 ${formatLinkedIn()}
 
-${seedUrlExcerpt ? `Seed URL Content (excerpt):\n${seedUrlExcerpt.slice(0, 3000)}\n` : ''}
+${seedUrlExcerpt ? `Seed URL Content (excerpt):\n${seedUrlExcerpt.slice(0, 15000)}\n` : ''}
 
 ${QUERY_GENERATION_PROMPT}`;
 }
