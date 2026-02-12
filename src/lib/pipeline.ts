@@ -238,7 +238,7 @@ Extract the identity signals for this person.`;
   // 3. Generate targeted search queries using identity signals (analytical categories A-E)
   console.log('[Research] Generating analytical search queries...');
   emit('Designing research strategy with analytical categories', 'research', 7, TOTAL);
-  const queryPrompt = generateResearchQueries(donorName, identity, seedContent.slice(0, 3000));
+  const queryPrompt = generateResearchQueries(donorName, identity, seedContent.slice(0, 15000));
   const queryResponse = await complete('You are a research analyst designing search queries for behavioral evidence.', queryPrompt);
 
   // Parse queries — analytical categories internally, mapped to GeneratedQuery for pipeline compat
@@ -1266,8 +1266,26 @@ ${pdfText}`;
     writeFileSync('/tmp/prospectai-outputs/DEBUG-prompt.txt', profilePromptText);
   } catch (e) { /* ignore */ }
 
-  const profileMessages: Message[] = [{ role: 'user', content: profilePromptText }];
-  const firstDraftProfile = await conversationTurn(profileMessages, { maxTokens: 16000 });
+  // Stream profile generation on Opus (same pattern as extraction)
+  const profileStream = anthropic.messages.stream({
+    model: 'claude-opus-4-20250514',
+    max_tokens: 16000,
+    system: 'You are writing a donor persuasion profile.',
+    messages: [{ role: 'user', content: profilePromptText }],
+  }, abortSignal ? { signal: abortSignal } : undefined);
+
+  let firstDraftProfile = '';
+  let lastProfileProgress = Date.now();
+  profileStream.on('text', (text) => {
+    firstDraftProfile += text;
+    const now = Date.now();
+    if (now - lastProfileProgress > 30_000) {
+      const tokens = estimateTokens(firstDraftProfile);
+      emit(`Profile draft in progress — ${tokens} tokens so far...`, 'analysis', 22, TOTAL_STEPS);
+      lastProfileProgress = now;
+    }
+  });
+  await profileStream.finalMessage();
   console.log(`[Profile] First draft: ${firstDraftProfile.length} chars`);
 
   try {
