@@ -1098,6 +1098,7 @@ export async function runFullPipeline(
   onProgress?: ResearchProgressCallback,
   linkedinPdfBase64?: string,
   fetchFunction?: (url: string) => Promise<string>,
+  abortSignal?: AbortSignal,
 ): Promise<CodedPipelineResult> {
   const emit = onProgress || (() => {});
   const TOTAL_STEPS = 38;
@@ -1217,14 +1218,25 @@ ${pdfText}`;
   );
   console.log(`[Extraction] Prompt size: ${estimateTokens(extractionPrompt)} tokens`);
 
-  const extractionResponse = await anthropic.messages.create({
+  // Stream extraction to keep SSE alive during long Opus calls
+  const extractionStream = anthropic.messages.stream({
     model: 'claude-opus-4-20250514',
     max_tokens: 32000,
     messages: [{ role: 'user', content: extractionPrompt }],
+  }, abortSignal ? { signal: abortSignal } : undefined);
+
+  let researchPackage = '';
+  let lastProgressUpdate = Date.now();
+  extractionStream.on('text', (text) => {
+    researchPackage += text;
+    const now = Date.now();
+    if (now - lastProgressUpdate > 30_000) { // every 30 seconds
+      const tokens = estimateTokens(researchPackage);
+      emit(`Extraction in progress — ${tokens} tokens so far...`, 'analysis', 16, TOTAL_STEPS);
+      lastProgressUpdate = now;
+    }
   });
-  const researchPackage = extractionResponse.content.find(
-    (c: any): c is Anthropic.TextBlock => c.type === 'text',
-  )?.text || '';
+  await extractionStream.finalMessage();
 
   console.log(`[Extraction] Research package: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
   emit(`Extraction complete — ${estimateTokens(researchPackage)} token research package`, 'analysis', 20, TOTAL_STEPS);
