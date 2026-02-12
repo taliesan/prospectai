@@ -1263,7 +1263,7 @@ ${pdfText}`;
 
   // Debug save
   try {
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-prompt.txt', profilePromptText);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-prompt.txt', profilePromptText);
   } catch (e) { /* ignore */ }
 
   const profileMessages: Message[] = [{ role: 'user', content: profilePromptText }];
@@ -1287,6 +1287,10 @@ ${pdfText}`;
     linkedinData,
   );
   console.log(`[Editorial] Prompt size: ${estimateTokens(critiquePrompt)} tokens`);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
+  } catch (e) { /* ignore */ }
 
   const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
   const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000 });
@@ -1316,14 +1320,23 @@ ${pdfText}`;
     meetingGuideExemplars,
   );
 
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
+  } catch (e) { /* ignore */ }
+
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
   const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
   console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
 
   const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
+  const meetingGuideHtmlFull = formatMeetingGuide(meetingGuide);
 
   try {
     writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
+  } catch (e) { /* ignore */ }
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtmlFull);
   } catch (e) { /* ignore */ }
 
   emit('All documents ready', undefined, 38, TOTAL_STEPS);
