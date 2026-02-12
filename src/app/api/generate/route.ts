@@ -128,6 +128,9 @@ export async function POST(request: NextRequest) {
   // Create a readable stream for SSE
   const encoder = new TextEncoder();
 
+  // Abort controller to cancel in-flight API calls when client disconnects
+  const pipelineAbort = new AbortController();
+
   const stream = new ReadableStream({
     async start(controller) {
       // Track whether the controller is still open
@@ -172,9 +175,22 @@ export async function POST(request: NextRequest) {
         try {
           if (!isControllerClosed) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping' })}\n\n`));
+          } else {
+            clearInterval(keepAliveInterval);
+            // Client disconnected — abort in-flight API calls
+            if (!pipelineAbort.signal.aborted) {
+              console.log('[SSE] Client disconnected, aborting pipeline');
+              pipelineAbort.abort();
+            }
           }
         } catch (e) {
           clearInterval(keepAliveInterval);
+          isControllerClosed = true;
+          // Client disconnected — abort in-flight API calls
+          if (!pipelineAbort.signal.aborted) {
+            console.log('[SSE] Keepalive failed, aborting pipeline');
+            pipelineAbort.abort();
+          }
         }
       }, 15000);
 
@@ -289,6 +305,7 @@ export async function POST(request: NextRequest) {
               },
               linkedinPdf,
               fetchUrl,
+              pipelineAbort.signal,
             );
 
             // Save outputs
@@ -340,6 +357,11 @@ export async function POST(request: NextRequest) {
             console.log('[SSE] Final complete event sent successfully');
 
           } catch (error) {
+            // Don't log abort errors as pipeline errors — they're intentional
+            if (error instanceof Error && error.name === 'AbortError') {
+              console.log('[API] Pipeline aborted (client disconnected)');
+              return;
+            }
             console.error('[API] Pipeline error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             STATUS.pipelineError(errorMessage);
@@ -363,6 +385,13 @@ export async function POST(request: NextRequest) {
         clearInterval(keepAliveInterval);
         // Then safely close the controller
         safeClose();
+      }
+    },
+    cancel() {
+      // Client disconnected — abort in-flight API calls immediately
+      console.log('[SSE] Stream cancelled by client, aborting pipeline');
+      if (!pipelineAbort.signal.aborted) {
+        pipelineAbort.abort();
       }
     }
   });
