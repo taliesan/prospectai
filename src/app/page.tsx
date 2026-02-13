@@ -262,7 +262,7 @@ export default function Home() {
         {/* Version badge — loading screen */}
         <div className="flex justify-end px-6 pt-4">
           <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
-            v3.56
+            v3.57
           </span>
         </div>
 
@@ -347,7 +347,7 @@ export default function Home() {
           Democracy Takes Work
         </span>
         <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
-          v3.56
+          v3.57
         </span>
       </nav>
 
