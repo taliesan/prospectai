@@ -67,107 +67,109 @@ export default function Home() {
         console.log('[Form] No LinkedIn PDF selected');
       }
 
-      const response = await fetch('/api/generate', {
+      // Step 1: Submit job — returns immediately with jobId
+      const submitResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           donorName: donorName.trim(),
           fundraiserName: fundraiserName.trim(),
           seedUrls: [seedUrls.trim()].filter(Boolean),
-          mode,
           linkedinPdf: linkedinPdfBase64,
         })
       });
 
-      if (!response.ok) {
+      if (!submitResponse.ok) {
         throw new Error('Generation failed');
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      const { jobId } = await submitResponse.json();
+      console.log('[Poll] Job submitted:', jobId);
 
-      if (!reader) {
-        throw new Error('No response body');
-      }
+      // Step 2: Poll for status every 20 seconds
+      const POLL_INTERVAL = 20_000;
+      const MAX_POLL_DURATION = 45 * 60 * 1000; // 45 minute safety cap
+      const pollStart = Date.now();
 
-      let buffer = '';
+      const poll = async (): Promise<void> => {
+        while (true) {
+          // Safety timeout
+          if (Date.now() - pollStart > MAX_POLL_DURATION) {
+            setProgressMessages(prev => [...prev, {
+              type: 'error' as const,
+              message: 'Error: Generation timed out. Please try again.'
+            }]);
+            setIsLoading(false);
+            return;
+          }
 
-      while (true) {
-        const { done, value } = await reader.read();
+          try {
+            const statusResponse = await fetch(`/api/generate/status/${jobId}`);
+            if (!statusResponse.ok) {
+              throw new Error(`Status check failed: ${statusResponse.status}`);
+            }
 
-        if (done) {
-          if (buffer.trim()) {
-            console.log('[SSE] Processing remaining buffer after stream end:', buffer);
-            if (buffer.startsWith('data: ')) {
-              try {
-                const event: ProgressEvent = JSON.parse(buffer.slice(6));
-                if (event.type === 'complete' && event.detail) {
-                  const result = JSON.parse(event.detail);
-                  localStorage.setItem('lastProfile', JSON.stringify(result));
-                  router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
-                  return;
-                } else if (event.type === 'error') {
-                  setProgressMessages(prev => [...prev, event]);
-                  setIsLoading(false);
-                  return;
+            const status = await statusResponse.json();
+
+            if (status.status === 'complete') {
+              console.log('[Poll] Job complete, navigating to profile');
+              localStorage.setItem('lastProfile', JSON.stringify(status.result));
+              router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+              return;
+            }
+
+            if (status.status === 'failed') {
+              console.error('[Poll] Job failed:', status.error);
+              setProgressMessages(prev => [...prev, {
+                type: 'error' as const,
+                message: `Error: ${status.error || 'Generation failed'}`
+              }]);
+              setIsLoading(false);
+              return;
+            }
+
+            // Still running — update progress UI
+            if (status.phase) setCurrentPhase(status.phase);
+            if (status.step) setCurrentStep(status.step);
+            if (status.totalSteps) setTotalSteps(status.totalSteps);
+
+            // Add latest message if it's new
+            if (status.message) {
+              setProgressMessages(prev => {
+                const lastMsg = prev[prev.length - 1]?.message;
+                if (lastMsg !== status.message) {
+                  return [...prev, { type: 'status' as const, message: status.message }];
                 }
-              } catch (parseErr) {
-                console.error('Failed to parse final SSE event from buffer:', parseErr);
-              }
+                return prev;
+              });
             }
-          }
-          break;
-        }
 
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event: ProgressEvent = JSON.parse(line.slice(6));
-
-              if (event.type === 'ping') {
-                continue;
-              }
-
-              if (event.type === 'phase') {
-                setCurrentPhase(event.phase || '');
-              } else if (event.type === 'status') {
-                setProgressMessages(prev => [...prev, event]);
-                if (event.phase) setCurrentPhase(event.phase);
-                if (event.step) setCurrentStep(event.step);
-                if (event.totalSteps) setTotalSteps(event.totalSteps);
-              } else if (event.type === 'complete' && event.detail) {
-                console.log('[SSE] Received complete event with profile data');
-                const result = JSON.parse(event.detail);
-                localStorage.setItem('lastProfile', JSON.stringify(result));
-                router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
-                return;
-              } else if (event.type === 'error') {
-                setProgressMessages(prev => [...prev, event]);
-                setIsLoading(false);
-                return;
-              }
-            } catch (parseErr) {
-              console.error('Failed to parse SSE event:', parseErr);
+            // Add any new milestones
+            if (status.milestones?.length) {
+              setProgressMessages(prev => {
+                const existingMilestones = new Set(prev.filter(m => m.message.startsWith('\u2713')).map(m => m.message));
+                const newMilestones = status.milestones.filter((m: string) => !existingMilestones.has(m));
+                if (newMilestones.length > 0) {
+                  return [...prev, ...newMilestones.map((m: string) => ({ type: 'status' as const, message: m }))];
+                }
+                return prev;
+              });
             }
+          } catch (pollError) {
+            console.warn('[Poll] Status check error (will retry):', pollError);
+            // Don't fail immediately on a single poll error — network blip
           }
-        }
-      }
 
-      console.error('[SSE] Stream ended without receiving complete event');
-      setProgressMessages(prev => [...prev, {
-        type: 'error',
-        message: 'Error: Stream ended unexpectedly. Please try again.'
-      }]);
-      setIsLoading(false);
+          // Wait before next poll
+          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+        }
+      };
+
+      await poll();
     } catch (error) {
       console.error('Error:', error);
       setProgressMessages(prev => [...prev, {
-        type: 'error',
+        type: 'error' as const,
         message: 'Error: Generation failed. Please try again.'
       }]);
       setIsLoading(false);
