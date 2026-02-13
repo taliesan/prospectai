@@ -51,6 +51,7 @@ import {
 
 // Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
 import { runDeepResearchPipeline, DeepResearchResult } from './research/deep-research';
+import type { ActivityCallback } from './job-store';
 
 const anthropic = new Anthropic();
 
@@ -1102,6 +1103,7 @@ export async function runFullPipeline(
   linkedinPdfBase64?: string,
   fetchFunction?: (url: string) => Promise<string>,
   abortSignal?: AbortSignal,
+  onActivity?: ActivityCallback,
 ): Promise<CodedPipelineResult> {
   const emit = onProgress || (() => {});
   const TOTAL_STEPS = 38;
@@ -1223,6 +1225,7 @@ ${pdfText}`;
       seedUrlContent,
       emit,
       abortSignal,
+      onActivity,
     );
 
     // The dossier IS the research package for the profile generation step

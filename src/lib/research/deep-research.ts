@@ -11,6 +11,7 @@ import OpenAI from 'openai';
 import { complete } from '../anthropic';
 import { LinkedInData } from '../prompts/extraction-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
+import type { DeepResearchActivity, ActivityCallback } from '../job-store';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -419,6 +420,7 @@ async function executeDeepResearch(
   researchStrategy: string,
   onProgress?: ProgressCallback,
   abortSignal?: AbortSignal,
+  onActivity?: ActivityCallback,
 ): Promise<{ dossier: string; citations: DeepResearchCitation[]; searchCount: number; tokenUsage: any; durationMs: number }> {
   const emit = onProgress || (() => {});
 
@@ -489,6 +491,7 @@ async function executeDeepResearch(
       },
     ],
     tools: [{ type: 'web_search_preview' }],
+    reasoning: { summary: 'auto' },
     background: true,
     store: true,
   } as any);
@@ -529,20 +532,83 @@ async function executeDeepResearch(
 
     result = await withRetry('responses.retrieve', () => openai.responses.retrieve(result.id));
 
-    // Count searches so far for progress reporting
-    const searches = result.output?.filter(
-      (item: any) => item.type === 'web_search_call'
-    ).length || 0;
+    // ── Deep status extraction from the output array ──────────────
+    const outputItems = result.output || [];
 
-    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+    const searchCalls = outputItems.filter((i: any) => i.type === 'web_search_call');
+    const reasoningItems = outputItems.filter((i: any) => i.type === 'reasoning');
+    const codeItems = outputItems.filter((i: any) => i.type === 'code_interpreter_call');
+    const messageItems = outputItems.filter((i: any) => i.type === 'message');
 
-    if (searches !== lastSearchCount) {
-      lastSearchCount = searches;
-      console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsedSec}s elapsed, status=${result.status}`);
+    // Extract search queries (action.type === 'search' has .action.query)
+    const searchQueries: string[] = searchCalls
+      .filter((s: any) => s.action?.type === 'search')
+      .map((s: any) => s.action.query)
+      .filter(Boolean);
+
+    // Count page opens/finds
+    const pageActions = searchCalls
+      .filter((s: any) => s.action?.type === 'open_page' || s.action?.type === 'find_in_page')
+      .length;
+
+    // Extract reasoning summaries
+    const reasoningSummaries: string[] = [];
+    for (const r of reasoningItems) {
+      if ((r as any).summary && Array.isArray((r as any).summary)) {
+        for (const s of (r as any).summary) {
+          if (s.text) reasoningSummaries.push(s.text);
+        }
+      }
     }
 
-    // Always emit on every poll cycle to keep SSE stream alive
-    emit(`Deep research in progress: ${searches} searches (${elapsedSec}s)...`, 'research', 8, 38);
+    const elapsed = Date.now() - startTime;
+    const elapsedSec = Math.round(elapsed / 1000);
+    const elapsedMin = Math.floor(elapsed / 60000);
+
+    // Build activity snapshot
+    const activity: DeepResearchActivity = {
+      openaiStatus: result.status,
+      totalOutputItems: outputItems.length,
+      searches: searchQueries.length,
+      pageVisits: pageActions,
+      reasoningSteps: reasoningItems.length,
+      codeExecutions: codeItems.length,
+      recentSearchQueries: searchQueries.slice(-5),
+      reasoningSummary: reasoningSummaries.slice(-2),
+      hasMessage: messageItems.length > 0,
+      elapsedSeconds: elapsedSec,
+    };
+
+    // Report activity to job store
+    if (onActivity) {
+      onActivity(activity, result.id);
+    }
+
+    // ── Rich diagnostic logging ───────────────────────────────────
+    console.log(
+      `[DeepResearch] Status: ${result.status} | ` +
+      `${activity.totalOutputItems} items | ` +
+      `${activity.searches} searches, ${activity.pageVisits} pages, ` +
+      `${activity.reasoningSteps} reasoning | ` +
+      `elapsed: ${elapsedSec}s`
+    );
+    if (searchQueries.length > 0 && searchQueries.length !== lastSearchCount) {
+      console.log(`[DeepResearch] Recent queries: ${searchQueries.slice(-3).join(' | ')}`);
+    }
+    lastSearchCount = searchQueries.length;
+
+    // ── User-facing progress message ──────────────────────────────
+    const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
+    let progressMsg: string;
+    if (result.status === 'queued') {
+      progressMsg = `Deep research queued — waiting for OpenAI to start (${timeLabel})`;
+    } else if (activity.searches === 0 && activity.pageVisits === 0) {
+      progressMsg = `Deep research underway — planning research approach (${timeLabel})`;
+    } else {
+      progressMsg = `Deep research underway — ${activity.searches} searches, ${activity.pageVisits} pages analyzed (${timeLabel})`;
+    }
+
+    emit(progressMsg, 'research', 8, 38);
   }
 
   const durationMs = Date.now() - startTime;
@@ -628,6 +694,7 @@ export async function runDeepResearchPipeline(
   seedUrlContent: string | null,
   onProgress?: ProgressCallback,
   abortSignal?: AbortSignal,
+  onActivity?: ActivityCallback,
 ): Promise<DeepResearchResult> {
   const emit = onProgress || (() => {});
 
@@ -657,6 +724,7 @@ export async function runDeepResearchPipeline(
     researchStrategy,
     onProgress,
     abortSignal,
+    onActivity,
   );
 
   return {
