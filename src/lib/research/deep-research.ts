@@ -451,7 +451,7 @@ async function executeDeepResearch(
 
   const startTime = Date.now();
 
-  // Retry helper for transient OpenAI failures (network, 5xx, rate limit)
+  // Retry helper for idempotent OpenAI calls (retrieve only — never create)
   async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -475,8 +475,8 @@ async function executeDeepResearch(
     throw new Error('unreachable');
   }
 
-  // Initial request with background: true
-  const response = await withRetry('responses.create', () => openai.responses.create({
+  // Initial request with background: true — NO retry (not idempotent; retry would launch a second job)
+  const response = await openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
     input: [
       {
@@ -490,7 +490,7 @@ async function executeDeepResearch(
     ],
     tools: [{ type: 'web_search_preview' }],
     background: true,
-  } as any));
+  } as any);
 
   // Poll every 10 seconds — abort-aware, max 30 minutes
   const MAX_POLL_DURATION_MS = 30 * 60 * 1000;
@@ -499,10 +499,10 @@ async function executeDeepResearch(
 
   while (result.status !== 'completed' && result.status !== 'failed') {
     // Guard against infinite polling
-    const elapsed = Date.now() - startTime;
-    if (elapsed > MAX_POLL_DURATION_MS) {
-      console.error(`[DeepResearch] Polling timed out after ${Math.round(elapsed / 60000)} minutes for response ${result.id}`);
-      throw new Error(`Deep research timed out after ${Math.round(elapsed / 60000)} minutes (status: ${result.status})`);
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs > MAX_POLL_DURATION_MS) {
+      console.error(`[DeepResearch] Polling timed out after ${Math.round(elapsedMs / 60000)} minutes for response ${result.id}`);
+      throw new Error(`Deep research timed out after ${Math.round(elapsedMs / 60000)} minutes (status: ${result.status})`);
     }
     // Check abort before sleeping
     if (abortSignal?.aborted) {
@@ -533,15 +533,15 @@ async function executeDeepResearch(
       (item: any) => item.type === 'web_search_call'
     ).length || 0;
 
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
 
     if (searches !== lastSearchCount) {
       lastSearchCount = searches;
-      console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsed}s elapsed, status=${result.status}`);
+      console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsedSec}s elapsed, status=${result.status}`);
     }
 
     // Always emit on every poll cycle to keep SSE stream alive
-    emit(`Deep research in progress: ${searches} searches (${elapsed}s)...`, 'research', 8, 38);
+    emit(`Deep research in progress: ${searches} searches (${elapsedSec}s)...`, 'research', 8, 38);
   }
 
   const durationMs = Date.now() - startTime;
