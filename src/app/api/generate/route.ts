@@ -4,7 +4,8 @@ import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
-import { createJob, addProgress, completeJob, failJob } from '@/lib/job-store';
+import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity } from '@/lib/job-store';
+import type { DeepResearchActivity } from '@/lib/job-store';
 
 // No timeout config needed — Railway doesn't use Next.js route segment config.
 // Deep research (OpenAI o3) can take 5-30 minutes; Tavily pipeline ~5 min.
@@ -251,8 +252,14 @@ async function runPipelineInBackground(
         const exemplars = loadExemplars();
         console.log(`[Job ${jobId}] Loaded ${exemplars.length} characters of exemplar profiles`);
 
-        // No abort signal in fire-and-poll — pipeline runs to completion
-        // (OpenAI deep research runs with background: true, so it completes on their side regardless)
+        // Abort signal from job store — used for user-initiated cancellation
+        const abortSignal = getAbortSignal(jobId);
+
+        // Activity callback — deep research reports rich status to the job store
+        const onActivity = (activity: DeepResearchActivity, responseId: string) => {
+          updateActivity(jobId, responseId, activity);
+        };
+
         const pipelineResult = await runFullPipeline(
           donorName,
           seedUrls,
@@ -267,7 +274,8 @@ async function runPipelineInBackground(
           },
           linkedinPdf,
           fetchUrl,
-          // No abort signal — let pipeline run to completion
+          abortSignal,
+          onActivity,
         );
 
         // Save outputs
@@ -314,6 +322,15 @@ async function runPipelineInBackground(
         completeJob(jobId, result);
 
       } catch (error) {
+        // Don't log abort errors as pipeline errors — they're user-initiated cancellation
+        const isAbort = error instanceof Error && (
+          error.name === 'AbortError' ||
+          error.message === 'Pipeline aborted by client'
+        );
+        if (isAbort) {
+          console.log(`[Job ${jobId}] Pipeline cancelled by user`);
+          return;
+        }
         console.error(`[Job ${jobId}] Pipeline error:`, error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         STATUS.pipelineError(errorMessage);

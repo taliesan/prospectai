@@ -28,6 +28,8 @@ export default function Home() {
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(28);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activity, setActivity] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export default function Home() {
 
       const { jobId } = await submitResponse.json();
       console.log('[Poll] Job submitted:', jobId);
+      setActiveJobId(jobId);
 
       // Step 2: Poll for status every 20 seconds
       const POLL_INTERVAL = 20_000;
@@ -100,6 +103,7 @@ export default function Home() {
               message: 'Error: Generation timed out. Please try again.'
             }]);
             setIsLoading(false);
+            setActiveJobId(null);
             return;
           }
 
@@ -113,6 +117,7 @@ export default function Home() {
 
             if (status.status === 'complete') {
               console.log('[Poll] Job complete, navigating to profile');
+              setActiveJobId(null);
               localStorage.setItem('lastProfile', JSON.stringify(status.result));
               router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
               return;
@@ -120,9 +125,21 @@ export default function Home() {
 
             if (status.status === 'failed') {
               console.error('[Poll] Job failed:', status.error);
+              setActiveJobId(null);
               setProgressMessages(prev => [...prev, {
                 type: 'error' as const,
                 message: `Error: ${status.error || 'Generation failed'}`
+              }]);
+              setIsLoading(false);
+              return;
+            }
+
+            if (status.status === 'cancelled') {
+              console.log('[Poll] Job cancelled');
+              setActiveJobId(null);
+              setProgressMessages(prev => [...prev, {
+                type: 'status' as const,
+                message: 'Research cancelled.'
               }]);
               setIsLoading(false);
               return;
@@ -132,6 +149,11 @@ export default function Home() {
             if (status.phase) setCurrentPhase(status.phase);
             if (status.step) setCurrentStep(status.step);
             if (status.totalSteps) setTotalSteps(status.totalSteps);
+
+            // Capture activity data for rich display
+            if (status.activity) {
+              setActivity(status.activity);
+            }
 
             // Add latest message if it's new
             if (status.message) {
@@ -311,6 +333,46 @@ export default function Home() {
               </p>
             </div>
 
+            {/* Deep research activity — real-time OpenAI data */}
+            {activity && currentPhase === 'research' && activity.openaiStatus && (
+              <div className="border-t border-white/10 pt-3 mt-3">
+                {/* Search/page counters */}
+                {(activity.searches > 0 || activity.pageVisits > 0) && (
+                  <div className="flex gap-4 text-xs text-white/50 mb-2">
+                    {activity.searches > 0 && (
+                      <span>{activity.searches} web searches</span>
+                    )}
+                    {activity.pageVisits > 0 && (
+                      <span>{activity.pageVisits} pages analyzed</span>
+                    )}
+                    {activity.reasoningSteps > 0 && (
+                      <span>{activity.reasoningSteps} reasoning steps</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Recent search queries */}
+                {activity.recentSearchQueries?.length > 0 && (
+                  <div className="space-y-0.5 mb-2">
+                    <p className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30">Recent searches</p>
+                    {activity.recentSearchQueries.slice(-3).map((q: string, i: number) => (
+                      <p key={i} className="text-xs text-white/40 truncate">&ldquo;{q}&rdquo;</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reasoning summary */}
+                {activity.reasoningSummary?.length > 0 && (
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30">Model reasoning</p>
+                    {activity.reasoningSummary.slice(-1).map((s: string, i: number) => (
+                      <p key={i} className="text-xs text-white/40 italic">{s}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Completed milestones — newest on top */}
             {progressMessages.filter(msg => msg.message.startsWith('\u2713')).length > 0 && (
               <div className="border-t border-white/10 pt-3 space-y-1">
@@ -326,6 +388,29 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Cancel button — user-initiated only */}
+          {activeJobId && (
+            <button
+              className="mt-6 text-xs text-white/30 hover:text-white/60 transition-colors duration-200 underline underline-offset-2"
+              onClick={async () => {
+                try {
+                  await fetch(`/api/generate/cancel/${activeJobId}`, { method: 'POST' });
+                  setActiveJobId(null);
+                  setActivity(null);
+                  setProgressMessages(prev => [...prev, {
+                    type: 'status' as const,
+                    message: 'Research cancelled.'
+                  }]);
+                  setIsLoading(false);
+                } catch (err) {
+                  console.warn('[Cancel] Failed:', err);
+                }
+              }}
+            >
+              Cancel research
+            </button>
+          )}
         </div>
       </div>
     );

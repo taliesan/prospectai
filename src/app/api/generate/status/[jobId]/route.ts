@@ -26,7 +26,13 @@ export async function GET(
     });
   }
 
-  // Still running — return progress summary
+  if (job.status === 'cancelled') {
+    return Response.json({
+      status: 'cancelled',
+    });
+  }
+
+  // Still running — return progress summary + activity data
   const latestMessage = job.progressMessages[job.progressMessages.length - 1];
   const milestones = job.progressMessages
     .filter(m => m.message.startsWith('\u2713'))
@@ -39,5 +45,6 @@ export async function GET(
     totalSteps: job.totalSteps,
     message: latestMessage?.message || 'Starting...',
     milestones,
+    activity: job.activity || undefined,
   });
 }
