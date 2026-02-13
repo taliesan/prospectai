@@ -490,6 +490,7 @@ async function executeDeepResearch(
     ],
     tools: [{ type: 'web_search_preview' }],
     background: true,
+    store: true,
   } as any);
 
   // Poll every 10 seconds — abort-aware, max 30 minutes
