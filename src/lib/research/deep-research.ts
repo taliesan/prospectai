@@ -451,8 +451,32 @@ async function executeDeepResearch(
 
   const startTime = Date.now();
 
+  // Retry helper for transient OpenAI failures (network, 5xx, rate limit)
+  async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        // Don't retry abort
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        // Don't retry 4xx errors (except 429 rate limit)
+        const status = err?.status || err?.response?.status;
+        if (status && status >= 400 && status < 500 && status !== 429) throw err;
+
+        if (attempt === maxAttempts) {
+          console.error(`[DeepResearch] ${label} failed after ${maxAttempts} attempts:`, err?.message || err);
+          throw err;
+        }
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 16000);
+        console.warn(`[DeepResearch] ${label} attempt ${attempt} failed (${err?.message}), retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+    throw new Error('unreachable');
+  }
+
   // Initial request with background: true
-  const response = await openai.responses.create({
+  const response = await withRetry('responses.create', () => openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
     input: [
       {
@@ -466,7 +490,7 @@ async function executeDeepResearch(
     ],
     tools: [{ type: 'web_search_preview' }],
     background: true,
-  } as any);
+  } as any));
 
   // Poll every 10 seconds — abort-aware
   let result: any = response;
@@ -495,7 +519,7 @@ async function executeDeepResearch(
       throw new Error('Pipeline aborted by client');
     }
 
-    result = await openai.responses.retrieve(result.id);
+    result = await withRetry('responses.retrieve', () => openai.responses.retrieve(result.id));
 
     // Count searches so far for progress reporting
     const searches = result.output?.filter(
