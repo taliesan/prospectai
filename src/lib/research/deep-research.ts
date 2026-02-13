@@ -529,20 +529,39 @@ async function executeDeepResearch(
 
     result = await withRetry('responses.retrieve', () => openai.responses.retrieve(result.id));
 
-    // Count searches so far for progress reporting
+    // Count searches so far (only populated on completion, but check anyway)
     const searches = result.output?.filter(
       (item: any) => item.type === 'web_search_call'
     ).length || 0;
 
-    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+    const elapsed = Date.now() - startTime;
+    const elapsedMin = Math.floor(elapsed / 60000);
+    const elapsedSec = Math.round(elapsed / 1000);
 
     if (searches !== lastSearchCount) {
       lastSearchCount = searches;
       console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsedSec}s elapsed, status=${result.status}`);
     }
 
-    // Always emit on every poll cycle to keep SSE stream alive
-    emit(`Deep research in progress: ${searches} searches (${elapsedSec}s)...`, 'research', 8, 38);
+    // Honest, time-aware progress messages
+    // OpenAI doesn't expose granular progress, but these stages are all real
+    const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
+    let progressMsg: string;
+    if (result.status === 'queued') {
+      progressMsg = `Deep research queued — waiting for OpenAI to start (${timeLabel})`;
+    } else if (elapsedMin < 2) {
+      progressMsg = `Deep research underway — searching the web (${timeLabel})`;
+    } else if (elapsedMin < 5) {
+      progressMsg = `Deep research underway — reading and analyzing sources (${timeLabel})`;
+    } else if (elapsedMin < 10) {
+      progressMsg = `Deep research underway — cross-referencing findings (${timeLabel})`;
+    } else if (elapsedMin < 15) {
+      progressMsg = `Deep research underway — building dossier (${timeLabel})`;
+    } else {
+      progressMsg = `Deep research underway — synthesizing results (${timeLabel})`;
+    }
+
+    emit(progressMsg, 'research', 8, 38);
   }
 
   const durationMs = Date.now() - startTime;
