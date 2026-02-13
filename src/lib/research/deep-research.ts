@@ -475,12 +475,15 @@ async function executeDeepResearch(
       (item: any) => item.type === 'web_search_call'
     ).length || 0;
 
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+
     if (searches !== lastSearchCount) {
       lastSearchCount = searches;
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
       console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsed}s elapsed, status=${result.status}`);
-      emit(`Deep research in progress: ${searches} searches (${elapsed}s)...`, 'research', 8, 38);
     }
+
+    // Always emit on every poll cycle to keep SSE stream alive
+    emit(`Deep research in progress: ${searches} searches (${elapsed}s)...`, 'research', 8, 38);
   }
 
   const durationMs = Date.now() - startTime;
