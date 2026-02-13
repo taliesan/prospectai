@@ -458,7 +458,6 @@ async function executeDeepResearch(
         content: [{ type: 'input_text', text: userPrompt }],
       },
     ],
-    reasoning: { summary: 'auto' },
     tools: [{ type: 'web_search_preview' }],
     background: true,
   } as any);
