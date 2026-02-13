@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      // Send keep-alive pings every 15 seconds to prevent connection timeout
+      // Send keep-alive pings every 10 seconds to prevent connection timeout
       const keepAliveInterval = setInterval(() => {
         try {
           if (!isControllerClosed) {
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
             pipelineAbort.abort();
           }
         }
-      }, 15000);
+      }, 10000);
 
       try {
         // Run entire pipeline within request-scoped progress context
