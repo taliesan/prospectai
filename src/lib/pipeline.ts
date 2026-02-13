@@ -49,6 +49,9 @@ import {
   getPersonalDomains,
 } from './research/tiering';
 
+// Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
+import { runDeepResearchPipeline, DeepResearchResult } from './research/deep-research';
+
 const anthropic = new Anthropic();
 
 // Types
@@ -1182,71 +1185,134 @@ ${pdfText}`;
     }
   }
 
-  // ── Step 1: Research (coded query generation + Tavily bulk search) ──
-  emit('', 'research');
-  emit(`Collecting sources for ${donorName}`, 'research', 3, TOTAL_STEPS);
+  // ── Research Provider Selection ──────────────────────────────────
+  // RESEARCH_PROVIDER=openai  → Deep research (Sonnet strategy + OpenAI o3-deep-research)
+  // RESEARCH_PROVIDER=anthropic → Tavily pipeline (existing coded pipeline)
+  const researchProvider = (process.env.RESEARCH_PROVIDER || 'openai').toLowerCase();
+  console.log(`[Pipeline] Research provider: ${researchProvider}`);
 
-  const actualFetchFunction = fetchFunction || executeFetchPage;
+  let research: ResearchResult;
+  let researchPackage: string;
+  let deepResearchResult: DeepResearchResult | null = null;
 
-  const research = await conductResearch(
-    donorName,
-    seedUrls,
-    searchFunction,
-    actualFetchFunction,
-    emit,
-    linkedinData,
-  );
-  console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
-  STATUS.researchComplete(research.sources.length);
+  if (researchProvider === 'openai') {
+    // ── OpenAI Deep Research Path ───────────────────────────────
+    // Replaces: conductResearch + fat extraction
+    // With: 1 Sonnet call (strategy) + 1 OpenAI deep research call (dossier)
+    emit('', 'research');
+    emit(`Deep research mode — building strategy for ${donorName}`, 'research', 3, TOTAL_STEPS);
 
-  // ── Step 2: Fat Extraction (Opus, single call) ──────────────────
-  emit('', 'analysis');
-  emit('Producing behavioral evidence extraction (Opus, single call)', 'analysis', 16, TOTAL_STEPS);
-  console.log(`[Pipeline] Step 2: Fat extraction — ${research.sources.length} sources to Opus`);
-
-  const extractionPrompt = buildExtractionPrompt(
-    donorName,
-    research.sources.map(s => ({
-      url: s.url,
-      title: s.title,
-      snippet: s.snippet,
-      content: s.content,
-      tier: 'tier' in s ? (s as any).tier : undefined,
-      tierReason: 'tierReason' in s ? (s as any).tierReason : undefined,
-    })),
-    linkedinData,
-  );
-  console.log(`[Extraction] Prompt size: ${estimateTokens(extractionPrompt)} tokens`);
-
-  // Stream extraction to keep SSE alive during long Opus calls
-  const extractionStream = anthropic.messages.stream({
-    model: 'claude-opus-4-20250514',
-    max_tokens: 32000,
-    messages: [{ role: 'user', content: extractionPrompt }],
-  }, abortSignal ? { signal: abortSignal } : undefined);
-
-  let researchPackage = '';
-  let lastProgressUpdate = Date.now();
-  extractionStream.on('text', (text) => {
-    researchPackage += text;
-    const now = Date.now();
-    if (now - lastProgressUpdate > 30_000) { // every 30 seconds
-      const tokens = estimateTokens(researchPackage);
-      emit(`Extraction in progress — ${tokens} tokens so far...`, 'analysis', 16, TOTAL_STEPS);
-      lastProgressUpdate = now;
+    // Fetch seed URL content for the deep research pipeline
+    const actualFetchFunction = fetchFunction || executeFetchPage;
+    let seedUrlContent: string | null = null;
+    if (seedUrls.length > 0) {
+      try {
+        const domain = (() => { try { return new URL(seedUrls[0]).hostname.replace('www.', ''); } catch { return seedUrls[0]; } })();
+        emit(`Reading seed URL — ${domain}`, 'research', 2, TOTAL_STEPS);
+        seedUrlContent = await actualFetchFunction(seedUrls[0]);
+        console.log(`[Pipeline] Fetched seed URL: ${seedUrls[0]} (${seedUrlContent.length} chars)`);
+      } catch (err) {
+        console.error(`[Pipeline] Failed to fetch seed URL: ${seedUrls[0]}`, err);
+      }
     }
-  });
-  await extractionStream.finalMessage();
 
-  console.log(`[Extraction] Research package: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
-  emit(`Extraction complete — ${estimateTokens(researchPackage)} token research package`, 'analysis', 20, TOTAL_STEPS);
-  STATUS.researchPackageComplete();
+    deepResearchResult = await runDeepResearchPipeline(
+      donorName,
+      seedUrls,
+      linkedinData,
+      seedUrlContent,
+      emit,
+    );
 
-  // Debug save
-  try {
-    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
-  } catch (e) { /* ignore */ }
+    // The dossier IS the research package for the profile generation step
+    researchPackage = deepResearchResult.dossier;
+
+    // Create a minimal ResearchResult for compatibility with saveOutputs
+    research = {
+      donorName,
+      identity: { name: donorName },
+      queries: [],
+      sources: deepResearchResult.citations.map(c => ({
+        url: c.url,
+        title: c.title,
+        snippet: '',
+      })),
+      rawMarkdown: `# DEEP RESEARCH DOSSIER: ${donorName}\n\nGenerated via OpenAI o3-deep-research\nSearches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\n\n${researchPackage}`,
+    };
+
+    console.log(`\n[Pipeline] Deep research complete: ${deepResearchResult.searchCount} searches, ${researchPackage.length} chars\n`);
+    STATUS.researchComplete(deepResearchResult.searchCount);
+    emit(`Deep research dossier ready — ${Math.round(researchPackage.length / 4)} tokens`, 'analysis', 20, TOTAL_STEPS);
+    STATUS.researchPackageComplete();
+
+  } else {
+    // ── Tavily Pipeline Path (existing) ──────────────────────────
+    // conductResearch → fat extraction (Opus)
+    emit('', 'research');
+    emit(`Collecting sources for ${donorName}`, 'research', 3, TOTAL_STEPS);
+
+    const actualFetchFunction = fetchFunction || executeFetchPage;
+
+    research = await conductResearch(
+      donorName,
+      seedUrls,
+      searchFunction,
+      actualFetchFunction,
+      emit,
+      linkedinData,
+    );
+    console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
+    STATUS.researchComplete(research.sources.length);
+
+    // ── Step 2: Fat Extraction (Opus, single call) ──────────────
+    emit('', 'analysis');
+    emit('Producing behavioral evidence extraction (Opus, single call)', 'analysis', 16, TOTAL_STEPS);
+    console.log(`[Pipeline] Step 2: Fat extraction — ${research.sources.length} sources to Opus`);
+
+    const extractionPrompt = buildExtractionPrompt(
+      donorName,
+      research.sources.map(s => ({
+        url: s.url,
+        title: s.title,
+        snippet: s.snippet,
+        content: s.content,
+        tier: 'tier' in s ? (s as any).tier : undefined,
+        tierReason: 'tierReason' in s ? (s as any).tierReason : undefined,
+      })),
+      linkedinData,
+    );
+    console.log(`[Extraction] Prompt size: ${estimateTokens(extractionPrompt)} tokens`);
+
+    // Stream extraction to keep SSE alive during long Opus calls
+    const extractionStream = anthropic.messages.stream({
+      model: 'claude-opus-4-20250514',
+      max_tokens: 32000,
+      messages: [{ role: 'user', content: extractionPrompt }],
+    }, abortSignal ? { signal: abortSignal } : undefined);
+
+    researchPackage = '';
+    let lastProgressUpdate = Date.now();
+    extractionStream.on('text', (text) => {
+      researchPackage += text;
+      const now = Date.now();
+      if (now - lastProgressUpdate > 30_000) {
+        const tokens = estimateTokens(researchPackage);
+        emit(`Extraction in progress — ${tokens} tokens so far...`, 'analysis', 16, TOTAL_STEPS);
+        lastProgressUpdate = now;
+      }
+    });
+    await extractionStream.finalMessage();
+
+    console.log(`[Extraction] Research package: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
+    emit(`Extraction complete — ${estimateTokens(researchPackage)} token research package`, 'analysis', 20, TOTAL_STEPS);
+    STATUS.researchPackageComplete();
+
+    // Debug save
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+    } catch (e) { /* ignore */ }
+  }
 
   // ── Step 3: Profile Generation (Opus, Geoffrey Block) ───────────
   if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
@@ -1256,7 +1322,9 @@ ${pdfText}`;
   const geoffreyBlock = loadGeoffreyBlock();
   const exemplars = loadExemplars();
 
-  const researchPackagePreamble = `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
+  const researchPackagePreamble = deepResearchResult
+    ? `The behavioral evidence below is a deep research dossier compiled from ${deepResearchResult.searchCount} web searches with ${deepResearchResult.citations.length} cited sources. It preserves the subject's original voice in long direct quotes, structured evidence by category, and inline citations.\n\n`
+    : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
   const extractionForProfile = researchPackagePreamble + researchPackage;
 
   const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData);

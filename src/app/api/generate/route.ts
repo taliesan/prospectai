@@ -5,8 +5,9 @@ import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 
-// Allow long-running generation (5 minutes max for Vercel/Railway)
-export const maxDuration = 300;
+// No timeout config needed — Railway doesn't use Next.js route segment config.
+// Deep research (OpenAI o3) can take 5-30 minutes; Tavily pipeline ~5 min.
+// Railway timeout is configured via the Railway dashboard or railway.toml.
 
 // Tavily API configuration
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
