@@ -375,6 +375,7 @@ async function executeResearchStrategy(
   seedUrl: string | null,
   seedUrlContent: string | null,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const emit = onProgress || (() => {});
   emit('Building research strategy (Sonnet)...', 'research', 3, 38);
@@ -387,6 +388,8 @@ async function executeResearchStrategy(
   );
 
   console.log(`[DeepResearch] Research strategy prompt: ${strategyPrompt.length} chars`);
+
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
 
   const strategy = await complete(
     RESEARCH_STRATEGY_SYSTEM,
@@ -415,6 +418,7 @@ async function executeDeepResearch(
   seedUrlContent: string | null,
   researchStrategy: string,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<{ dossier: string; citations: DeepResearchCitation[]; searchCount: number; tokenUsage: any; durationMs: number }> {
   const emit = onProgress || (() => {});
 
@@ -441,11 +445,37 @@ async function executeDeepResearch(
     writeFileSync('/tmp/prospectai-outputs/DEBUG-deep-research-user-prompt.txt', userPrompt);
   } catch (e) { /* ignore */ }
 
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+
   emit('Starting deep research (OpenAI o3-deep-research)...', 'research', 6, 38);
 
   const startTime = Date.now();
 
-  // Initial request with background: true
+  // Retry helper for idempotent OpenAI calls (retrieve only — never create)
+  async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        // Don't retry abort
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        // Don't retry 4xx errors (except 429 rate limit)
+        const status = err?.status || err?.response?.status;
+        if (status && status >= 400 && status < 500 && status !== 429) throw err;
+
+        if (attempt === maxAttempts) {
+          console.error(`[DeepResearch] ${label} failed after ${maxAttempts} attempts:`, err?.message || err);
+          throw err;
+        }
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 16000);
+        console.warn(`[DeepResearch] ${label} attempt ${attempt} failed (${err?.message}), retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+    throw new Error('unreachable');
+  }
+
+  // Initial request with background: true — NO retry (not idempotent; retry would launch a second job)
   const response = await openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
     input: [
@@ -462,28 +492,56 @@ async function executeDeepResearch(
     background: true,
   } as any);
 
-  // Poll every 10 seconds
+  // Poll every 10 seconds — abort-aware, max 30 minutes
+  const MAX_POLL_DURATION_MS = 30 * 60 * 1000;
   let result: any = response;
   let lastSearchCount = 0;
 
   while (result.status !== 'completed' && result.status !== 'failed') {
-    await new Promise(r => setTimeout(r, 10000));
-    result = await openai.responses.retrieve(result.id);
+    // Guard against infinite polling
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs > MAX_POLL_DURATION_MS) {
+      console.error(`[DeepResearch] Polling timed out after ${Math.round(elapsedMs / 60000)} minutes for response ${result.id}`);
+      throw new Error(`Deep research timed out after ${Math.round(elapsedMs / 60000)} minutes (status: ${result.status})`);
+    }
+    // Check abort before sleeping
+    if (abortSignal?.aborted) {
+      console.log(`[DeepResearch] Abort detected, stopping polling for response ${result.id}`);
+      throw new Error('Pipeline aborted by client');
+    }
+
+    // Abort-aware sleep: resolves after 10s OR when abort fires, whichever is first
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 10000);
+      if (abortSignal) {
+        const onAbort = () => { clearTimeout(timer); resolve(); };
+        if (abortSignal.aborted) { clearTimeout(timer); resolve(); return; }
+        abortSignal.addEventListener('abort', onAbort, { once: true });
+      }
+    });
+
+    // Check abort after waking
+    if (abortSignal?.aborted) {
+      console.log(`[DeepResearch] Abort detected after sleep, stopping polling for response ${result.id}`);
+      throw new Error('Pipeline aborted by client');
+    }
+
+    result = await withRetry('responses.retrieve', () => openai.responses.retrieve(result.id));
 
     // Count searches so far for progress reporting
     const searches = result.output?.filter(
       (item: any) => item.type === 'web_search_call'
     ).length || 0;
 
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
 
     if (searches !== lastSearchCount) {
       lastSearchCount = searches;
-      console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsed}s elapsed, status=${result.status}`);
+      console.log(`[DeepResearch] Polling: ${searches} searches, ${elapsedSec}s elapsed, status=${result.status}`);
     }
 
     // Always emit on every poll cycle to keep SSE stream alive
-    emit(`Deep research in progress: ${searches} searches (${elapsed}s)...`, 'research', 8, 38);
+    emit(`Deep research in progress: ${searches} searches (${elapsedSec}s)...`, 'research', 8, 38);
   }
 
   const durationMs = Date.now() - startTime;
@@ -568,6 +626,7 @@ export async function runDeepResearchPipeline(
   linkedinData: LinkedInData | null,
   seedUrlContent: string | null,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<DeepResearchResult> {
   const emit = onProgress || (() => {});
 
@@ -583,6 +642,7 @@ export async function runDeepResearchPipeline(
     seedUrl,
     seedUrlContent,
     onProgress,
+    abortSignal,
   );
 
   // Stage 2: Deep Research (OpenAI o3-deep-research)
@@ -595,6 +655,7 @@ export async function runDeepResearchPipeline(
     seedUrlContent,
     researchStrategy,
     onProgress,
+    abortSignal,
   );
 
   return {
