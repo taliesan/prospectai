@@ -375,6 +375,7 @@ async function executeResearchStrategy(
   seedUrl: string | null,
   seedUrlContent: string | null,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const emit = onProgress || (() => {});
   emit('Building research strategy (Sonnet)...', 'research', 3, 38);
@@ -387,6 +388,8 @@ async function executeResearchStrategy(
   );
 
   console.log(`[DeepResearch] Research strategy prompt: ${strategyPrompt.length} chars`);
+
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
 
   const strategy = await complete(
     RESEARCH_STRATEGY_SYSTEM,
@@ -415,6 +418,7 @@ async function executeDeepResearch(
   seedUrlContent: string | null,
   researchStrategy: string,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<{ dossier: string; citations: DeepResearchCitation[]; searchCount: number; tokenUsage: any; durationMs: number }> {
   const emit = onProgress || (() => {});
 
@@ -441,6 +445,8 @@ async function executeDeepResearch(
     writeFileSync('/tmp/prospectai-outputs/DEBUG-deep-research-user-prompt.txt', userPrompt);
   } catch (e) { /* ignore */ }
 
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+
   emit('Starting deep research (OpenAI o3-deep-research)...', 'research', 6, 38);
 
   const startTime = Date.now();
@@ -462,12 +468,33 @@ async function executeDeepResearch(
     background: true,
   } as any);
 
-  // Poll every 10 seconds
+  // Poll every 10 seconds — abort-aware
   let result: any = response;
   let lastSearchCount = 0;
 
   while (result.status !== 'completed' && result.status !== 'failed') {
-    await new Promise(r => setTimeout(r, 10000));
+    // Check abort before sleeping
+    if (abortSignal?.aborted) {
+      console.log(`[DeepResearch] Abort detected, stopping polling for response ${result.id}`);
+      throw new Error('Pipeline aborted by client');
+    }
+
+    // Abort-aware sleep: resolves after 10s OR when abort fires, whichever is first
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 10000);
+      if (abortSignal) {
+        const onAbort = () => { clearTimeout(timer); resolve(); };
+        if (abortSignal.aborted) { clearTimeout(timer); resolve(); return; }
+        abortSignal.addEventListener('abort', onAbort, { once: true });
+      }
+    });
+
+    // Check abort after waking
+    if (abortSignal?.aborted) {
+      console.log(`[DeepResearch] Abort detected after sleep, stopping polling for response ${result.id}`);
+      throw new Error('Pipeline aborted by client');
+    }
+
     result = await openai.responses.retrieve(result.id);
 
     // Count searches so far for progress reporting
@@ -568,6 +595,7 @@ export async function runDeepResearchPipeline(
   linkedinData: LinkedInData | null,
   seedUrlContent: string | null,
   onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
 ): Promise<DeepResearchResult> {
   const emit = onProgress || (() => {});
 
@@ -583,6 +611,7 @@ export async function runDeepResearchPipeline(
     seedUrl,
     seedUrlContent,
     onProgress,
+    abortSignal,
   );
 
   // Stage 2: Deep Research (OpenAI o3-deep-research)
@@ -595,6 +624,7 @@ export async function runDeepResearchPipeline(
     seedUrlContent,
     researchStrategy,
     onProgress,
+    abortSignal,
   );
 
   return {

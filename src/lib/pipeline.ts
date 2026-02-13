@@ -1222,6 +1222,7 @@ ${pdfText}`;
       linkedinData,
       seedUrlContent,
       emit,
+      abortSignal,
     );
 
     // The dossier IS the research package for the profile generation step

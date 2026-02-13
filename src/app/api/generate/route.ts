@@ -359,7 +359,12 @@ export async function POST(request: NextRequest) {
 
           } catch (error) {
             // Don't log abort errors as pipeline errors — they're intentional
-            if (error instanceof Error && error.name === 'AbortError') {
+            const isAbort = error instanceof Error && (
+              error.name === 'AbortError' ||
+              error.message === 'Pipeline aborted by client' ||
+              pipelineAbort.signal.aborted
+            );
+            if (isAbort) {
               console.log('[API] Pipeline aborted (client disconnected)');
               return;
             }
