@@ -5,8 +5,8 @@
 //   LinkedIn PDF parsing → Identity extraction → Query design (LLM, 1 call)
 //   → Tavily bulk search (coded) → Page fetching (coded, concurrent)
 //   → Screening + dedup (coded + LLM) → Tiering (coded)
-//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Opus, 1 call)
-//   → Meeting guide (Opus, 1 call)
+//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Sonnet, 1 call)
+//   → Meeting guide (Sonnet, 1 call)
 
 import Anthropic from '@anthropic-ai/sdk';
 import { complete, completeExtended, conversationTurn, Message } from './anthropic';
@@ -1249,6 +1249,7 @@ ${pdfText}`;
   } catch (e) { /* ignore */ }
 
   // ── Step 3: Profile Generation (Opus, Geoffrey Block) ───────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
   emit('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
   console.log('[Pipeline] Step 3: Profile generation (Opus)');
 
@@ -1294,7 +1295,7 @@ ${pdfText}`;
 
   // ── Step 3b: Editorial Pass (Opus) ──────────────────────────────
   emit('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
-  console.log('[Pipeline] Step 3b: Editorial pass (Opus)');
+  console.log('[Pipeline] Step 3b: Editorial pass (Sonnet)');
 
   const critiquePrompt = buildCritiqueRedraftPrompt(
     donorName,
@@ -1310,8 +1311,9 @@ ${pdfText}`;
     writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
   } catch (e) { /* ignore */ }
 
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
   const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
-  const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000 });
+  const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000, abortSignal });
 
   const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
   console.log(`[Editorial] ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
@@ -1324,7 +1326,7 @@ ${pdfText}`;
   // ── Step 4: Meeting Guide Generation (Opus) ─────────────────────
   emit('', 'writing');
   emit('Writing tactical meeting guide', 'writing', 33, TOTAL_STEPS);
-  console.log('[Pipeline] Step 4: Meeting guide (Opus)');
+  console.log('[Pipeline] Step 4: Meeting guide (Sonnet)');
 
   const meetingGuideBlock = loadMeetingGuideBlock();
   const meetingGuideExemplars = loadMeetingGuideExemplars();
@@ -1342,8 +1344,9 @@ ${pdfText}`;
     writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
   } catch (e) { /* ignore */ }
 
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
-  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000 });
+  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000, abortSignal });
   console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
 
   const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
