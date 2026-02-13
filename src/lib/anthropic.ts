@@ -115,10 +115,12 @@ export async function conversationTurn(
   messages: Message[],
   options: {
     maxTokens?: number;
+    abortSignal?: AbortSignal;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
+    abortSignal,
   } = options;
 
   const response = await anthropic.messages.create({
@@ -129,7 +131,7 @@ export async function conversationTurn(
       role: m.role,
       content: m.content
     })),
-  });
+  }, abortSignal ? { signal: abortSignal } : undefined);
 
   const textContent = response.content.find(c => c.type === 'text');
   if (!textContent || textContent.type !== 'text') {
