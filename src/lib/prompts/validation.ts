@@ -2,7 +2,7 @@
 
 export const VALIDATION_PROMPT = `You are validating a donor persuasion profile against the A+++ standard.
 
-Your job is to identify gaps between this profile and the standard. You have the canon (how to think), the exemplars (what good looks like), and the dossier (the evidence base).
+Your job is to identify gaps between this profile and the standard. You have the canon (how to think), the exemplars (what good looks like), and the research package (the evidence base).
 
 VALIDATION CRITERIA:
 
@@ -33,9 +33,9 @@ The profile MUST surface at least one substantive contradiction - tension betwee
 Check: Is there a clear, specific contradiction that creates leverage?
 
 5. EVIDENCE GROUNDING
-Every claim must trace to the dossier. No hallucinated insights.
+Every claim must trace to the research package. No hallucinated insights.
 
-Check: Could you point to specific dossier evidence for each major claim?
+Check: Could you point to specific research package evidence for each major claim?
 
 6. ACTIONABILITY
 Every bullet must imply a consequence for the asker.
@@ -70,16 +70,16 @@ Bad critique: "Some parts could be more specific" (too vague to act on)
 
 Remember: You're not being harsh for its own sake. You're protecting the user from walking into a meeting with a useless profile. Be rigorous.`;
 
-export function createValidationPrompt(donorName: string, dossier: string, exemplars: string, profile: string): string {
+export function createValidationPrompt(donorName: string, researchPackage: string, exemplars: string, profile: string): string {
   return `${VALIDATION_PROMPT}
 
 ---
 
 DONOR: ${donorName}
 
-DOSSIER (evidence base):
-${dossier.slice(0, 20000)}
-${dossier.length > 20000 ? '\n[Dossier truncated for validation...]' : ''}
+RESEARCH PACKAGE (evidence base):
+${researchPackage.slice(0, 20000)}
+${researchPackage.length > 20000 ? '\n[Research package truncated for validation...]' : ''}
 
 ---
 

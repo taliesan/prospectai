@@ -1,5 +1,5 @@
 // Evidence Grounding Validator
-// Checks if profile claims are grounded in the dossier
+// Checks if profile claims are grounded in the research package
 
 import { complete } from '../anthropic';
 
@@ -8,30 +8,30 @@ export interface ValidationResult {
   failures: string[];
 }
 
-const EVIDENCE_VALIDATOR_PROMPT = `You are checking if profile claims are GROUNDED IN THE DOSSIER.
+const EVIDENCE_VALIDATOR_PROMPT = `You are checking if profile claims are GROUNDED IN THE RESEARCH PACKAGE.
 
-Every major claim in the profile should trace to evidence in the dossier. This prevents hallucination.
+Every major claim in the profile should trace to evidence in the research package. This prevents hallucination.
 
-For each major claim in the profile (core identity assertions, behavioral patterns, contradictions, preferences), check if supporting evidence exists in the dossier.
+For each major claim in the profile (core identity assertions, behavioral patterns, contradictions, preferences), check if supporting evidence exists in the research package.
 
 Output format:
 
-GROUNDED: "[claim]" — Supported by dossier evidence: "[brief evidence summary]"
+GROUNDED: "[claim]" — Supported by research evidence: "[brief evidence summary]"
 
-UNGROUNDED: "[claim]" — No supporting evidence found in dossier. This may be hallucinated or inferred without basis.
+UNGROUNDED: "[claim]" — No supporting evidence found in research package. This may be hallucinated or inferred without basis.
 
 At the end:
 - If ALL major claims are grounded: PASS
 - If ANY claims are ungrounded: FAIL + list the ungrounded claims`;
 
-export async function validateEvidence(profile: string, dossier: string): Promise<ValidationResult> {
+export async function validateEvidence(profile: string, researchPackage: string): Promise<ValidationResult> {
   const prompt = `${EVIDENCE_VALIDATOR_PROMPT}
 
 ---
 
-DOSSIER (source of truth):
+RESEARCH PACKAGE (source of truth):
 
-${dossier.slice(0, 30000)}${dossier.length > 30000 ? '\n[Dossier truncated...]' : ''}
+${researchPackage.slice(0, 30000)}${researchPackage.length > 30000 ? '\n[Research package truncated...]' : ''}
 
 ---
 
@@ -41,11 +41,11 @@ ${profile}
 
 ---
 
-Check each major claim in the profile against the dossier. List GROUNDED and UNGROUNDED claims, then output final verdict: PASS if all grounded, FAIL if any ungrounded.`;
+Check each major claim in the profile against the research package. List GROUNDED and UNGROUNDED claims, then output final verdict: PASS if all grounded, FAIL if any ungrounded.`;
 
   try {
     const response = await complete(
-      'You are a rigorous validator checking that profile claims are grounded in dossier evidence.',
+      'You are a rigorous validator checking that profile claims are grounded in research package evidence.',
       prompt,
       { maxTokens: 3000 }
     );

@@ -1,4 +1,4 @@
-// Prompts for Step 2: Behavioral Dossier Extraction
+// Prompts for Step 2: Behavioral Evidence Extraction
 
 export const DIMENSIONS = [
   { id: 'DECISION_MAKING', name: 'Decision-Making Patterns', description: 'How they evaluate proposals, what triggers yes/no, deliberation style' },
@@ -360,7 +360,7 @@ The civic-scale fear driving their engagement.
 - What do they believe is at stake?
 - What system-level failure keeps them up at night?
 - How does this fear shape what they fund/support?
-- Evidence from the dossier
+- Evidence from the research
 
 3. SUBSTRATE ARCHITECTURE:
 The minimal internal structure that explains all patterns:

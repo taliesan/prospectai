@@ -133,15 +133,15 @@ EXAMPLES OF WHAT TO AVOID (these will fail validation):
 
 These examples show exactly what the 6 validators check. Write every bullet to pass all 6.`;
 
-export function createProfilePrompt(donorName: string, dossier: string, exemplars: string): string {
+export function createProfilePrompt(donorName: string, researchPackage: string, exemplars: string): string {
   return `${PROFILE_GENERATION_PROMPT}
 
 ---
 
 DONOR: ${donorName}
 
-BEHAVIORAL DOSSIER:
-${dossier}
+BEHAVIORAL EVIDENCE:
+${researchPackage}
 
 ---
 
@@ -153,7 +153,7 @@ ${exemplars}
 Generate the complete 7-section persuasion profile for ${donorName}.
 
 The profile must:
-- Be grounded entirely in the dossier evidence
+- Be grounded entirely in the research evidence
 - Match the quality and specificity of the exemplars
 - Be behavioral, conditional, and actionable throughout
 - Surface the core contradiction
@@ -164,7 +164,7 @@ Begin with "## 1. Donor Identity & Background" and continue through all seven se
 
 export function createRegenerationPrompt(
   donorName: string,
-  dossier: string,
+  researchPackage: string,
   exemplars: string,
   previousDraft: string,
   validationFeedback: string
@@ -175,8 +175,8 @@ export function createRegenerationPrompt(
 
 DONOR: ${donorName}
 
-BEHAVIORAL DOSSIER:
-${dossier}
+BEHAVIORAL EVIDENCE:
+${researchPackage}
 
 ---
 
@@ -208,7 +208,7 @@ Common fixes:
 - "too generic / fails name-swap test" → Add specific details unique to THIS donor
 - "missing contradiction" → Surface tension between stated values and revealed behavior
 - "missing retreat patterns" → Add triggers, tells, and recovery guidance
-- "ungrounded claim" → Remove or ground in dossier evidence
+- "ungrounded claim" → Remove or ground in research evidence
 - "not actionable" → Tell the asker what to DO differently
 
 The new profile must pass all 6 validators. Be specific. Be behavioral. Be actionable.

@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { runFullPipeline } from '@/lib/pipeline';
-import { runConversationPipeline } from '@/lib/conversation-pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 
-// Allow long-running generation (5 minutes max for Vercel/Railway)
-export const maxDuration = 300;
+// No timeout config needed — Railway doesn't use Next.js route segment config.
+// Deep research (OpenAI o3) can take 5-30 minutes; Tavily pipeline ~5 min.
+// Railway timeout is configured via the Railway dashboard or railway.toml.
 
 // Tavily API configuration
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -31,7 +31,7 @@ interface TavilyExtractResponse {
 }
 
 // Web search using Tavily API
-async function webSearch(query: string): Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]> {
+async function webSearch(query: string): Promise<{ url: string; title: string; snippet: string; content?: string }[]> {
   console.log(`[Search] Query: ${query}`);
 
   if (!TAVILY_API_KEY) {
@@ -114,7 +114,8 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 // SSE endpoint for real-time progress updates
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { donorName, fundraiserName = '', seedUrls = [], mode = 'conversation' } = body;
+  const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf } = body;
+  console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
 
   if (!donorName || typeof donorName !== 'string') {
     return new Response(
@@ -123,11 +124,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const isConversationMode = mode === 'conversation';
-  console.log(`[API] Starting SSE profile generation for: ${donorName} (mode: ${mode})`);
+  console.log(`[API] Starting SSE profile generation for: ${donorName} (coded pipeline)`);
 
   // Create a readable stream for SSE
   const encoder = new TextEncoder();
+
+  // Abort controller to cancel in-flight API calls when client disconnects
+  const pipelineAbort = new AbortController();
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -168,16 +171,29 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      // Send keep-alive pings every 15 seconds to prevent connection timeout
+      // Send keep-alive pings every 10 seconds to prevent connection timeout
       const keepAliveInterval = setInterval(() => {
         try {
           if (!isControllerClosed) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping' })}\n\n`));
+          } else {
+            clearInterval(keepAliveInterval);
+            // Client disconnected — abort in-flight API calls
+            if (!pipelineAbort.signal.aborted) {
+              console.log('[SSE] Client disconnected, aborting pipeline');
+              pipelineAbort.abort();
+            }
           }
         } catch (e) {
           clearInterval(keepAliveInterval);
+          isControllerClosed = true;
+          // Client disconnected — abort in-flight API calls
+          if (!pipelineAbort.signal.aborted) {
+            console.log('[SSE] Keepalive failed, aborting pipeline');
+            pipelineAbort.abort();
+          }
         }
-      }, 15000);
+      }, 10000);
 
       try {
         // Run entire pipeline within request-scoped progress context
@@ -192,7 +208,7 @@ export async function POST(request: NextRequest) {
             const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
 
             // Save outputs helper
-            const saveOutputs = (research: any, profile: string, dossier?: string) => {
+            const saveOutputs = (research: any, profile: string, researchPackage?: string) => {
               const outputDir = '/tmp/prospectai-outputs';
               if (!existsSync(outputDir)) {
                 mkdirSync(outputDir, { recursive: true });
@@ -207,10 +223,10 @@ export async function POST(request: NextRequest) {
               console.log(`[OUTPUT] Research saved to ${researchPath} (${research.rawMarkdown.length} chars)`);
               console.log(`[OUTPUT] Profile saved to ${profilePath} (${profile.length} chars)`);
 
-              if (dossier) {
-                const dossierPath = `${outputDir}/${requestId}-${safeName}-dossier.md`;
-                writeFileSync(dossierPath, dossier);
-                console.log(`[OUTPUT] Dossier saved to ${dossierPath} (${dossier.length} chars)`);
+              if (researchPackage) {
+                const researchPackagePath = `${outputDir}/${requestId}-${safeName}-research-package.md`;
+                writeFileSync(researchPackagePath, researchPackage);
+                console.log(`[OUTPUT] Research package saved to ${researchPackagePath} (${researchPackage.length} chars)`);
               }
 
               // Save full research JSON with all source content and excerpts
@@ -269,71 +285,66 @@ export async function POST(request: NextRequest) {
 
             let result: any;
 
-            if (isConversationMode) {
-              // Conversation mode: two-step pipeline (sources → dossier → profile)
-              console.log('[API] Running conversation mode pipeline (two-step)...');
+            // CODED PIPELINE — no agent loops, no LLM driving searches
+            console.log('[API] Running coded pipeline (no agentic loops)...');
 
-              const conversationResult = await runConversationPipeline(
-                donorName,
-                seedUrls,
-                webSearch,
-                fetchUrl,
-                (message: string, phase?: string, step?: number, totalSteps?: number) => {
-                  if (phase && !message) {
-                    // Phase transition event
-                    sendEvent({ type: 'phase', message: '', phase: phase as any });
-                  } else {
-                    sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
-                  }
+            // Load exemplars
+            const exemplars = loadExemplars();
+            console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
+
+            const pipelineResult = await runFullPipeline(
+              donorName,
+              seedUrls,
+              webSearch,
+              { exemplars },
+              (message: string, phase?: string, step?: number, totalSteps?: number) => {
+                if (phase && !message) {
+                  sendEvent({ type: 'phase', message: '', phase: phase as any });
+                } else {
+                  sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
                 }
-              );
+              },
+              linkedinPdf,
+              fetchUrl,
+              pipelineAbort.signal,
+            );
 
-              // Save outputs including dossier and meeting guide
-              saveOutputs(conversationResult.research, conversationResult.profile, conversationResult.dossier);
+            // Save outputs
+            saveOutputs(
+              { ...pipelineResult.research, rawMarkdown: pipelineResult.researchPackage },
+              pipelineResult.profile,
+              pipelineResult.researchPackage,
+            );
 
-              // Save meeting guide using same requestId
-              if (conversationResult.meetingGuide) {
-                const outputDir = '/tmp/prospectai-outputs';
-                if (!existsSync(outputDir)) {
-                  mkdirSync(outputDir, { recursive: true });
-                }
-                const meetingGuidePath = `${outputDir}/${requestId}-${safeName}-meeting-guide.md`;
-                writeFileSync(meetingGuidePath, conversationResult.meetingGuide);
-                console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${conversationResult.meetingGuide.length} chars)`);
+            // Save meeting guide
+            if (pipelineResult.meetingGuide) {
+              const outputDir = '/tmp/prospectai-outputs';
+              if (!existsSync(outputDir)) {
+                mkdirSync(outputDir, { recursive: true });
               }
-
-              // Format result for frontend compatibility
-              result = {
-                research: conversationResult.research,
-                dossier: { rawMarkdown: conversationResult.dossier },
-                profile: {
-                  donorName,
-                  profile: conversationResult.profile,
-                  validationPasses: 0,
-                  status: 'complete'
-                },
-                meetingGuide: conversationResult.meetingGuide,
-                fundraiserName,
-              };
-
-            } else {
-              // Standard mode: existing multi-stage pipeline
-              console.log('[API] Running standard pipeline...');
-
-              // Load exemplars
-              const exemplars = loadExemplars();
-              console.log(`[API] Loaded ${exemplars.length} characters of exemplar profiles`);
-
-              result = await runFullPipeline(
-                donorName,
-                seedUrls,
-                webSearch,
-                { exemplars }
-              );
-
-              // Save outputs
-              saveOutputs(result.research, result.profile.profile, result.dossier.rawMarkdown);
+              const meetingGuidePath = `${outputDir}/${requestId}-${safeName}-meeting-guide.md`;
+              writeFileSync(meetingGuidePath, pipelineResult.meetingGuide);
+              console.log(`[OUTPUT] Meeting guide saved to ${meetingGuidePath} (${pipelineResult.meetingGuide.length} chars)`);
             }
+
+            // Format result for frontend compatibility
+            result = {
+              research: {
+                ...pipelineResult.research,
+                rawMarkdown: pipelineResult.researchPackage,
+                sources: pipelineResult.research.sources || [],
+              },
+              researchProfile: { rawMarkdown: pipelineResult.profile },
+              profile: {
+                donorName,
+                profile: pipelineResult.profile,
+                validationPasses: 0,
+                status: 'complete',
+              },
+              meetingGuide: pipelineResult.meetingGuide,
+              meetingGuideHtml: pipelineResult.meetingGuideHtml,
+              fundraiserName,
+            };
 
             STATUS.pipelineComplete();
 
@@ -347,6 +358,11 @@ export async function POST(request: NextRequest) {
             console.log('[SSE] Final complete event sent successfully');
 
           } catch (error) {
+            // Don't log abort errors as pipeline errors — they're intentional
+            if (error instanceof Error && error.name === 'AbortError') {
+              console.log('[API] Pipeline aborted (client disconnected)');
+              return;
+            }
             console.error('[API] Pipeline error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             STATUS.pipelineError(errorMessage);
@@ -370,6 +386,13 @@ export async function POST(request: NextRequest) {
         clearInterval(keepAliveInterval);
         // Then safely close the controller
         safeClose();
+      }
+    },
+    cancel() {
+      // Client disconnected — abort in-flight API calls immediately
+      console.log('[SSE] Stream cancelled by client, aborting pipeline');
+      if (!pipelineAbort.signal.aborted) {
+        pipelineAbort.abort();
       }
     }
   });

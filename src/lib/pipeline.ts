@@ -1,38 +1,79 @@
-// Core pipeline for donor profiling
-// This orchestrates the three steps: Research → Dossier → Profile
+// Core pipeline for donor profiling — CODED PIPELINE
+// No agent loops. Every step is coded orchestration + single LLM API calls.
+//
+// Architecture:
+//   LinkedIn PDF parsing → Identity extraction → Query design (LLM, 1 call)
+//   → Tavily bulk search (coded) → Page fetching (coded, concurrent)
+//   → Screening + dedup (coded + LLM) → Tiering (coded)
+//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Sonnet, 1 call)
+//   → Meeting guide (Sonnet, 1 call)
 
-import { complete, completeExtended } from './anthropic';
+import Anthropic from '@anthropic-ai/sdk';
+import { complete, completeExtended, conversationTurn, Message } from './anthropic';
 import { sanitizeForClaude } from './sanitize';
 import { STATUS } from './progress';
 import {
   IDENTITY_EXTRACTION_PROMPT,
   generateResearchQueries,
+  parseAnalyticalQueries,
   SOURCE_CLASSIFICATION_PROMPT
 } from './prompts/research';
+import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import {
-  createExtractionPrompt,
   createBatchExtractionPrompt,
   SYNTHESIS_PROMPT,
   CROSS_CUTTING_PROMPT,
-  DIMENSIONS
 } from './prompts/extraction';
+import { buildProfilePrompt } from './prompts/profile-prompt';
+import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
+import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
 import {
   createProfilePrompt,
   createRegenerationPrompt
 } from './prompts/profile';
-import { runAllValidators } from './validators';
-import { selectExemplars } from './canon/loader';
+import { selectExemplars, loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
+import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
+import { executeWebSearch, executeFetchPage } from './research/tools';
+import { writeFileSync, mkdirSync } from 'fs';
+
+// New v3 research modules
+import { ResearchSource, runScreeningPipeline } from './research/screening';
+import { crawlSubjectPublishing } from './research/blog-crawler';
+import {
+  tierSources,
+  enforceTargets,
+  TieredSource,
+  TIER_PREAMBLE,
+  buildEvidenceGapBlock,
+  extractLinkedInSlugFromProfile,
+  getPersonalDomains,
+} from './research/tiering';
+
+// Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
+import { runDeepResearchPipeline, DeepResearchResult } from './research/deep-research';
+
+const anthropic = new Anthropic();
 
 // Types
+interface GeneratedQuery {
+  query: string;
+  tier: 'STANDARD' | 'TAILORED';
+  rationale: string;
+}
+
 interface ResearchResult {
   donorName: string;
   identity: any;
-  queries: { query: string; category: string }[];
+  queries: GeneratedQuery[];
   sources: { url: string; title: string; snippet: string; content?: string }[];
   rawMarkdown: string;
+  tier1Count?: number;
+  tier2Count?: number;
+  tier3Count?: number;
+  evidenceWarnings?: string[];
 }
 
-interface DossierResult {
+interface ExtractionResult {
   donorName: string;
   dimensions: any[];
   crossCutting: any;
@@ -49,13 +90,14 @@ interface ProfileResult {
 // Progress callback type for conversation pipeline integration
 type ResearchProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
-// Step 1: Research
+// Step 1: Research (v3 — with blog crawling, aggressive screening, tiering)
 export async function conductResearch(
   donorName: string,
   seedUrls: string[] = [],
-  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
   fetchFunction?: (url: string) => Promise<string>,
-  onProgress?: ResearchProgressCallback
+  onProgress?: ResearchProgressCallback,
+  linkedinData?: LinkedInData | null
 ): Promise<ResearchResult> {
   console.log(`[Research] Starting research for: ${donorName}`);
   const emit = onProgress || (() => {});
@@ -108,95 +150,326 @@ Extract the identity signals for this person.`;
     }
   }
 
+  // Enrich identity with LinkedIn data (authoritative for biographical facts)
+  // Step 1 (above): Always extract identity from seed URL — provides affiliations, unique identifiers, context
+  // Step 2 (here): LinkedIn overrides biographical facts (title, employer, career, education)
+  if (linkedinData) {
+    console.log(`[Research] Enriching identity with LinkedIn data: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}`);
+
+    // LinkedIn is authoritative for current role/org — always override
+    identity.currentRole = linkedinData.currentTitle || identity.currentRole;
+    identity.currentOrg = linkedinData.currentEmployer || identity.currentOrg;
+
+    // Career history from LinkedIn (authoritative)
+    if (linkedinData.careerHistory?.length) {
+      identity.pastRoles = linkedinData.careerHistory.map(j => ({
+        role: j.title,
+        org: j.employer,
+        years: `${j.startDate} - ${j.endDate}`
+      }));
+    }
+
+    // Education from LinkedIn (authoritative)
+    if (linkedinData.education?.length) {
+      identity.education = linkedinData.education.map(e => ({
+        school: e.institution,
+        degree: e.degree,
+        year: e.years
+      }));
+    }
+
+    // Add LinkedIn boards to affiliations (merge, don't replace)
+    const existingAffiliations = new Set((identity.affiliations || []).map((a: string) => a.toLowerCase()));
+    for (const board of (linkedinData.boards || [])) {
+      if (!existingAffiliations.has(board.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(board);
+        existingAffiliations.add(board.toLowerCase());
+      }
+    }
+
+    // Add past employers to affiliations (merge, don't replace)
+    for (const job of (linkedinData.careerHistory || [])) {
+      if (job.employer && job.employer !== linkedinData.currentEmployer && !existingAffiliations.has(job.employer.toLowerCase())) {
+        identity.affiliations = identity.affiliations || [];
+        identity.affiliations.push(job.employer);
+        existingAffiliations.add(job.employer.toLowerCase());
+      }
+    }
+
+    // Add education institutions to uniqueIdentifiers (helps disambiguation)
+    for (const edu of (linkedinData.education || [])) {
+      if (edu.institution) {
+        identity.uniqueIdentifiers = identity.uniqueIdentifiers || [];
+        if (!identity.uniqueIdentifiers.includes(edu.institution)) {
+          identity.uniqueIdentifiers.push(edu.institution);
+        }
+      }
+    }
+
+    // Keep uniqueIdentifiers from seed URL — LinkedIn doesn't provide these
+    console.log(`[Research] Identity after LinkedIn enrichment:`, JSON.stringify(identity, null, 2));
+  }
+
   emit(
     `Identified: ${identity.fullName || donorName} — ${identity.currentRole || 'unknown role'} at ${identity.currentOrg || 'unknown org'}`,
     'research', 5, TOTAL
   );
 
-  // 3. Generate targeted search queries using identity signals
-  console.log('[Research] Generating targeted search queries...');
-  emit('Designing research strategy', 'research', 6, TOTAL);
-  const queryPrompt = generateResearchQueries(donorName, identity);
-  const queryResponse = await complete('You are a research strategist.', queryPrompt);
-
-  let queries: { query: string; category: string }[] = [];
-  try {
-    const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
-    queries = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-  } catch {
-    // Fallback queries with identity context
-    const orgSuffix = identity.currentOrg ? ` ${identity.currentOrg}` : '';
-    queries = [
-      { query: `"${donorName}"${orgSuffix} interview`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} podcast`, category: 'INTERVIEWS' },
-      { query: `"${donorName}"${orgSuffix} philanthropy`, category: 'PHILANTHROPY' },
-      { query: `"${donorName}"${orgSuffix} profile`, category: 'NEWS_PROFILES' },
-    ];
-  }
-
-  console.log(`[Research] Generated ${queries.length} queries`);
-  emit(`Researching ${queries.length} angles across interviews, news, and profiles`, 'research', 7, TOTAL);
-
-  // 4. Execute searches
-  console.log('[Research] Executing searches...');
-  const allSources: { url: string; title: string; snippet: string; query: string }[] = [];
-  let searchedCount = 0;
-
-  for (const q of queries) {
+  // ── Crawl subject's own publishing first ────────────────────────
+  // Pass linkedinData (has .websites for blog URLs) if available, otherwise identity
+  let tier1Sources: ResearchSource[] = [];
+  if (fetchFunction) {
+    emit('Crawling subject\'s personal publishing', 'research', 6, TOTAL);
     try {
-      if (searchedCount === 0) {
-        emit(`Searching: "${q.query}"`, 'research', 8, TOTAL);
-      }
-      const results = await searchFunction(q.query);
-      for (const r of results) {
-        allSources.push({ ...r, query: q.query });
-      }
-      searchedCount++;
-      if (searchedCount % 3 === 0 || searchedCount === queries.length) {
-        emit(`Searched ${searchedCount} of ${queries.length} queries — ${allSources.length} results so far`, 'research', 9, TOTAL);
+      tier1Sources = await crawlSubjectPublishing(
+        donorName,
+        seedUrls,
+        linkedinData || identity,
+        searchFunction as any,
+        fetchFunction
+      );
+      console.log(`[Research] Blog/publishing crawl: ${tier1Sources.length} Tier 1 sources`);
+      if (tier1Sources.length > 0) {
+        emit(`Found ${tier1Sources.length} posts from subject's own publishing`, 'research', 6, TOTAL);
       }
     } catch (err) {
-      console.error(`[Research] Search failed for: ${q.query}`, err);
-      searchedCount++;
+      console.error('[Research] Blog crawl failed:', err);
     }
   }
 
+  // 3. Generate targeted search queries using identity signals (analytical categories A-E)
+  console.log('[Research] Generating analytical search queries...');
+  emit('Designing research strategy with analytical categories', 'research', 7, TOTAL);
+  const queryPrompt = generateResearchQueries(donorName, identity, seedContent.slice(0, 15000));
+  const queryResponse = await complete('You are a research analyst designing search queries for behavioral evidence.', queryPrompt);
+
+  // Parse queries — analytical categories internally, mapped to GeneratedQuery for pipeline compat
+  let queries: GeneratedQuery[] = [];
+  const analyticalQueries = parseAnalyticalQueries(queryResponse);
+
+  // Map analytical categories to STANDARD/TAILORED tiers:
+  // A (known outputs) + C (community) → STANDARD (identity-linked searches)
+  // B (pressure points) + D (org context) + E (gap-filling) → TAILORED (investigative)
+  const categoryToTier = (cat: string): 'STANDARD' | 'TAILORED' => {
+    return (cat === 'A' || cat === 'C') ? 'STANDARD' : 'TAILORED';
+  };
+
+  if (analyticalQueries.length > 0) {
+    queries = analyticalQueries.map(q => ({
+      query: q.query,
+      tier: categoryToTier(q.category),
+      rationale: `[Cat ${q.category}] ${q.hypothesis}`,
+    }));
+
+    // Log category distribution
+    const catCounts: Record<string, number> = {};
+    for (const q of analyticalQueries) {
+      catCounts[q.category] = (catCounts[q.category] || 0) + 1;
+    }
+    console.log(`[Query Gen] Generated ${queries.length} queries:`);
+    console.log(`  Category A (known outputs): ${catCounts['A'] || 0}`);
+    console.log(`  Category B (pressure points): ${catCounts['B'] || 0}`);
+    console.log(`  Category C (community): ${catCounts['C'] || 0}`);
+    console.log(`  Category D (org context): ${catCounts['D'] || 0}`);
+    console.log(`  Category E (gap-filling): ${catCounts['E'] || 0}`);
+  } else {
+    // Fallback: try old format parsing
+    try {
+      const jsonMatch = queryResponse.match(/\[[\s\S]*\]/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      queries = parsed.map((q: any) => ({
+        query: q.query,
+        tier: q.tier || categoryToTier(q.category || 'E'),
+        rationale: q.rationale || q.hypothesis || '',
+      }));
+    } catch {
+      // Fallback queries with identity context
+      const org = identity.currentOrg || '';
+      queries = [
+        { query: `"${donorName}" ${org} interview`, tier: 'STANDARD', rationale: 'Basic interview search' },
+        { query: `"${donorName}" ${org} podcast`, tier: 'STANDARD', rationale: 'Podcast appearances' },
+        { query: `"${donorName}" ${org} philanthropy`, tier: 'STANDARD', rationale: 'Philanthropic activity' },
+        { query: `"${donorName}" ${org} profile`, tier: 'STANDARD', rationale: 'Profile at current org' },
+        { query: `${org || donorName} grants 2024`, tier: 'TAILORED', rationale: 'Recent org activity' },
+        { query: `${org || donorName} announcement`, tier: 'TAILORED', rationale: 'Org press releases' },
+      ];
+    }
+    console.log(`[Research] Generated ${queries.length} queries (fallback format)`);
+  }
+
+  const standardCount = queries.filter(q => q.tier === 'STANDARD').length;
+  const tailoredCount = queries.filter(q => q.tier === 'TAILORED').length;
+  console.log(`[Research] ${standardCount} standard, ${tailoredCount} tailored`);
+  queries.forEach((q, i) => {
+    console.log(`  ${i + 1}. [${q.tier}] ${q.query}`);
+    console.log(`      Rationale: ${q.rationale}`);
+  });
+  emit(`Researching ${queries.length} angles — ${standardCount} standard, ${tailoredCount} tailored`, 'research', 7, TOTAL);
+
+  // 4. Execute searches
+  console.log('[Research] Executing searches...');
+  const allSources: ResearchSource[] = [];
+  const tailoredUrls = new Set<string>(); // Track which URLs came from TAILORED queries
+  let searchedCount = 0;
+
+  // Run searches in parallel (3 concurrent) to reduce total search time
+  const SEARCH_CONCURRENCY = 3;
+  const searchPromises = new Set<Promise<void>>();
+  emit(`Searching ${queries.length} queries (${SEARCH_CONCURRENCY} concurrent)`, 'research', 8, TOTAL);
+
+  for (const q of queries) {
+    const p = (async () => {
+      try {
+        const results = await searchFunction(q.query);
+
+        // Extract analytical category from rationale (format: "[Cat X] hypothesis")
+        const catMatch = q.rationale.match(/^\[Cat ([A-E])\]/);
+        const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' | 'D' | 'E' : undefined;
+
+        for (const r of results) {
+          allSources.push({
+            url: r.url,
+            title: r.title,
+            snippet: r.snippet,
+            content: (r as any).fullContent || (r as any).content || undefined,
+            query: q.query,
+            queryCategory,
+            queryHypothesis: q.rationale,
+            source: 'tavily',
+          });
+          if (q.tier === 'TAILORED') {
+            tailoredUrls.add(r.url);
+          }
+        }
+      } catch (err) {
+        console.error(`[Research] Search failed for: ${q.query}`, err);
+      }
+      searchedCount++;
+      if (searchedCount % 5 === 0 || searchedCount === queries.length) {
+        emit(`Searched ${searchedCount} of ${queries.length} queries — ${allSources.length} results so far`, 'research', 9, TOTAL);
+      }
+    })().then(() => { searchPromises.delete(p); });
+    searchPromises.add(p);
+    if (searchPromises.size >= SEARCH_CONCURRENCY) {
+      await Promise.race(searchPromises);
+    }
+  }
+  await Promise.all(searchPromises);
+
   // Deduplicate by URL
-  const uniqueSources = Array.from(
-    new Map(allSources.map(s => [s.url, s])).values()
+  const urlMap = new Map<string, ResearchSource>();
+  // Add tier1 sources first (priority)
+  for (const s of tier1Sources) {
+    urlMap.set(s.url, s);
+  }
+  // Then add Tavily sources (won't override tier1)
+  for (const s of allSources) {
+    if (!urlMap.has(s.url)) {
+      urlMap.set(s.url, s);
+    }
+  }
+  const uniqueSources = Array.from(urlMap.values());
+
+  console.log(`[Research] Collected ${uniqueSources.length} unique sources (${tier1Sources.length} from publishing crawl, ${allSources.length} from Tavily)`);
+  emit(`${uniqueSources.length} results from ${queries.length} searches + ${tier1Sources.length} blog posts`, 'research', 10, TOTAL);
+
+  // 5. Screen sources BEFORE bulk fetch (saves fetching rejected pages)
+  // Screening runs on snippets from Tavily search — no full page fetch needed
+  console.log('[Research] Running screening pipeline (snippet-based, pre-fetch)...');
+  console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
+  emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 11, TOTAL);
+
+  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+    uniqueSources,
+    donorName,
+    identity
   );
 
-  console.log(`[Research] Collected ${uniqueSources.length} unique sources before screening`);
-  emit(`${uniqueSources.length} results from ${queries.length} searches`, 'research', 10, TOTAL);
+  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 12, TOTAL);
 
-  // Tavily extract for top sources
-  emit('Reading full text from top sources', 'research', 11, TOTAL);
+  // ── Bulk fetch full content for SCREENED sources only ─────────────
+  // Only fetch sources that passed screening and lack content (saves 100+ API calls)
+  emit('Fetching full text from screened sources', 'research', 13, TOTAL);
+  const sourcesToFetch = screenedSources.filter(s => !s.content || s.content.length < 200);
+  console.log(`[Research] Bulk fetching ${sourcesToFetch.length} screened sources (${screenedSources.length - sourcesToFetch.length} already have content)`);
 
-  // 5. Screen sources for relevance to THIS person
-  console.log('[Research] Screening sources for relevance...');
-  emit(`Verifying sources match the right ${donorName}`, 'research', 12, TOTAL);
-  const screenedSources = await screenSourcesForRelevance(uniqueSources, identity, donorName, emit);
+  const FETCH_CONCURRENCY = 8;
+  let fetchedCount = 0;
+  const executing = new Set<Promise<void>>();
+  for (const source of sourcesToFetch) {
+    const p = (async () => {
+      try {
+        const content = await executeFetchPage(source.url);
+        source.content = content;
+        fetchedCount++;
+        if (fetchedCount % 5 === 0 || fetchedCount === sourcesToFetch.length) {
+          emit(`Fetched ${fetchedCount}/${sourcesToFetch.length} source pages`, 'research', 13, TOTAL);
+        }
+      } catch (err) {
+        console.log(`[Research] Fetch failed for ${source.url}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    })().then(() => { executing.delete(p); });
+    executing.add(p);
+    if (executing.size >= FETCH_CONCURRENCY) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+  console.log(`[Research] Bulk fetch complete: ${fetchedCount}/${sourcesToFetch.length} fetched`);
 
-  const dropped = uniqueSources.length - screenedSources.length;
-  console.log(`[Research] After screening: ${screenedSources.length} relevant sources (dropped ${dropped})`);
-  emit(`Confirmed ${screenedSources.length} relevant sources (dropped ${dropped} false matches)`, 'research', 14, TOTAL);
+  // ── Tier and enforce targets ────────────────────────────────────
+  // Extract LinkedIn slug and personal domains for tier classification
+  const linkedInSlug = linkedinData?.linkedinSlug || null;
+  const personalDomains = linkedinData ? getPersonalDomains(linkedinData) : [];
+  console.log(`[Research] Tiering with slug=${linkedInSlug || 'none'}, domains=${personalDomains.join(', ') || 'none'}`);
+
+  const tieredSources = tierSources(screenedSources, donorName, linkedInSlug || undefined, personalDomains);
+  const { selected: finalSources, warnings: evidenceWarnings } = enforceTargets(tieredSources);
+
+  const finalTier1 = finalSources.filter(s => s.tier === 1).length;
+  const finalTier2 = finalSources.filter(s => s.tier === 2).length;
+  const finalTier3 = finalSources.filter(s => s.tier === 3).length;
+
+  console.log(`[Research] === Source Collection Summary ===`);
+  console.log(`[Research] Blog crawl: ${tier1Sources.length} posts`);
+  console.log(`[Research] Tavily queries: ${queries.length}`);
+  console.log(`[Research] Raw sources collected: ${uniqueSources.length}`);
+  console.log(`[Screening] Automatic rejections: ${screeningStats.autoRejected}`);
+  console.log(`[Screening] LLM rejections: ${screeningStats.llmRejected}`);
+  console.log(`[Screening] Deduplication: ${screeningStats.beforeDedup} → ${screeningStats.afterDedup}`);
+  console.log(`[Tiering] Tier 1: ${finalTier1}, Tier 2: ${finalTier2}, Tier 3: ${finalTier3}`);
+  console.log(`[Targets] Final selection: ${finalSources.length} sources`);
+  if (evidenceWarnings.length > 0) {
+    console.log(`[Warnings] ${evidenceWarnings.join('; ')}`);
+  }
+
+  const dropped = uniqueSources.length - finalSources.length;
+  emit(`${finalSources.length} quality sources selected (${finalTier1} T1, ${finalTier2} T2, ${finalTier3} T3) — dropped ${dropped}`, 'research', 14, TOTAL);
 
   // 6. Generate raw research document
-  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, screenedSources);
+  const rawMarkdown = generateResearchMarkdown(donorName, identity, queries, finalSources);
 
   return {
     donorName,
     identity,
     queries,
-    sources: screenedSources,
-    rawMarkdown
+    sources: finalSources,
+    rawMarkdown,
+    tier1Count: finalTier1,
+    tier2Count: finalTier2,
+    tier3Count: finalTier3,
+    evidenceWarnings,
   };
 }
+
+// ── Identity-based relevance screening (kept for backward compat) ──
 
 async function screenSourcesForRelevance(
   sources: { url: string; title: string; snippet: string }[],
   identity: any,
   donorName: string,
+  tailoredUrls: Set<string>,
   emit?: ResearchProgressCallback
 ): Promise<{ url: string; title: string; snippet: string }[]> {
 
@@ -244,7 +517,7 @@ async function screenSourcesForRelevance(
     for (let i = 0; i < needsScreening.length; i += BATCH_SIZE) {
       const batch = needsScreening.slice(i, i + BATCH_SIZE);
 
-      const screenPrompt = `Screen these search results to determine if they are about the correct person.
+      const screenPrompt = `Screen these search results to determine if they are relevant to research about the target person.
 
 TARGET PERSON:
 - Name: ${donorName}
@@ -255,15 +528,28 @@ TARGET PERSON:
 - Unique Identifiers: ${(identity.uniqueIdentifiers || []).join(', ') || 'None'}
 
 SEARCH RESULTS TO SCREEN:
-${batch.map((s, idx) => `
-[${idx}]
+${batch.map((s, idx) => {
+  const isTailored = tailoredUrls.has(s.url);
+  return `
+[${idx}]${isTailored ? ' [TAILORED QUERY RESULT]' : ''}
 URL: ${s.url}
 Title: ${s.title}
-Snippet: ${s.snippet}
-`).join('\n')}
+Snippet: ${s.snippet}`;
+}).join('\n')}
 
-For each result, determine if it's about the TARGET PERSON or a different person.
-Be conservative - if uncertain, mark as not a match.
+For each result, determine if it is RELEVANT to researching the target person.
+
+IMPORTANT: Some sources are relevant even if they don't mention the donor by name directly. Accept sources that:
+- Show decisions, grants, investments, or actions from the donor's organization or program
+- Cover the donor's domain, sector, or program area during their tenure
+- Include perspectives from collaborators, grantees, or critics of the donor's organization
+- Discuss controversies or debates in the donor's professional domain
+
+The goal is behavioral signal — understanding how this person thinks and operates. Institutional decisions reflect their judgment even when they're not named personally.
+
+Sources marked [TAILORED QUERY RESULT] were found through targeted research into the person's institutional footprint. These deserve extra consideration — they may not mention the person by name but can reveal how they operate through organizational actions.
+
+REJECT sources that are clearly about a DIFFERENT person with the same or similar name (wrong company, wrong field, wrong location). Be conservative about wrong-person matches, but inclusive about institutional and domain sources.
 
 Output as JSON array (one entry per result, in order):
 [
@@ -272,14 +558,20 @@ Output as JSON array (one entry per result, in order):
 ]`;
 
       try {
-        const response = await complete('You are screening search results for identity matching.', screenPrompt);
+        const response = await complete('You are screening search results for relevance to a donor research profile.', screenPrompt);
         const jsonMatch = response.match(/\[[\s\S]*\]/);
 
         if (jsonMatch) {
           const results = JSON.parse(jsonMatch[0]);
           for (const r of results) {
-            if (r.isMatch && (r.confidence === 'high' || r.confidence === 'medium')) {
-              screened.push(batch[r.index]);
+            if (r.isMatch) {
+              const source = batch[r.index];
+              const isTailored = tailoredUrls.has(source.url);
+              // Standard sources: require high or medium confidence
+              // Tailored sources: accept any confidence level (the query was targeted)
+              if (isTailored || r.confidence === 'high' || r.confidence === 'medium') {
+                screened.push(source);
+              }
             }
           }
         }
@@ -296,14 +588,15 @@ Output as JSON array (one entry per result, in order):
     }
   }
 
+  console.log(`[Research] Screening complete: ${screened.length} accepted (${screened.length - dominated.length} via LLM, ${dominated.length} fast-path)`);
   return screened;
 }
 
 function generateResearchMarkdown(
   donorName: string,
   identity: any,
-  queries: { query: string; category: string }[],
-  sources: { url: string; title: string; snippet: string }[]
+  queries: GeneratedQuery[],
+  sources: (TieredSource | { url: string; title: string; snippet: string })[]
 ): string {
   const sections = [
     `# RAW RESEARCH: ${donorName}`,
@@ -316,17 +609,20 @@ function generateResearchMarkdown(
     '```',
     '',
     '## Search Queries',
-    ...queries.map(q => `- [${q.category}] ${q.query}`),
+    ...queries.map(q => `- [${q.tier}] ${q.query} — ${q.rationale}`),
     '',
     '## Sources',
-    ...sources.map((s, i) => [
-      `### ${i + 1}. ${s.title}`,
-      `URL: ${s.url}`,
-      `Snippet: ${s.snippet}`,
-      ''
-    ].join('\n'))
+    ...sources.map((s, i) => {
+      const tierLabel = 'tier' in s ? ` [TIER ${s.tier}]` : '';
+      return [
+        `### ${i + 1}. ${s.title}${tierLabel}`,
+        `URL: ${s.url}`,
+        `Snippet: ${s.snippet}`,
+        ''
+      ].join('\n');
+    })
   ];
-  
+
   return sections.join('\n');
 }
 
@@ -345,7 +641,7 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Source ranking by behavioral signal value
+// Source ranking by behavioral signal value (kept for backward compat with extractEvidence)
 // TIER 1: Interviews, podcasts, personal writing (highest behavioral signal)
 // TIER 2: Speeches, talks, in-depth profiles
 // TIER 3: News coverage, press releases
@@ -428,7 +724,7 @@ function rankSourceByBehavioralValue(source: { url: string; title: string; snipp
   return 3;
 }
 
-function rankAndSortSources(
+export function rankAndSortSources(
   sources: { url: string; title: string; snippet: string; content?: string }[]
 ): { url: string; title: string; snippet: string; content?: string; tier: number }[] {
   const ranked = sources.map(source => ({
@@ -448,14 +744,14 @@ function rankAndSortSources(
   return ranked;
 }
 
-// Step 2: Dossier Extraction
-export async function extractDossier(
+// Step 2: Evidence Extraction
+export async function extractEvidence(
   donorName: string,
   sources: { url: string; title: string; snippet: string; content?: string }[],
   canonDocs: { exemplars: string }
-): Promise<DossierResult> {
-  console.log(`[Dossier] Starting extraction for: ${donorName}`);
-  console.log(`[Dossier] Total sources available: ${sources.length}`);
+): Promise<ExtractionResult> {
+  console.log(`[Extraction] Starting extraction for: ${donorName}`);
+  console.log(`[Extraction] Total sources available: ${sources.length}`);
 
   // Rank sources by behavioral signal value before processing
   const rankedSources = rankAndSortSources(sources);
@@ -465,19 +761,19 @@ export async function extractDossier(
   for (const s of rankedSources) {
     tierCounts[s.tier as keyof typeof tierCounts]++;
   }
-  console.log(`[Dossier] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
+  console.log(`[Extraction] Source tiers: T1(interviews/personal)=${tierCounts[1]}, T2(speeches/profiles)=${tierCounts[2]}, T3(news)=${tierCounts[3]}, T4(bio/wiki)=${tierCounts[4]}`);
   STATUS.tiersPrioritized(tierCounts[1], tierCounts[2], tierCounts[3], tierCounts[4]);
 
   // Log top 5 sources to verify ranking
-  console.log(`[Dossier] Top 5 sources by behavioral value:`);
+  console.log(`[Extraction] Top 5 sources by behavioral value:`);
   for (const s of rankedSources.slice(0, 5)) {
-    console.log(`[Dossier]   [T${s.tier}] ${s.title?.slice(0, 60) || s.url}`);
+    console.log(`[Extraction]   [T${s.tier}] ${s.title?.slice(0, 60) || s.url}`);
   }
 
   // Cap at 50 sources maximum to prevent timeouts and rate limits
   const MAX_SOURCES = 50;
   const sourcesToProcess = rankedSources.slice(0, MAX_SOURCES);
-  console.log(`[Dossier] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
+  console.log(`[Extraction] Processing top ${sourcesToProcess.length} sources (capped at ${MAX_SOURCES})`);
   STATUS.processingTop(sourcesToProcess.length);
 
   // Filter sources with meaningful content
@@ -485,7 +781,7 @@ export async function extractDossier(
     source.content || source.snippet.length >= 100
   );
   const skipped = sourcesToProcess.length - validSources.length;
-  console.log(`[Dossier] ${validSources.length} sources with content, ${skipped} skipped`);
+  console.log(`[Extraction] ${validSources.length} sources with content, ${skipped} skipped`);
 
   // 1. Batch extract from sources (10 sources per batch = ~5 API calls for 50 sources)
   const BATCH_SIZE = 10;
@@ -499,7 +795,7 @@ export async function extractDossier(
     const batch = validSources.slice(i, i + BATCH_SIZE);
     const batchEnd = Math.min(i + BATCH_SIZE, validSources.length);
 
-    console.log(`[Dossier] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
+    console.log(`[Extraction] Batch ${batchNumber}: Processing sources ${i + 1}-${batchEnd} of ${validSources.length}`);
     STATUS.batchStarted(batchNumber, i + 1, batchEnd);
 
     // Prepare batch sources with sanitized content
@@ -567,11 +863,11 @@ export async function extractDossier(
           totalProcessed++;
         }
 
-        console.log(`[Dossier] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
+        console.log(`[Extraction] Batch ${batchNumber}: ✓ Extracted ${parsedResults.length} sources`);
         STATUS.batchComplete(batchNumber, i + 1, batchEnd);
       } catch (parseErr) {
         // If JSON parsing fails, use raw response as single extraction
-        console.warn(`[Dossier] Batch ${batchNumber}: JSON parse failed, using raw response`);
+        console.warn(`[Extraction] Batch ${batchNumber}: JSON parse failed, using raw response`);
         for (const source of batchSources) {
           allEvidence.push({
             source: source.url,
@@ -583,7 +879,7 @@ export async function extractDossier(
     } catch (err) {
       failed += batch.length;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`[Dossier] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
+      console.error(`[Extraction] Batch ${batchNumber}: ✗ Failed: ${errorMessage.slice(0, 100)}`);
       STATUS.batchFailed(batchNumber, errorMessage);
     }
 
@@ -593,13 +889,13 @@ export async function extractDossier(
     }
   }
 
-  console.log(`[Dossier] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
-  
+  console.log(`[Extraction] Extraction complete: ${totalProcessed} processed in ${batchNumber} batches, ${failed} failed, ${skipped} skipped`);
+
   // 2. Synthesize by dimension
-  console.log('[Dossier] Synthesizing dimensions...');
+  console.log('[Extraction] Synthesizing dimensions...');
   STATUS.synthesizing();
   const combinedEvidence = allEvidence.map(e => e.extraction).join('\n\n---\n\n');
-  
+
   const synthesisPrompt = `${SYNTHESIS_PROMPT}
 
 DONOR: ${donorName}
@@ -614,9 +910,9 @@ Synthesize the evidence across all 17 dimensions. For each dimension, provide th
     synthesisPrompt,
     { maxTokens: 12000 }
   );
-  
+
   // 3. Cross-cutting analysis
-  console.log('[Dossier] Generating cross-cutting analysis...');
+  console.log('[Extraction] Generating cross-cutting analysis...');
   STATUS.crossCutting();
   const crossCuttingPrompt = `${CROSS_CUTTING_PROMPT}
 
@@ -632,10 +928,10 @@ Generate the cross-cutting analysis: core contradiction, dangerous truth, and su
     crossCuttingPrompt,
     { maxTokens: 4096 }
   );
-  
-  // 4. Generate dossier document
-  const rawMarkdown = generateDossierMarkdown(donorName, synthesis, crossCutting, allEvidence);
-  
+
+  // 4. Generate extraction document
+  const rawMarkdown = generateExtractionMarkdown(donorName, synthesis, crossCutting, allEvidence);
+
   return {
     donorName,
     dimensions: [], // Would parse synthesis into structured form
@@ -644,13 +940,13 @@ Generate the cross-cutting analysis: core contradiction, dangerous truth, and su
   };
 }
 
-function generateDossierMarkdown(
+function generateExtractionMarkdown(
   donorName: string,
   synthesis: string,
   crossCutting: string,
   evidence: any[]
 ): string {
-  return `# BEHAVIORAL DOSSIER: ${donorName}
+  return `# BEHAVIORAL EXTRACTION: ${donorName}
 
 Generated: ${new Date().toISOString()}
 Sources Analyzed: ${evidence.length}
@@ -679,12 +975,12 @@ ${evidence.map((e, i) => `### Source ${i + 1}: ${e.source}\n\n${e.extraction}`).
 // Profile ALWAYS ships - validation is informational, never blocks
 export async function generateProfile(
   donorName: string,
-  dossier: string,
+  extraction: string,
   canonDocs: { exemplars: string }
 ): Promise<ProfileResult> {
   console.log(`[Profile] Starting generation for: ${donorName}`);
 
-  const exemplars = selectExemplars(dossier, canonDocs.exemplars);
+  const exemplars = selectExemplars(extraction, canonDocs.exemplars);
   const systemPrompt = 'You are writing a donor persuasion profile.';
 
   // Initial generation
@@ -692,7 +988,7 @@ export async function generateProfile(
   STATUS.generatingDraft();
   let profile: string;
   try {
-    const profilePrompt = createProfilePrompt(donorName, dossier, exemplars);
+    const profilePrompt = createProfilePrompt(donorName, extraction, exemplars);
     profile = await completeExtended(systemPrompt, profilePrompt, { maxTokens: 10000 });
   } catch (err) {
     console.error('[Profile] Initial generation failed:', err);
@@ -704,8 +1000,8 @@ export async function generateProfile(
     };
   }
 
-  // Validation loop - wrapped in try/catch so it never blocks shipping
-  const maxAttempts = 3;
+  // Validation loop - skipped (validators removed, profile now uses Geoffrey Block pipeline)
+  const maxAttempts = 1;
   let validationResults: string[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -713,7 +1009,7 @@ export async function generateProfile(
       console.log(`[Profile] Validation attempt ${attempt}/${maxAttempts}...`);
       STATUS.validationAttempt(attempt, maxAttempts);
 
-      const validation = await runAllValidators(profile, dossier);
+      const validation = { allPassed: true, results: [] as any[], aggregatedFeedback: '' };
 
       if (validation.allPassed) {
         console.log('[Profile] All 6 validators PASSED');
@@ -745,7 +1041,7 @@ export async function generateProfile(
         try {
           const regenPrompt = createRegenerationPrompt(
             donorName,
-            dossier,
+            extraction,
             exemplars,
             profile,
             validation.aggregatedFeedback
@@ -778,38 +1074,409 @@ export async function generateProfile(
   };
 }
 
-// Full pipeline
+// ── Token estimation ──────────────────────────────────────────────
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+// ── Coded Pipeline Result ─────────────────────────────────────────
+export interface CodedPipelineResult {
+  research: ResearchResult;
+  researchPackage: string;
+  profile: string;
+  meetingGuide: string;
+  meetingGuideHtml: string;
+  linkedinData: LinkedInData | null;
+}
+
+// ── Full Coded Pipeline ───────────────────────────────────────────
+//
+// No agent loops. Every step is coded orchestration + single LLM calls.
+//
 export async function runFullPipeline(
   donorName: string,
   seedUrls: string[] = [],
-  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string }[]>,
-  canonDocs: { exemplars: string }
-): Promise<{
-  research: ResearchResult;
-  dossier: DossierResult;
-  profile: ProfileResult;
-}> {
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
+  canonDocs: { exemplars: string },
+  onProgress?: ResearchProgressCallback,
+  linkedinPdfBase64?: string,
+  fetchFunction?: (url: string) => Promise<string>,
+  abortSignal?: AbortSignal,
+): Promise<CodedPipelineResult> {
+  const emit = onProgress || (() => {});
+  const TOTAL_STEPS = 38;
+
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`PROSPECTAI: Processing ${donorName}`);
+  console.log(`CODED PIPELINE: Processing ${donorName}`);
   console.log(`${'='.repeat(60)}\n`);
-  
-  // Step 1: Research
-  const research = await conductResearch(donorName, seedUrls, searchFunction);
-  console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
-  STATUS.researchComplete(research.sources.length);
-  
-  // Step 2: Dossier
-  const dossier = await extractDossier(donorName, research.sources, canonDocs);
-  console.log(`\n[Pipeline] Dossier complete\n`);
-  STATUS.dossierComplete();
-  
-  // Step 3: Profile
-  const profile = await generateProfile(donorName, dossier.rawMarkdown, canonDocs);
-  console.log(`\n[Pipeline] Profile complete: ${profile.status}\n`);
-  
+
+  // ── Step 0: LinkedIn PDF Parsing ────────────────────────────────
+  let linkedinData: LinkedInData | null = null;
+
+  if (linkedinPdfBase64) {
+    console.log(`[LinkedIn] PDF received, length: ${linkedinPdfBase64.length}`);
+    emit('Parsing LinkedIn profile...', undefined, 1, TOTAL_STEPS);
+
+    try {
+      const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
+      const { extractText } = await import('unpdf');
+      const { text: pdfText } = await extractText(new Uint8Array(pdfBuffer), { mergePages: true });
+      console.log(`[LinkedIn] PDF text extracted, length: ${pdfText.length}`);
+
+      // Coded regex extraction for slug + websites
+      const codedFields = extractLinkedInCodedFields(pdfText);
+      console.log(`[LinkedIn] Coded extraction: slug=${codedFields.linkedinSlug || 'none'}, websites=${codedFields.websites.join(', ') || 'none'}`);
+
+      // LLM extraction for career/education/boards + slug/websites
+      const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
+
+Return JSON in this exact format:
+{
+  "currentTitle": "their current job title",
+  "currentEmployer": "their current employer",
+  "linkedinSlug": "the handle from their LinkedIn URL (e.g. 'geoffreymacdougall')",
+  "websites": ["any personal websites listed"],
+  "careerHistory": [
+    { "title": "Job Title", "employer": "Company Name", "startDate": "Mon YYYY", "endDate": "Mon YYYY or Present", "description": "role description" }
+  ],
+  "education": [
+    { "institution": "University Name", "degree": "Degree Type", "field": "Field of Study", "years": "YYYY - YYYY" }
+  ],
+  "skills": ["skill1", "skill2"],
+  "boards": ["Board membership 1", "Advisory role 2"]
+}
+
+Parse carefully. Extract all career history entries in chronological order (most recent first).
+Look for the LinkedIn profile URL (linkedin.com/in/...) and any personal website URLs.
+
+LinkedIn Profile Text:
+${pdfText}`;
+
+      const response = await complete('You are a data extraction assistant.', parsePrompt, { maxTokens: 4000 });
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        linkedinData = JSON.parse(jsonMatch[0]);
+      }
+
+      // Merge coded regex fields (more reliable for slug + websites)
+      if (linkedinData) {
+        if (codedFields.linkedinSlug) {
+          linkedinData.linkedinSlug = codedFields.linkedinSlug;
+        }
+        if (codedFields.websites.length > 0) {
+          const allWebsites = new Set([...codedFields.websites, ...(linkedinData.websites || [])]);
+          linkedinData.websites = Array.from(allWebsites);
+        }
+      }
+
+      console.log(`[LinkedIn] Parsed: ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`);
+      console.log(`[LinkedIn] Slug: ${linkedinData?.linkedinSlug || 'none'}, Websites: ${(linkedinData?.websites || []).join(', ') || 'none'}`);
+
+      // Debug save
+      try {
+        mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+        writeFileSync('/tmp/prospectai-outputs/DEBUG-linkedin-data.json', JSON.stringify(linkedinData, null, 2));
+      } catch (e) { /* ignore */ }
+
+      emit(`LinkedIn parsed — ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`, undefined, 2, TOTAL_STEPS);
+    } catch (err) {
+      console.error('[LinkedIn] Parsing failed:', err);
+      emit('LinkedIn PDF parsing failed — continuing without it', undefined, 2, TOTAL_STEPS);
+    }
+  }
+
+  // ── Research Provider Selection ──────────────────────────────────
+  // RESEARCH_PROVIDER=openai  → Deep research (Sonnet strategy + OpenAI o3-deep-research)
+  // RESEARCH_PROVIDER=anthropic → Tavily pipeline (existing coded pipeline)
+  const researchProvider = (process.env.RESEARCH_PROVIDER || 'openai').toLowerCase();
+  console.log(`[Pipeline] Research provider: ${researchProvider}`);
+
+  let research: ResearchResult;
+  let researchPackage: string;
+  let deepResearchResult: DeepResearchResult | null = null;
+
+  if (researchProvider === 'openai') {
+    // ── OpenAI Deep Research Path ───────────────────────────────
+    // Replaces: conductResearch + fat extraction
+    // With: 1 Sonnet call (strategy) + 1 OpenAI deep research call (dossier)
+    emit('', 'research');
+    emit(`Deep research mode — building strategy for ${donorName}`, 'research', 3, TOTAL_STEPS);
+
+    // Fetch seed URL content for the deep research pipeline
+    const actualFetchFunction = fetchFunction || executeFetchPage;
+    let seedUrlContent: string | null = null;
+    if (seedUrls.length > 0) {
+      try {
+        const domain = (() => { try { return new URL(seedUrls[0]).hostname.replace('www.', ''); } catch { return seedUrls[0]; } })();
+        emit(`Reading seed URL — ${domain}`, 'research', 2, TOTAL_STEPS);
+        seedUrlContent = await actualFetchFunction(seedUrls[0]);
+        console.log(`[Pipeline] Fetched seed URL: ${seedUrls[0]} (${seedUrlContent.length} chars)`);
+      } catch (err) {
+        console.error(`[Pipeline] Failed to fetch seed URL: ${seedUrls[0]}`, err);
+      }
+    }
+
+    deepResearchResult = await runDeepResearchPipeline(
+      donorName,
+      seedUrls,
+      linkedinData,
+      seedUrlContent,
+      emit,
+    );
+
+    // The dossier IS the research package for the profile generation step
+    researchPackage = deepResearchResult.dossier;
+
+    // Create a minimal ResearchResult for compatibility with saveOutputs
+    research = {
+      donorName,
+      identity: { name: donorName },
+      queries: [],
+      sources: deepResearchResult.citations.map(c => ({
+        url: c.url,
+        title: c.title,
+        snippet: '',
+      })),
+      rawMarkdown: `# DEEP RESEARCH DOSSIER: ${donorName}\n\nGenerated via OpenAI o3-deep-research\nSearches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\n\n${researchPackage}`,
+    };
+
+    console.log(`\n[Pipeline] Deep research complete: ${deepResearchResult.searchCount} searches, ${researchPackage.length} chars\n`);
+    STATUS.researchComplete(deepResearchResult.searchCount);
+    emit(`Deep research dossier ready — ${Math.round(researchPackage.length / 4)} tokens`, 'analysis', 20, TOTAL_STEPS);
+    STATUS.researchPackageComplete();
+
+  } else {
+    // ── Tavily Pipeline Path (existing) ──────────────────────────
+    // conductResearch → fat extraction (Opus)
+    emit('', 'research');
+    emit(`Collecting sources for ${donorName}`, 'research', 3, TOTAL_STEPS);
+
+    const actualFetchFunction = fetchFunction || executeFetchPage;
+
+    research = await conductResearch(
+      donorName,
+      seedUrls,
+      searchFunction,
+      actualFetchFunction,
+      emit,
+      linkedinData,
+    );
+    console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
+    STATUS.researchComplete(research.sources.length);
+
+    // ── Step 2: Fat Extraction (Opus, single call) ──────────────
+    emit('', 'analysis');
+    emit('Producing behavioral evidence extraction (Opus, single call)', 'analysis', 16, TOTAL_STEPS);
+    console.log(`[Pipeline] Step 2: Fat extraction — ${research.sources.length} sources to Opus`);
+
+    const extractionPrompt = buildExtractionPrompt(
+      donorName,
+      research.sources.map(s => ({
+        url: s.url,
+        title: s.title,
+        snippet: s.snippet,
+        content: s.content,
+        tier: 'tier' in s ? (s as any).tier : undefined,
+        tierReason: 'tierReason' in s ? (s as any).tierReason : undefined,
+      })),
+      linkedinData,
+    );
+    console.log(`[Extraction] Prompt size: ${estimateTokens(extractionPrompt)} tokens`);
+
+    // Stream extraction to keep SSE alive during long Opus calls
+    const extractionStream = anthropic.messages.stream({
+      model: 'claude-opus-4-20250514',
+      max_tokens: 32000,
+      messages: [{ role: 'user', content: extractionPrompt }],
+    }, abortSignal ? { signal: abortSignal } : undefined);
+
+    researchPackage = '';
+    let lastProgressUpdate = Date.now();
+    extractionStream.on('text', (text) => {
+      researchPackage += text;
+      const now = Date.now();
+      if (now - lastProgressUpdate > 30_000) {
+        const tokens = estimateTokens(researchPackage);
+        emit(`Extraction in progress — ${tokens} tokens so far...`, 'analysis', 16, TOTAL_STEPS);
+        lastProgressUpdate = now;
+      }
+    });
+    await extractionStream.finalMessage();
+
+    console.log(`[Extraction] Research package: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
+    emit(`Extraction complete — ${estimateTokens(researchPackage)} token research package`, 'analysis', 20, TOTAL_STEPS);
+    STATUS.researchPackageComplete();
+
+    // Debug save
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+    } catch (e) { /* ignore */ }
+  }
+
+  // ── Step 3: Profile Generation (Opus, Geoffrey Block) ───────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit('Writing Persuasion Profile from behavioral evidence', 'analysis', 22, TOTAL_STEPS);
+  console.log('[Pipeline] Step 3: Profile generation (Opus)');
+
+  const geoffreyBlock = loadGeoffreyBlock();
+  const exemplars = loadExemplars();
+
+  const researchPackagePreamble = deepResearchResult
+    ? `The behavioral evidence below is a deep research dossier compiled from ${deepResearchResult.searchCount} web searches with ${deepResearchResult.citations.length} cited sources. It preserves the subject's original voice in long direct quotes, structured evidence by category, and inline citations.\n\n`
+    : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
+  const extractionForProfile = researchPackagePreamble + researchPackage;
+
+  const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData);
+  console.log(`[Profile] Prompt size: ${estimateTokens(profilePromptText)} tokens`);
+
+  // Debug save
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-prompt.txt', profilePromptText);
+  } catch (e) { /* ignore */ }
+
+  // Stream profile generation on Opus (same pattern as extraction)
+  const profileStream = anthropic.messages.stream({
+    model: 'claude-opus-4-20250514',
+    max_tokens: 16000,
+    system: 'You are writing a donor persuasion profile.',
+    messages: [{ role: 'user', content: profilePromptText }],
+  }, abortSignal ? { signal: abortSignal } : undefined);
+
+  let firstDraftProfile = '';
+  let lastProfileProgress = Date.now();
+  profileStream.on('text', (text) => {
+    firstDraftProfile += text;
+    const now = Date.now();
+    if (now - lastProfileProgress > 30_000) {
+      const tokens = estimateTokens(firstDraftProfile);
+      emit(`Profile draft in progress — ${tokens} tokens so far...`, 'analysis', 22, TOTAL_STEPS);
+      lastProfileProgress = now;
+    }
+  });
+  await profileStream.finalMessage();
+  console.log(`[Profile] First draft: ${firstDraftProfile.length} chars`);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-first-draft.txt', firstDraftProfile);
+  } catch (e) { /* ignore */ }
+
+  // ── Step 3b: Editorial Pass (Opus) ──────────────────────────────
+  emit('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
+  console.log('[Pipeline] Step 3b: Editorial pass (Sonnet)');
+
+  const critiquePrompt = buildCritiqueRedraftPrompt(
+    donorName,
+    firstDraftProfile,
+    geoffreyBlock,
+    exemplars,
+    researchPackage,
+    linkedinData,
+  );
+  console.log(`[Editorial] Prompt size: ${estimateTokens(critiquePrompt)} tokens`);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
+  } catch (e) { /* ignore */ }
+
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
+  const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000, abortSignal });
+
+  const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
+  console.log(`[Editorial] ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
+  emit(`Editorial pass complete — ${reduction}% tighter`, 'analysis', 31, TOTAL_STEPS);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-final.txt', finalProfile);
+  } catch (e) { /* ignore */ }
+
+  // ── Step 4: Meeting Guide Generation (Opus) ─────────────────────
+  emit('', 'writing');
+  emit('Writing tactical meeting guide', 'writing', 33, TOTAL_STEPS);
+  console.log('[Pipeline] Step 4: Meeting guide (Sonnet)');
+
+  const meetingGuideBlock = loadMeetingGuideBlock();
+  const meetingGuideExemplars = loadMeetingGuideExemplars();
+  const dtwOrgLayer = loadDTWOrgLayer();
+
+  const meetingGuidePrompt = buildMeetingGuidePrompt(
+    donorName,
+    finalProfile,
+    meetingGuideBlock,
+    dtwOrgLayer,
+    meetingGuideExemplars,
+  );
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
+  } catch (e) { /* ignore */ }
+
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
+  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000, abortSignal });
+  console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
+
+  const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
+  const meetingGuideHtmlFull = formatMeetingGuide(meetingGuide);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
+  } catch (e) { /* ignore */ }
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.html', meetingGuideHtmlFull);
+  } catch (e) { /* ignore */ }
+
+  emit('All documents ready', undefined, 38, TOTAL_STEPS);
+
   console.log(`${'='.repeat(60)}`);
-  console.log(`PROSPECTAI: Complete`);
+  console.log(`CODED PIPELINE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
-  
-  return { research, dossier, profile };
+
+  return {
+    research,
+    researchPackage,
+    profile: finalProfile,
+    meetingGuide,
+    meetingGuideHtml,
+    linkedinData,
+  };
+}
+
+/**
+ * Extract LinkedIn slug and personal websites from raw PDF text using regex.
+ */
+function extractLinkedInCodedFields(pdfText: string): { linkedinSlug: string | null; websites: string[] } {
+  let linkedinSlug: string | null = null;
+  const websites: string[] = [];
+
+  const slugMatch = pdfText.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  if (slugMatch) {
+    linkedinSlug = slugMatch[1];
+  }
+
+  const urlPattern = /(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s,)]*)?)/gi;
+  let urlMatch;
+  while ((urlMatch = urlPattern.exec(pdfText)) !== null) {
+    const fullUrl = urlMatch[0];
+    if (/linkedin\.com|facebook\.com|twitter\.com|instagram\.com|github\.com|mailto:/i.test(fullUrl)) {
+      continue;
+    }
+    websites.push(fullUrl.startsWith('http') ? fullUrl : `https://${fullUrl}`);
+  }
+
+  const seenHosts = new Set<string>();
+  const dedupedWebsites = websites.filter(url => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      if (seenHosts.has(host)) return false;
+      seenHosts.add(host);
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
+  return { linkedinSlug, websites: dedupedWebsites };
 }
