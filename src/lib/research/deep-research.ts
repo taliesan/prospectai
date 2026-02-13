@@ -492,11 +492,18 @@ async function executeDeepResearch(
     background: true,
   } as any));
 
-  // Poll every 10 seconds — abort-aware
+  // Poll every 10 seconds — abort-aware, max 30 minutes
+  const MAX_POLL_DURATION_MS = 30 * 60 * 1000;
   let result: any = response;
   let lastSearchCount = 0;
 
   while (result.status !== 'completed' && result.status !== 'failed') {
+    // Guard against infinite polling
+    const elapsed = Date.now() - startTime;
+    if (elapsed > MAX_POLL_DURATION_MS) {
+      console.error(`[DeepResearch] Polling timed out after ${Math.round(elapsed / 60000)} minutes for response ${result.id}`);
+      throw new Error(`Deep research timed out after ${Math.round(elapsed / 60000)} minutes (status: ${result.status})`);
+    }
     // Check abort before sleeping
     if (abortSignal?.aborted) {
       console.log(`[DeepResearch] Abort detected, stopping polling for response ${result.id}`);
