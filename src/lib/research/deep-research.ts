@@ -235,7 +235,7 @@ async function executeDeepResearch(
       },
     ],
     tools: [{ type: 'web_search_preview' }],
-    reasoning: { effort: 'high' },
+    reasoning: { effort: 'medium' },
     background: true,
     store: true,
   } as any);
