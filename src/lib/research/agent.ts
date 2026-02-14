@@ -519,11 +519,13 @@ export async function runPhasedResearch(
   emit('Screening and classifying sources...', 'research', 13, TOTAL_STEPS);
   console.log(`[Research] Running screening pipeline on ${mergedSources.length} sources`);
 
-  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+  const screeningResult = await runScreeningPipeline(
     mergedSources,
     subjectName,
     linkedinData,
   );
+  const screenedSources = screeningResult.survivingUrls;
+  const screeningStats = screeningResult.stats;
 
   console.log(`[Research] Screening: ${mergedSources.length} → ${screenedSources.length} sources`);
   console.log(`[Research] Screening stats: ${JSON.stringify(screeningStats)}`);

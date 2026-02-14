@@ -10,7 +10,7 @@ SITUATE WITH FACTS, NOT INTERPRETATION. For each entry, describe the factual sit
 
 NOTE THE SOURCE SHAPE. One sentence: was this the thesis of a long essay, a throwaway aside, a live interview answer, a prepared talk? The writer needs to know how much weight the quote can bear.
 
-USE TIER LABELS. Sources are labeled Tier 1 (subject's own voice), Tier 2 (third-party with quotes or behavioral descriptions), or Tier 3 (institutional/background). Invest extraction effort proportionally. A Tier 1 blog post deserves 300-token entries with long quotes. A Tier 3 org bio page might deserve a single factual sentence or nothing at all. When evidence conflicts between tiers, Tier 1 wins — the subject's own account of their values or decisions outweighs a third party's description.
+USE TIER LABELS. Sources are labeled Tier 1 (podcast/interview/video — unscripted voice), Tier 2 (press profile, journalist coverage), Tier 3 (self-authored — op-eds, blog, LinkedIn posts), Tier 4 (institutional evidence during tenure — inferential), or Tier 5 (structural records — 990s, filings). Invest extraction effort proportionally. Tier 1-2 sources deserve 300-token entries with long quotes. Tier 4-5 sources might deserve a single factual sentence or nothing at all. When evidence conflicts between tiers, Tier 1 wins. For Tier 4 institutional inference sources, use hedged language — "During their tenure as [role], the organization..." rather than attributing actions directly.
 
 PRIORITIZE FIRST-PERSON VOICE. Blog posts, interviews, essays, talks where the subject speaks in their own words are worth far more than institutional bios or press releases that describe them. If a dimension has both, lead with own-voice material.
 
@@ -37,16 +37,16 @@ Surrounding: [The sentences before and after the key quote. The paragraph that s
 
 Not all dimensions deserve equal space. Invest where the evidence is richest.
 
-HIGH-INVESTMENT dimensions (~1,500-2,000 tokens each, 4-6 entries):
+HIGH-INVESTMENT dimensions (~1,500-2,000 tokens each, 6-8 entries):
 - DECISION_MAKING
-- VALUES_HIERARCHY
-- COMMUNICATION_STYLE
-- CONTRADICTION_PATTERNS
-- IDENTITY_SELF_CONCEPT
-- COMMITMENT_PATTERNS
-
-MEDIUM-INVESTMENT dimensions (~1,000-1,200 tokens each, 3-4 entries):
 - TRUST_CALIBRATION
+- COMMUNICATION_STYLE
+- IDENTITY_SELF_CONCEPT
+- VALUES_HIERARCHY
+- CONTRADICTION_PATTERNS
+- POWER_ANALYSIS
+
+MEDIUM-INVESTMENT dimensions (~1,000-1,200 tokens each, 4-6 entries):
 - INFLUENCE_SUSCEPTIBILITY
 - BOUNDARY_CONDITIONS
 - EMOTIONAL_TRIGGERS
@@ -54,6 +54,7 @@ MEDIUM-INVESTMENT dimensions (~1,000-1,200 tokens each, 3-4 entries):
 - RESOURCE_PHILOSOPHY
 - TIME_ORIENTATION
 - RELATIONSHIP_PATTERNS
+- COMMITMENT_PATTERNS
 
 LOW-INVESTMENT dimensions (~400-800 tokens each, 1-3 entries):
 - LEARNING_STYLE
@@ -69,7 +70,7 @@ LOW-INVESTMENT dimensions (~400-800 tokens each, 1-3 entries):
 
 ---
 
-## THE 24 DIMENSIONS
+## THE 25 DIMENSIONS
 
 ### 1. DECISION_MAKING
 How they evaluate proposals and opportunities. Speed of decisions, gut vs analysis, what triggers yes/no.
@@ -142,6 +143,9 @@ What brings them back after withdrawal. Reset mechanisms.
 
 ### 24. CONDITIONAL_BEHAVIORAL_FORKS
 When X happens, they do Y. When not-X, they do Z. Both branches for every pattern.
+
+### 25. POWER_ANALYSIS
+How they read, navigate, and deploy power: structural position, coalition dynamics, information asymmetry, their implicit theory of how institutions actually work vs. how they're supposed to work, who they think the real decision-makers are, and how they position themselves within power structures.
 
 ---
 
@@ -232,6 +236,9 @@ Your target output is 25,000-30,000 tokens. This is intentionally large. The pro
 [entries]
 
 ### 24. CONDITIONAL_BEHAVIORAL_FORKS
+[entries]
+
+### 25. POWER_ANALYSIS
 [entries]
 `;
 

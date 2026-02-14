@@ -50,8 +50,13 @@ import {
 } from './research/tiering';
 
 // Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
-import { runDeepResearchPipeline, DeepResearchResult } from './research/deep-research';
+import { runDeepResearchPipeline, runDeepResearchV5, DeepResearchResult, validateResearchPackage } from './research/deep-research';
 import type { ActivityCallback } from './job-store';
+
+// v5 pipeline modules
+import { deduplicateSources } from './research/dedup';
+import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch } from './prompts/source-scoring';
+import { parseQueryGenerationResponse, generateSupplementaryQueryPrompt, type CategorizedQuery } from './prompts/research';
 
 const anthropic = new Anthropic();
 
@@ -260,7 +265,7 @@ Extract the identity signals for this person.`;
     queries = analyticalQueries.map(q => ({
       query: q.query,
       tier: categoryToTier(q.category),
-      rationale: `[Cat ${q.category}] ${q.hypothesis}`,
+      rationale: `[Cat ${q.category}] ${q.rationale}`,
     }));
 
     // Log category distribution
@@ -325,8 +330,8 @@ Extract the identity signals for this person.`;
         const results = await searchFunction(q.query);
 
         // Extract analytical category from rationale (format: "[Cat X] hypothesis")
-        const catMatch = q.rationale.match(/^\[Cat ([A-E])\]/);
-        const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' | 'D' | 'E' : undefined;
+        const catMatch = q.rationale.match(/^\[Cat ([A-C])\]/);
+        const queryCategory = catMatch ? catMatch[1] as 'A' | 'B' | 'C' : undefined;
 
         for (const r of results) {
           allSources.push({
@@ -381,13 +386,15 @@ Extract the identity signals for this person.`;
   console.log(`[Research] ${tailoredUrls.size} URLs came from tailored queries`);
   emit(`Screening ${uniqueSources.length} sources for behavioral evidence`, 'research', 11, TOTAL);
 
-  const { screened: screenedSources, stats: screeningStats } = await runScreeningPipeline(
+  const screeningResult = await runScreeningPipeline(
     uniqueSources,
     donorName,
     identity
   );
+  const screenedSources = screeningResult.survivingUrls;
+  const screeningStats = screeningResult.stats;
 
-  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.llmRejected} LLM-rejected`, 'research', 12, TOTAL);
+  emit(`Screened: ${screeningStats.autoRejected} auto-rejected, ${screeningStats.pass1Killed + screeningStats.pass2Killed} LLM-rejected`, 'research', 12, TOTAL);
 
   // ── Bulk fetch full content for SCREENED sources only ─────────────
   // Only fetch sources that passed screening and lack content (saves 100+ API calls)
@@ -437,8 +444,8 @@ Extract the identity signals for this person.`;
   console.log(`[Research] Tavily queries: ${queries.length}`);
   console.log(`[Research] Raw sources collected: ${uniqueSources.length}`);
   console.log(`[Screening] Automatic rejections: ${screeningStats.autoRejected}`);
-  console.log(`[Screening] LLM rejections: ${screeningStats.llmRejected}`);
-  console.log(`[Screening] Deduplication: ${screeningStats.beforeDedup} → ${screeningStats.afterDedup}`);
+  console.log(`[Screening] LLM rejections: ${screeningStats.pass1Killed + screeningStats.pass2Killed}`);
+  console.log(`[Screening] Surviving: ${screeningStats.surviving}`);
   console.log(`[Tiering] Tier 1: ${finalTier1}, Tier 2: ${finalTier2}, Tier 3: ${finalTier3}`);
   console.log(`[Targets] Final selection: ${finalSources.length} sources`);
   if (evidenceWarnings.length > 0) {
@@ -1188,8 +1195,8 @@ ${pdfText}`;
   }
 
   // ── Research Provider Selection ──────────────────────────────────
-  // RESEARCH_PROVIDER=openai  → Deep research (Sonnet strategy + OpenAI o3-deep-research)
-  // RESEARCH_PROVIDER=anthropic → Tavily pipeline (existing coded pipeline)
+  // RESEARCH_PROVIDER=openai    → v5 hybrid pipeline (Tavily breadth + Deep Research synthesis)
+  // RESEARCH_PROVIDER=anthropic → Legacy Tavily pipeline (existing coded pipeline)
   const researchProvider = (process.env.RESEARCH_PROVIDER || 'openai').toLowerCase();
   console.log(`[Pipeline] Research provider: ${researchProvider}`);
 
@@ -1198,13 +1205,19 @@ ${pdfText}`;
   let deepResearchResult: DeepResearchResult | null = null;
 
   if (researchProvider === 'openai') {
-    // ── OpenAI Deep Research Path ───────────────────────────────
-    // Replaces: conductResearch + fat extraction
-    // With: 1 Sonnet call (strategy) + 1 OpenAI deep research call (dossier)
+    // ═══════════════════════════════════════════════════════════════
+    // v5 HYBRID PIPELINE: Stages 1→2→3→4→5→6
+    //
+    // Stage 1: Query Generation (Sonnet)
+    // Stage 2: Search Execution (Tavily)
+    // Stage 3: Screening & Attribution (Sonnet)
+    // Stage 4: Content Fetch + Dedup (Tavily Extract)
+    // Stage 5: Dimension Scoring & Selection (Sonnet)
+    // Stage 6: Research Synthesis (o3-deep-research)
+    // ═══════════════════════════════════════════════════════════════
     emit('', 'research');
-    emit(`Deep research mode — building strategy for ${donorName}`, 'research', 3, TOTAL_STEPS);
 
-    // Fetch seed URL content for the deep research pipeline
+    // ── Fetch seed URL content ────────────────────────────────────
     const actualFetchFunction = fetchFunction || executeFetchPage;
     let seedUrlContent: string | null = null;
     if (seedUrls.length > 0) {
@@ -1218,40 +1231,237 @@ ${pdfText}`;
       }
     }
 
-    deepResearchResult = await runDeepResearchPipeline(
+    // ── Stage 0: Identity extraction ─────────────────────────────
+    let identity: any = { name: donorName, currentOrg: '', currentRole: '' };
+    if (seedUrlContent) {
+      emit('Identifying role, org, and key affiliations', 'research', 3, TOTAL_STEPS);
+      try {
+        const identityResponse = await complete('You are a research assistant.', `${IDENTITY_EXTRACTION_PROMPT}\n\nDonor Name: ${donorName}\n\nPAGE CONTENT:\n${seedUrlContent.slice(0, 15000)}\n\nExtract the identity signals for this person.`);
+        const jsonMatch = identityResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          identity = JSON.parse(jsonMatch[0]);
+          identity.name = identity.fullName || donorName;
+        }
+      } catch (err) {
+        console.error('[Pipeline] Identity extraction failed:', err);
+      }
+    }
+    // Enrich with LinkedIn data
+    if (linkedinData) {
+      identity.currentRole = linkedinData.currentTitle || identity.currentRole;
+      identity.currentOrg = linkedinData.currentEmployer || identity.currentOrg;
+      if (linkedinData.careerHistory?.length) {
+        identity.pastRoles = linkedinData.careerHistory.map(j => ({
+          role: j.title, org: j.employer, years: `${j.startDate} - ${j.endDate}`
+        }));
+      }
+      if (linkedinData.education?.length) {
+        identity.education = linkedinData.education.map(e => ({
+          school: e.institution, degree: e.degree, year: e.years
+        }));
+      }
+      if (linkedinData.boards?.length) {
+        identity.affiliations = [...(identity.affiliations || []), ...linkedinData.boards];
+      }
+    }
+
+    // ── Stage 1: Query Generation ────────────────────────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Designing search strategy for ${donorName}`, 'research', 4, TOTAL_STEPS);
+    console.log('[Stage 1] Generating search queries');
+
+    const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData);
+    const queryResponse = await complete('You are a research strategist designing search queries for behavioral evidence.', queryPrompt);
+    const categorizedQueries = parseQueryGenerationResponse(queryResponse);
+
+    const catCounts: Record<string, number> = {};
+    for (const q of categorizedQueries) {
+      catCounts[q.category] = (catCounts[q.category] || 0) + 1;
+    }
+    console.log(`[Stage 1] Generated ${categorizedQueries.length} queries: A=${catCounts['A'] || 0}, B=${catCounts['B'] || 0}, C=${catCounts['C'] || 0}`);
+    emit(`${categorizedQueries.length} search queries designed (A:${catCounts['A'] || 0}, B:${catCounts['B'] || 0}, C:${catCounts['C'] || 0})`, 'research', 5, TOTAL_STEPS);
+
+    // ── Stage 2: Search Execution ────────────────────────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Executing ${categorizedQueries.length} searches`, 'research', 6, TOTAL_STEPS);
+    console.log('[Stage 2] Executing searches');
+
+    const allSearchSources: ResearchSource[] = [];
+    const seenSearchUrls = new Set<string>();
+    let searchedCount = 0;
+
+    // Run searches in parallel (3 concurrent)
+    const SEARCH_CONCURRENCY = 3;
+    const searchPromises = new Set<Promise<void>>();
+
+    for (const q of categorizedQueries) {
+      const p = (async () => {
+        try {
+          const results = await searchFunction(q.query);
+          for (const r of results) {
+            // Cross-query URL dedup
+            if (seenSearchUrls.has(r.url)) continue;
+            seenSearchUrls.add(r.url);
+
+            allSearchSources.push({
+              url: r.url,
+              title: r.title,
+              snippet: r.snippet,
+              content: (r as any).fullContent || (r as any).content || undefined,
+              query: q.query,
+              queryCategory: q.category as 'A' | 'B' | 'C',
+              queryHypothesis: q.rationale,
+              targetDimensions: q.targetDimensions,
+              source: 'tavily',
+            });
+          }
+        } catch (err) {
+          console.error(`[Stage 2] Search failed: ${q.query}`, err);
+        }
+        searchedCount++;
+        if (searchedCount % 10 === 0 || searchedCount === categorizedQueries.length) {
+          emit(`Searched ${searchedCount}/${categorizedQueries.length} — ${allSearchSources.length} unique results`, 'research', 7, TOTAL_STEPS);
+        }
+      })().then(() => { searchPromises.delete(p); });
+      searchPromises.add(p);
+      if (searchPromises.size >= SEARCH_CONCURRENCY) {
+        await Promise.race(searchPromises);
+      }
+    }
+    await Promise.all(searchPromises);
+
+    // Also add blog crawl sources (bypass screening)
+    let tier1Sources: ResearchSource[] = [];
+    if (fetchFunction) {
+      try {
+        tier1Sources = await crawlSubjectPublishing(donorName, seedUrls, linkedinData || identity, searchFunction as any, fetchFunction);
+        console.log(`[Stage 2] Blog crawl: ${tier1Sources.length} sources`);
+      } catch (err) {
+        console.error('[Stage 2] Blog crawl failed:', err);
+      }
+    }
+
+    const allSources = [...tier1Sources, ...allSearchSources];
+    console.log(`[Stage 2] ${allSources.length} total sources (${tier1Sources.length} blog, ${allSearchSources.length} Tavily)`);
+    emit(`${allSources.length} sources found — ${tier1Sources.length} blog posts, ${allSearchSources.length} from search`, 'research', 8, TOTAL_STEPS);
+
+    // ── Stage 3: Screening & Attribution ─────────────────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Screening ${allSources.length} sources for relevance`, 'research', 9, TOTAL_STEPS);
+    console.log('[Stage 3] Running screening & attribution filter');
+
+    const screeningResult = await runScreeningPipeline(allSources, donorName, identity, linkedinData);
+    const screenedSources = screeningResult.survivingUrls;
+
+    console.log(`[Stage 3] ${screenedSources.length} survived screening (${screeningResult.killedUrls.length} killed)`);
+    emit(`${screenedSources.length} sources passed screening`, 'research', 10, TOTAL_STEPS);
+
+    // ── Stage 4: Content Fetch + Dedup ───────────────────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Fetching full content for ${screenedSources.length} sources`, 'research', 11, TOTAL_STEPS);
+    console.log('[Stage 4] Fetching full content');
+
+    // Bulk fetch sources lacking full content
+    const sourcesToFetch = screenedSources.filter(s => !s.content || s.content.length < 200);
+    console.log(`[Stage 4] Fetching ${sourcesToFetch.length} sources (${screenedSources.length - sourcesToFetch.length} already have content)`);
+
+    const FETCH_CONCURRENCY = 8;
+    let fetchedCount = 0;
+    const executing = new Set<Promise<void>>();
+    for (const source of sourcesToFetch) {
+      const p = (async () => {
+        try {
+          const content = await executeFetchPage(source.url);
+          source.content = content;
+          fetchedCount++;
+          if (fetchedCount % 5 === 0 || fetchedCount === sourcesToFetch.length) {
+            emit(`Fetched ${fetchedCount}/${sourcesToFetch.length} pages`, 'research', 12, TOTAL_STEPS);
+          }
+        } catch (err) {
+          console.log(`[Stage 4] Fetch failed: ${source.url}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      })().then(() => { executing.delete(p); });
+      executing.add(p);
+      if (executing.size >= FETCH_CONCURRENCY) {
+        await Promise.race(executing);
+      }
+    }
+    await Promise.all(executing);
+
+    // Deduplication (LinkedIn overlap, URL normalization, content fingerprinting)
+    const linkedinPostContents: string[] = [];
+    // Extract LinkedIn post contents if available from blog crawl
+    for (const s of tier1Sources) {
+      if (s.source === 'linkedin_post' && s.content) {
+        linkedinPostContents.push(s.content);
+      }
+    }
+    const { deduplicated: dedupedSources } = deduplicateSources(screenedSources, linkedinPostContents);
+    console.log(`[Stage 4] After dedup: ${dedupedSources.length} sources`);
+    emit(`${dedupedSources.length} unique sources after dedup`, 'research', 13, TOTAL_STEPS);
+
+    // ── Stage 5: Dimension Scoring & Selection ───────────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Scoring ${dedupedSources.length} sources against 25 dimensions`, 'research', 14, TOTAL_STEPS);
+    console.log('[Stage 5] Dimension scoring & selection');
+
+    const stage5Result = await runDimensionScoring(dedupedSources, donorName, identity, linkedinData);
+    const selectedSources = stage5Result.selectedSources;
+    const coverageGapReport = formatCoverageGapReport(stage5Result.coverageGaps);
+    const sourcesFormatted = formatSourcesForDeepResearch(selectedSources);
+
+    console.log(`[Stage 5] Selected ${selectedSources.length} sources (~${stage5Result.stats.estimatedContentChars} chars)`);
+    emit(`${selectedSources.length} sources selected for synthesis (~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars)`, 'research', 15, TOTAL_STEPS);
+
+    // ── Stage 6: Research Synthesis (Deep Research) ──────────────
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit('Launching bounded synthesis with pre-fetched sources', 'research', 16, TOTAL_STEPS);
+    console.log('[Stage 6] Running Deep Research (bounded synthesis)');
+
+    deepResearchResult = await runDeepResearchV5(
       donorName,
-      seedUrls,
       linkedinData,
-      seedUrlContent,
+      selectedSources,
+      sourcesFormatted,
+      coverageGapReport,
       emit,
       abortSignal,
       onActivity,
     );
 
-    // The dossier IS the research package for the profile generation step
+    // The dossier IS the research package for profile generation
     researchPackage = deepResearchResult.dossier;
 
-    // Create a minimal ResearchResult for compatibility with saveOutputs
+    // Validate research package quality
+    const validationChecks = validateResearchPackage(researchPackage, selectedSources.length);
+    console.log(`[Stage 6] Validation: length=${validationChecks.length}, sources cited=${validationChecks.uniqueSourcesCited}/${validationChecks.sourcesExpected}, patterns=${validationChecks.totalPatternFlags}`);
+
+    // Create ResearchResult for compatibility
     research = {
       donorName,
-      identity: { name: donorName },
-      queries: [],
+      identity,
+      queries: categorizedQueries.map(q => ({
+        query: q.query,
+        tier: q.category === 'A' ? 'STANDARD' as const : 'TAILORED' as const,
+        rationale: `[Cat ${q.category}] ${q.rationale}`,
+      })),
       sources: deepResearchResult.citations.map(c => ({
         url: c.url,
         title: c.title,
         snippet: '',
       })),
-      rawMarkdown: `# DEEP RESEARCH DOSSIER: ${donorName}\n\nGenerated via OpenAI o3-deep-research\nSearches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\n\n${researchPackage}`,
+      rawMarkdown: `# v5 RESEARCH DOSSIER: ${donorName}\n\nPipeline: v5 hybrid (Tavily breadth + bounded synthesis)\nQueries: ${categorizedQueries.length}\nScreened: ${screenedSources.length}/${allSources.length}\nSelected: ${selectedSources.length}\nGap-fill searches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\n\n${researchPackage}`,
     };
 
-    console.log(`\n[Pipeline] Deep research complete: ${deepResearchResult.searchCount} searches, ${researchPackage.length} chars\n`);
+    console.log(`\n[Pipeline] v5 research complete: ${deepResearchResult.searchCount} gap-fill searches, ${researchPackage.length} chars\n`);
     STATUS.researchComplete(deepResearchResult.searchCount);
-    emit(`Deep research dossier ready — ${Math.round(researchPackage.length / 4)} tokens`, 'analysis', 20, TOTAL_STEPS);
+    emit(`Research synthesis ready — ${Math.round(researchPackage.length / 4)} tokens`, 'analysis', 20, TOTAL_STEPS);
     STATUS.researchPackageComplete();
 
   } else {
-    // ── Tavily Pipeline Path (existing) ──────────────────────────
-    // conductResearch → fat extraction (Opus)
+    // ═══════════════════════════════════════════════════════════════
+    // LEGACY TAVILY PIPELINE: conductResearch → fat extraction (Opus)
+    // ═══════════════════════════════════════════════════════════════
     emit('', 'research');
     emit(`Collecting sources for ${donorName}`, 'research', 3, TOTAL_STEPS);
 
@@ -1268,10 +1478,10 @@ ${pdfText}`;
     console.log(`\n[Pipeline] Research complete: ${research.sources.length} sources\n`);
     STATUS.researchComplete(research.sources.length);
 
-    // ── Step 2: Fat Extraction (Opus, single call) ──────────────
+    // ── Fat Extraction (Opus, single call) ──────────────────────
     emit('', 'analysis');
     emit('Producing behavioral evidence extraction (Opus, single call)', 'analysis', 16, TOTAL_STEPS);
-    console.log(`[Pipeline] Step 2: Fat extraction — ${research.sources.length} sources to Opus`);
+    console.log(`[Pipeline] Fat extraction — ${research.sources.length} sources to Opus`);
 
     const extractionPrompt = buildExtractionPrompt(
       donorName,
