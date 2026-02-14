@@ -1,14 +1,13 @@
 // Deep Research Integration — OpenAI o3-deep-research
 //
-// Replaces the Tavily/screening/tiering/extraction chain with:
-//   1 Sonnet call (research strategy) + 1 OpenAI deep research call (dossier)
+// Sends a focused behavioral-profiling prompt directly to o3-deep-research.
+// No intermediate Sonnet strategy call — the model decides its own search strategy.
 //
 // Controlled by RESEARCH_PROVIDER env var:
 //   RESEARCH_PROVIDER=openai     → this module (default)
 //   RESEARCH_PROVIDER=anthropic  → fallback to Tavily pipeline
 
 import OpenAI from 'openai';
-import { complete } from '../anthropic';
 import { LinkedInData } from '../prompts/extraction-prompt';
 import { writeFileSync, mkdirSync } from 'fs';
 import type { DeepResearchActivity, ActivityCallback } from '../job-store';
@@ -37,249 +36,68 @@ export interface DeepResearchCitation {
 
 type ProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
-// ── Research Strategy Prompt (Sonnet) ─────────────────────────────
-
-const RESEARCH_STRATEGY_SYSTEM = 'You are a research strategist preparing a briefing for a deep research agent.';
-
-function buildResearchStrategyPrompt(
-  donorName: string,
-  linkedinData: LinkedInData | null,
-  seedUrl: string | null,
-  seedUrlContent: string | null,
-): string {
-  let prompt = `You are a research strategist preparing a briefing for a deep research agent. The agent will use your strategy to conduct an exhaustive web search about a donor prospect.
-
-You will receive:
-- The donor's name
-- Their LinkedIn profile data (if available)
-- Content from their personal website or seed URL (if available)
-- Context about the organization seeking the meeting
-
-Your job is to produce a RESEARCH STRATEGY with four sections:
-
-A) IDENTITY RESOLUTION
-Produce an identity block with:
-- Full name + common variants or misspellings
-- Known locations (city/state/country)
-- Current + recent employers with dates
-- Known associates and organizations
-- Personal websites and publishing platforms found in the LinkedIn data or seed URL
-- Disambiguation notes: are there other people with this name who might contaminate search results? What distinguishes this person from them?
-
-B) COVERAGE MAP
-Produce a checklist of research categories. For each category:
-- What "done" looks like (specific types of sources)
-- Minimum source count target
-- Priority domains or databases to search
-- What a gap in this category would mean for the dossier
-
-Categories: Primary voice, Professional coverage, Philanthropic/financial, Network/relationships, Controversy/criticism, Recent activity.
-
-C) QUERY EXPANSION SET
-Generate 30-80 specific search queries organized by type:
-- Tight queries (exact name + specific employer/org/initiative)
-- Wide queries (topic adjacency, interviews, podcasts)
-- Negative queries (controversy, lawsuits, criticism)
-- Relationship queries (boards, co-founders, collaborators)
-- Platform-specific queries (LinkedIn, Substack, personal site)
-
-Be SPECIFIC. Use the donor's actual employers, initiatives, frameworks, and publications BY NAME. Pull these from the LinkedIn data and seed URL content.
-
-Good: "Geoffrey MacDougall" "Minimum Viable Partnerships"
-Good: site:intangible.ca "theory of power"
-Bad: "Geoffrey MacDougall" career history
-Bad: "Geoffrey MacDougall" biography
-
-Each query should note what category it serves and any exclusion terms needed to avoid same-name contamination.
-
-D) STOPPING RULES + QA RUBRIC
-Define:
-- When to stop searching (repetition threshold)
-- How to detect irrelevant surface area (the relevance filter)
-- How to confirm identity matches
-- How to grade completeness per category
-
-Output all four sections as structured text. This output will be pasted directly into a deep research prompt, so make it clean, specific, and machine-usable.
-
----
-
-# DONOR: ${donorName}
-
-## CAMPAIGN CONTEXT
-Organization: Democracy Takes Work (DTW)
-Mission: Supporting workplace organization movements
-Meeting type: Donor cultivation / major gift prospect
-What we need: How this person decides to fund, what moves them, what sets them off, how to build trust, what risks exist.
-
-`;
-
-  if (linkedinData) {
-    prompt += `## LINKEDIN PROFILE DATA
-Current role: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}
-`;
-    if (linkedinData.linkedinSlug) {
-      prompt += `LinkedIn: linkedin.com/in/${linkedinData.linkedinSlug}\n`;
-    }
-    if (linkedinData.websites?.length) {
-      prompt += `\nPersonal websites:\n`;
-      for (const site of linkedinData.websites) {
-        prompt += `- ${site}\n`;
-      }
-    }
-    if (linkedinData.careerHistory?.length) {
-      prompt += `\nCareer history:\n`;
-      for (const role of linkedinData.careerHistory) {
-        prompt += `- ${role.title} at ${role.employer} (${role.startDate}–${role.endDate})\n`;
-        if (role.description) {
-          prompt += `  ${role.description}\n`;
-        }
-      }
-    }
-    if (linkedinData.education?.length) {
-      prompt += `\nEducation:\n`;
-      for (const edu of linkedinData.education) {
-        prompt += `- ${edu.institution}: ${edu.degree || ''} in ${edu.field || ''}\n`;
-      }
-    }
-    if (linkedinData.boards?.length) {
-      prompt += `\nBoard positions:\n`;
-      for (const board of linkedinData.boards) {
-        prompt += `- ${board}\n`;
-      }
-    }
-    if (linkedinData.skills?.length) {
-      prompt += `\nSkills: ${linkedinData.skills.join(', ')}\n`;
-    }
-    prompt += '\n';
-  }
-
-  if (seedUrl) {
-    prompt += `## SEED URL: ${seedUrl}\n\n`;
-    if (seedUrlContent) {
-      prompt += `Content from seed URL (use this to identify their writing voice, frameworks, specific initiatives, and topics to search for):\n\n`;
-      prompt += seedUrlContent.slice(0, 30000);
-      prompt += '\n\n';
-    }
-  }
-
-  return prompt;
-}
-
 // ── Deep Research Developer Prompt ────────────────────────────────
 
-const DEEP_RESEARCH_DEVELOPER_PROMPT = `You are a behavioral research analyst building a donor intelligence dossier. Your job is to find and preserve evidence about how a specific person thinks, decides, communicates, builds trust, and responds to pressure.
+const DEEP_RESEARCH_DEVELOPER_PROMPT = `You are the best psychographic profiler working in fundraising today. You don't write biographies. You don't summarize careers. You build behavioral maps of how a specific person thinks, decides, commits, retreats, and responds under pressure.
 
-You will receive a research strategy prepared by an analyst that includes identity resolution, a coverage map, 30-80 specific search queries, and stopping rules. USE THIS STRATEGY. Execute the queries. Follow the coverage map. Apply the stopping rules.
+You're not fooled by public personas. You look past what people say about themselves to find the patterns in what they actually do — the contradictions between their stated values and their revealed behavior, the gaps between how they present and how they operate, the moments where their guard drops and you can see the real decision architecture underneath.
 
-RESEARCH APPROACH:
-- Execute ALL queries in the research strategy, not a subset.
-- Search broadly and deeply. Aim for 60-100+ web searches.
-- After executing the provided queries, generate additional queries based on what you've found — names, organizations, initiatives, and events that emerged from initial results.
-- Prioritize the subject's own writing and speaking: blog posts, newsletter essays, LinkedIn articles, podcast appearances, conference talks, op-eds.
-- Read the subject's personal website/blog thoroughly — read individual posts, not just the homepage.
-- Also find third-party coverage: press articles, interviews where they're quoted, organizational profiles, event bios.
-- Look across their entire career, not just current role.
+## WHAT THIS IS FOR
 
-RELEVANCE FILTER:
-A fact is "relevant" if it materially informs at least one of:
-- Capacity: money, control, gatekeeping, decision authority
-- Propensity: ideology, interests, historical giving behavior
-- Access: relationships, shared affiliations, social graph
-- Style: how they decide, what they reward, ego dynamics, risk tolerance, communication patterns
-- Risk: what could blow up a relationship or association
+Someone is walking into a high-stakes fundraising meeting with this person in 12 hours. They need to know:
+- What moves this person from evaluation to engagement
+- What shuts them down instantly
+- How they build trust and how trust breaks
+- How they make funding decisions — what has to be present, what permission they give themselves, what the commitment looks like when it arrives
+- What contradictions in their worldview create openings
+- How they communicate and what register they expect
+- What they'll risk and what they won't
 
-If a fact doesn't map to one of these, exclude it even if it's "interesting." No trivia (food, pets, workouts, sports teams) unless it directly signals identity, worldview, status, or relationships.
+This is not a research report. It's a tactical instrument. Every fact you find earns its place only if it changes what the reader does in the meeting.
 
-"PROBATIVE TASTE" RULE:
-Taste/status/class signals are included ONLY when they:
-- Imply a donor "tribe" or affinity group
-- Imply likely affinities or aversions
-- Correlate with network access or self-concept
+## WHAT TO LOOK FOR
 
-EVIDENCE DISCIPLINE:
-- Preserve the subject's EXACT WORDS in long quotes (50-200 words per quote). Do not paraphrase.
-- Every factual claim must have an inline citation.
-- If uncertain about identity match, label as uncertain and explain why.
-- DO NOT analyze, interpret, or draw conclusions. Your job is to find and preserve evidence, not to assess it.
-- DO NOT write sentences like "This shows he values X" or "This suggests she believes Y." Just present the quote and its context.
+Search for evidence across these 24 behavioral categories. Not all will have evidence. That's fine — report what you find and flag what's missing.
 
-IDENTITY DISCIPLINE:
-- Use the identity resolution block to confirm matches.
-- For each major claim, check: matching employer, location, role dates, co-mentions.
-- If you find multiple plausible matches for the name, split them into Candidate A/B/C and do not merge until resolved.
+1. DECISION_MAKING — How they choose. What has to be present for a yes. What sequence they follow.
+2. TRUST_CALIBRATION — How trust builds, what tests it, what breaks it. Past betrayals that rewired their filters.
+3. INFLUENCE_SUSCEPTIBILITY — Who moves them. What kind of authority or experience earns their attention.
+4. COMMUNICATION_STYLE — How they talk and write. What register they use. When the tone shifts and what the shift signals.
+5. SELF_CONCEPT — Who they think they are. The identity they need to maintain. What it permits and prevents.
+6. VALUE_HIERARCHY — What they believe matters most. Their diagnosis of what's broken and what fixes it.
+7. CONTRADICTION_ARCHITECTURE — Where their stated values and actual behavior diverge. Not hypocrisy — structural tensions they live inside.
+8. RELATIONSHIP_FORMATION — How they build relationships. What sustains them. What ends them.
+9. COMMITMENT_PATTERNS — How long they stay. What holds them. What breaks their commitment.
+10. RISK_ARCHITECTURE — What they'll absorb and what they won't. What the pattern reveals about their operating model.
+11. RESOURCE_PHILOSOPHY — How they think about money. What they believe it can and can't do. How they deploy it.
+12. STATUS_DYNAMICS — What recognition they accept, what they deflect. How they position themselves relative to power.
+13. LEARNING_ARCHITECTURE — How they take in new information. Experiential vs. analytical. What formats earn their attention.
+14. DOMAIN_EXPERTISE — Where they have real command, working familiarity, or are shallow. What to explain and what to assume.
+15. INSTITUTIONAL_POSTURE — How they relate to organizations. Builder, reformer, critic, outsider. What institutional roles they accept and reject.
+16. POWER_ANALYSIS — How they understand and talk about power. Structural vs. personal. What vocabulary they use.
+17. EMOTIONAL_TRIGGERS — What activates them emotionally. Anger, delight, moral outrage. What the triggers reveal about core commitments.
+18. RETREAT_PATTERNS — When they withdraw, what triggers it, what it looks like, how they come back.
+19. SHAME_DEFENSE_TRIGGERS — What they can't tolerate being seen as. What accusations would be most destabilizing.
+20. REAL_TIME_INTERPERSONAL_TELLS — Observable behavioral signals in interactions. How they signal interest, disengagement, or shift.
+21. TEMPO_MANAGEMENT — How they move through time. Fast vs. slow in different contexts. What the variation reveals.
+22. HIDDEN_FRAGILITIES — Anxieties, insecurities, or vulnerabilities they don't advertise but that leak through their choices.
+23. RECOVERY_PATHS — How they come back from setbacks, failed projects, broken relationships. What the recovery pattern reveals.
+24. CONDITIONAL_BEHAVIORAL_FORKS — Where the same person behaves completely differently depending on context. The fork conditions and what they mean.
 
-COVERAGE REQUIREMENTS:
-Follow the coverage map provided. Minimum standards:
-- At least 25 unique sources total
-- At least 8 primary voice sources (their own writing/speaking)
-- At least 5 professional coverage sources
-- At least 3 financial/philanthropic sources (if findable)
-- At least 3 network/relationship sources
-- Controversy section completed (even if "none found")
-- At least 20 unique named entities in network map
+## EVIDENCE STANDARDS
 
-"MORE IS MORE" STOPPING RULE:
-Continue searching until:
-(a) You have met the coverage map minimums, AND
-(b) Search results begin repeating the same facts with no new entities or topics emerging.
-You must explicitly report which categories are thin and what you tried.
+- Preserve exact quotes. Long ones — 50 to 200 words. The person's actual language is the evidence. Do not paraphrase.
+- Cite everything. URL, publication, date.
+- Find their own voice first: blog posts, newsletters, podcast appearances, interviews, conference talks, op-eds, social media. What they write and say unprompted reveals more than what others write about them.
+- Then find third-party coverage: press, profiles, organizational bios, event descriptions.
+- Look across their full career, not just the current role.
+- If you're unsure whether two search results refer to the same person, flag it. Don't merge ambiguous identities.
 
-OUTPUT FORMAT:
-Return a structured dossier with these sections:
+## WHAT NOT TO DO
 
-1. RESEARCH SUMMARY
-   3-4 sentences: who this person is and what shape the evidence takes.
-
-2. IDENTITY & DISAMBIGUATION
-   Confirmed identity details. Any same-name risks resolved.
-
-3. KEY TIMELINE
-   Table: date range | role | organization | location | source
-   Bullet-proof dates only. Mark uncertain dates.
-
-4. PRIMARY VOICE EVIDENCE
-   Their own writing, speaking, and publishing. For each source:
-   - Long direct quote (50-200 words, exact language)
-   - Source: title, publication, date, URL
-   - Shape: what kind of document (blog post, interview, etc.)
-   - Context: 2-3 sentences on what prompted this, who they were speaking to, what they were responding to
-
-5. NETWORKS
-   Structured list:
-   Person/Org → relationship type → evidence → source
-
-6. MONEY & VEHICLES
-   Philanthropic vehicles, giving history, political donations, investment vehicles. Cite filings where available.
-
-7. PUBLIC VOICE & WORLDVIEW
-   Ideological positions, values statements, policy positions. Use direct quotes, not summaries.
-
-8. REPUTATION / CONTROVERSY / RISK
-   Lawsuits, regulatory issues, criticism, conflicts of interest. Or explicitly: "No controversy found after searching [list what you searched]."
-
-9. RECENT ACTIVITY (last 18 months)
-   New roles, funding announcements, major public statements.
-
-10. HIGH-SIGNAL MISCELLANY
-    Probative taste/status/class signals only. Each item must pass the relevance filter.
-
-11. EVIDENCE GAPS & NEXT QUERIES
-    - Which coverage categories are thin?
-    - Where are claims uncited?
-    - What is likely missing given this person's seniority?
-    - 10 additional queries that would likely produce new signal
-
-12. SOURCES CONSULTED
-    Numbered list of every source read, with URL, title, and one-line description.
-
-SELF-CHECK (run before finalizing):
-- What categories are thin?
-- Where are claims uncited?
-- What is likely missing given the person's seniority?
-- Did we accidentally include trivia?
-- What are 10 additional queries that would likely produce new signal?
-
-TARGET LENGTH: The dossier should be 15,000-40,000 words. This is a research document, not a summary. Length comes from preserving full quotes and rich context, not from analysis or commentary.`;
+- Do not analyze or interpret. Do not write "This shows he values X" or "This suggests she believes Y." Present the evidence and its context. The reader draws the conclusions.
+- Do not include trivia — food preferences, pets, workout routines, sports teams — unless it directly signals identity, worldview, status, or network access.
+- Do not summarize when you can quote. The exact words matter.`;
 
 // ── Build User Prompt (per-donor) ─────────────────────────────────
 
@@ -288,126 +106,54 @@ function buildDeepResearchUserPrompt(
   linkedinData: LinkedInData | null,
   seedUrl: string | null,
   seedUrlContent: string | null,
-  researchStrategy: string,
 ): string {
-  let prompt = `# DONOR RESEARCH REQUEST\n\n`;
+  let prompt = `# RESEARCH BRIEF\n\n`;
 
-  // Campaign context
-  prompt += `## CAMPAIGN CONTEXT\n`;
+  // Donor identity
+  prompt += `## Donor: ${donorName}\n\n`;
+
+  // Context
+  prompt += `## Context\n`;
   prompt += `Organization: Democracy Takes Work (DTW)\n`;
   prompt += `Mission: Supporting workplace organization movements\n`;
   prompt += `Meeting type: Donor cultivation / major gift prospect\n`;
-  prompt += `What we need: How this person decides to fund, what moves them, what sets them off, how to build trust, what risks exist.\n\n`;
+  prompt += `What we need: How this person decides to fund, what moves them, what shuts them down, how to build trust, what risks exist.\n\n`;
 
-  // Donor identity
-  prompt += `## DONOR: ${donorName}\n\n`;
-
-  // LinkedIn data (if available)
+  // LinkedIn data as "What We Already Know"
   if (linkedinData) {
-    prompt += `## LINKEDIN PROFILE DATA\n`;
-    prompt += `Current role: ${linkedinData.currentTitle} at ${linkedinData.currentEmployer}\n`;
+    prompt += `## What We Already Know\n`;
 
-    if (linkedinData.linkedinSlug) {
-      prompt += `LinkedIn: linkedin.com/in/${linkedinData.linkedinSlug}\n`;
-    }
+    const linkedinJson: Record<string, any> = {};
+    if (linkedinData.currentTitle) linkedinJson.currentTitle = linkedinData.currentTitle;
+    if (linkedinData.currentEmployer) linkedinJson.currentEmployer = linkedinData.currentEmployer;
+    if (linkedinData.linkedinSlug) linkedinJson.linkedinSlug = linkedinData.linkedinSlug;
+    if (linkedinData.websites?.length) linkedinJson.websites = linkedinData.websites;
+    if (linkedinData.careerHistory?.length) linkedinJson.careerHistory = linkedinData.careerHistory;
+    if (linkedinData.education?.length) linkedinJson.education = linkedinData.education;
+    if (linkedinData.boards?.length) linkedinJson.boards = linkedinData.boards;
 
-    if (linkedinData.websites?.length) {
-      prompt += `\nPersonal websites:\n`;
-      for (const site of linkedinData.websites) {
-        prompt += `- ${site}\n`;
-      }
-    }
-
-    if (linkedinData.careerHistory?.length) {
-      prompt += `\nCareer history:\n`;
-      for (const role of linkedinData.careerHistory) {
-        prompt += `- ${role.title} at ${role.employer} (${role.startDate}–${role.endDate})\n`;
-        if (role.description) {
-          prompt += `  ${role.description}\n`;
-        }
-      }
-    }
-
-    if (linkedinData.education?.length) {
-      prompt += `\nEducation:\n`;
-      for (const edu of linkedinData.education) {
-        prompt += `- ${edu.institution}: ${edu.degree || ''} in ${edu.field || ''}\n`;
-      }
-    }
-
-    if (linkedinData.boards?.length) {
-      prompt += `\nBoard positions:\n`;
-      for (const board of linkedinData.boards) {
-        prompt += `- ${board}\n`;
-      }
-    }
-
-    prompt += `\n`;
+    prompt += JSON.stringify(linkedinJson, null, 2);
+    prompt += `\n\n`;
   }
 
-  // Seed URL (if available)
-  if (seedUrl) {
-    prompt += `## SEED URL: ${seedUrl}\n\n`;
+  // Seed material
+  if (seedUrl || seedUrlContent) {
+    prompt += `## Seed Material\n`;
+    prompt += `The following is from their personal website/bio. Use it to identify their voice, frameworks, key relationships, and topics worth searching deeper on.\n\n`;
+    if (seedUrl) {
+      prompt += `Source: ${seedUrl}\n\n`;
+    }
     if (seedUrlContent) {
-      prompt += `Content from seed URL (use this to identify their writing voice, frameworks, specific initiatives, and topics to search for):\n\n`;
       prompt += seedUrlContent.slice(0, 30000);
       prompt += `\n\n`;
     }
   }
 
-  // Research strategy (Sonnet's output)
-  prompt += `## RESEARCH STRATEGY\n\n`;
-  prompt += `The following research strategy was prepared by an analyst. Execute it thoroughly.\n\n`;
-  prompt += researchStrategy;
-  prompt += `\n\n`;
-
-  // Final instruction
-  prompt += `## INSTRUCTION\n`;
-  prompt += `Execute the research strategy above. Search broadly and deeply. Produce the dossier in the format specified in your operator instructions. Aim for maximum relevant surface area.\n`;
+  // Assignment
+  prompt += `## Your Assignment\n`;
+  prompt += `Research this person thoroughly. Find everything that helps someone prepare for a high-stakes fundraising meeting with them. Prioritize behavioral evidence — how they think, decide, and operate — over biographical facts.\n`;
 
   return prompt;
-}
-
-// ── Execute Research Strategy (Sonnet) ────────────────────────────
-
-async function executeResearchStrategy(
-  donorName: string,
-  linkedinData: LinkedInData | null,
-  seedUrl: string | null,
-  seedUrlContent: string | null,
-  onProgress?: ProgressCallback,
-  abortSignal?: AbortSignal,
-): Promise<string> {
-  const emit = onProgress || (() => {});
-  emit('Building research strategy (Sonnet)...', 'research', 3, 38);
-
-  const strategyPrompt = buildResearchStrategyPrompt(
-    donorName,
-    linkedinData,
-    seedUrl,
-    seedUrlContent,
-  );
-
-  console.log(`[DeepResearch] Research strategy prompt: ${strategyPrompt.length} chars`);
-
-  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-
-  const strategy = await complete(
-    RESEARCH_STRATEGY_SYSTEM,
-    strategyPrompt,
-    { maxTokens: 8192 }
-  );
-
-  console.log(`[DeepResearch] Research strategy: ${strategy.length} chars`);
-  emit(`Research strategy complete — ${strategy.length} chars`, 'research', 5, 38);
-
-  // Debug save
-  try {
-    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-research-strategy.txt', strategy);
-  } catch (e) { /* ignore */ }
-
-  return strategy;
 }
 
 // ── Execute Deep Research (OpenAI o3-deep-research) ───────────────
@@ -417,7 +163,6 @@ async function executeDeepResearch(
   linkedinData: LinkedInData | null,
   seedUrl: string | null,
   seedUrlContent: string | null,
-  researchStrategy: string,
   onProgress?: ProgressCallback,
   abortSignal?: AbortSignal,
   onActivity?: ActivityCallback,
@@ -436,7 +181,6 @@ async function executeDeepResearch(
     linkedinData,
     seedUrl,
     seedUrlContent,
-    researchStrategy,
   );
 
   console.log(`[DeepResearch] User prompt: ${userPrompt.length} chars`);
@@ -491,13 +235,13 @@ async function executeDeepResearch(
       },
     ],
     tools: [{ type: 'web_search_preview' }],
-    reasoning: { summary: 'auto' },
+    reasoning: { effort: 'high' },
     background: true,
     store: true,
   } as any);
 
   // Poll every 10 seconds — abort-aware, max 30 minutes
-  const MAX_POLL_DURATION_MS = 30 * 60 * 1000;
+  const MAX_POLL_DURATION_MS = 60 * 60 * 1000; // 60 minutes
   let result: any = response;
   let lastSearchCount = 0;
 
@@ -701,27 +445,14 @@ export async function runDeepResearchPipeline(
   // Determine seed URL (use first one if multiple)
   const seedUrl = seedUrls.length > 0 ? seedUrls[0] : null;
 
-  // Stage 1: Research Strategy (Sonnet)
-  emit('Stage 1: Building research strategy...', 'research', 2, 38);
-
-  const researchStrategy = await executeResearchStrategy(
-    donorName,
-    linkedinData,
-    seedUrl,
-    seedUrlContent,
-    onProgress,
-    abortSignal,
-  );
-
-  // Stage 2: Deep Research (OpenAI o3-deep-research)
-  emit('Stage 2: Launching deep research...', 'research', 6, 38);
+  // Launch deep research directly (no Sonnet strategy phase)
+  emit('Launching deep research...', 'research', 2, 38);
 
   const { dossier, citations, searchCount, tokenUsage, durationMs } = await executeDeepResearch(
     donorName,
     linkedinData,
     seedUrl,
     seedUrlContent,
-    researchStrategy,
     onProgress,
     abortSignal,
     onActivity,
@@ -733,6 +464,6 @@ export async function runDeepResearchPipeline(
     searchCount,
     tokenUsage,
     durationMs,
-    researchStrategy,
+    researchStrategy: '',
   };
 }
