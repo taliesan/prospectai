@@ -1,10 +1,13 @@
-// Stage 5 — Dimension Scoring, Selection & Gap Analysis (v5 Pipeline)
+// Stage 5 — Dimension Scoring & Source Selection (v5 Pipeline)
 //
-// Sonnet reads full fetched content from Stage 4 and:
-//   1. Scores each source against 25 dimensions (0.0-1.0)
-//   2. Classifies source tier (1-5)
-//   3. Produces coverage gap report
-//   4. Selects 15-25 sources within 100K content budget
+// Stage 5a: Sonnet scores sources in parallel batches.
+//   Each source gets integer depth scores (0-3) on 25 behavioral dimensions.
+//   No selection, no gap report — scoring only.
+//
+// Stage 5b: Server-side selection algorithm (no LLM).
+//   Iteratively picks the best source using scarcity-weighted scoring,
+//   re-evaluates after each pick, fills a 100K char budget.
+//   Gap report is a byproduct of the coverage tracking.
 
 import { complete } from '../anthropic';
 import {
@@ -19,90 +22,62 @@ import {
 } from '../dimensions';
 import type { ResearchSource } from '../research/screening';
 
-// ── Stage 5 scoring prompt ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// TUNABLE CONSTANTS — adjust after testing
+// ══════════════════════════════════════════════════════════════════════
 
-function buildScoringPrompt(
-  subjectName: string,
-  sources: ResearchSource[],
-  linkedinReference: string,
-): string {
-  const sourcesText = sources.map((s, i) => {
-    const content = s.content || s.snippet || '';
-    // Cap individual source content in the prompt at ~4K chars for scoring
-    const truncated = content.length > 4000 ? content.slice(0, 4000) + '\n[... truncated for scoring ...]' : content;
-    return `### Source ${i + 1}
-URL: ${s.url}
-Title: ${s.title || 'Untitled'}
-Attribution: ${s.attribution || 'unknown'}
-${s.institutionalContext ? `Institutional Context: ${s.institutionalContext}\n` : ''}
-${truncated}`;
-  }).join('\n\n---\n\n');
+/** Dimension tier weights — how critical each dimension is */
+export const TIER_WEIGHTS: Record<number, number> = {
+  // High: ×3
+  1: 3, 2: 3, 4: 3, 7: 3, 8: 3, 17: 3, 25: 3,
+  // Medium: ×2
+  3: 2, 6: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2,
+  // Low: ×1
+  5: 1, 9: 1, 16: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 23: 1, 24: 1,
+};
 
-  return `You are a research analyst selecting sources for a behavioral profiling system. You will receive pre-screened sources with their full fetched content and attribution classifications. Your job is to score, rank, and select the best sources for downstream analysis.
+/** How many evidence entries each dimension needs */
+export const INVESTMENT_TARGETS: Record<number, number> = {
+  // High: 7 (midpoint of 6-8)
+  1: 7, 2: 7, 4: 7, 7: 7, 8: 7, 17: 7, 25: 7,
+  // Medium: 5 (midpoint of 4-6)
+  3: 5, 6: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
+  // Low: 2 (midpoint of 1-3)
+  5: 2, 9: 2, 16: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2, 23: 2, 24: 2,
+};
 
-SUBJECT: ${subjectName}
-LINKEDIN REFERENCE: ${linkedinReference}
+/** Prevents one zero-coverage dimension from eating the whole budget */
+export const SCARCITY_CAP = 6.0;
 
-## Sources to Score
-${sourcesText}
+/** Mild nudge toward source-type diversity (index = sources of this tier already selected) */
+export const DIVERSITY_BONUSES = [1.3, 1.15, 1.05, 1.0]; // 0 selected, 1, 2, 3+
 
-## Dimension Scoring
+/** Maximum chars of source content to send to Deep Research */
+export const CONTENT_BUDGET_CHARS = 100_000;
 
-You are scoring based on FULL PAGE CONTENT, not snippets. Read each source and assess what behavioral evidence it actually contains. Score based on what you can see, not what you hope might be there.
+/** How many sources per Sonnet scoring batch */
+const SCORING_BATCH_SIZE = 18;
 
-For each source, score against the 25 dimensions using 0.0-1.0 scale. Score > 0.0 only if the content provides concrete behavioral evidence:
-- A direct quote = score for COMMUNICATION_STYLE
-- Mention of a decision or choice = score for DECISION_MAKING
-- Conflict or controversy = score for CONTRADICTION_PATTERNS, BOUNDARY_CONDITIONS
-- Interview/podcast format = score for REAL_TIME_INTERPERSONAL_TELLS
-- Failure/setback mentioned = score for RECOVERY_PATHS, HIDDEN_FRAGILITIES
-- Org restructuring, institutional strategy, coalition-building, or discussion of how decisions really get made = score for POWER_ANALYSIS
-
-## BEHAVIORAL DIMENSIONS
-
-${formatDimensionsForPrompt()}
-
-## Source Tier Classification
-Assign each URL a source tier:
-- Tier 1: Podcast/interview/video — unscripted voice
-- Tier 2: Press profile, journalist coverage, third-party analysis
-- Tier 3: Self-authored (op-eds, LinkedIn posts, blog)
-- Tier 4: Institutional evidence during tenure (inferential)
-- Tier 5: Structural records (990s, filings, lobbying registries)
-
-## Output Format
-
-Return JSON:
-{
-  "scored_sources": [
-    {
-      "index": 1,
-      "url": "https://...",
-      "source_tier": 2,
-      "dimension_scores": {
-        "1_DECISION_MAKING": 0.7,
-        "4_COMMUNICATION_STYLE": 0.9,
-        "8_VALUES_HIERARCHY": 0.8
-      }
-    }
-  ]
-}
-
-IMPORTANT: Only include dimensions with score > 0.0 in dimension_scores. Omit zero-scoring dimensions. Score ALL ${sources.length} sources.`;
-}
-
-// ── Scoring result types ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// TYPES
+// ══════════════════════════════════════════════════════════════════════
 
 export interface ScoredSource {
-  index: number;
   url: string;
   title: string;
   attribution?: AttributionType;
   institutionalContext?: string;
   sourceTier: SourceTier;
-  dimensionScores: Record<string, number>;
+  /** Dimension → depth score (integer 0-3). Only non-zero entries present. */
+  depth_scores: Record<number, number>;
   content?: string;
+  char_count: number;
+  /** Legacy compat alias for depth_scores in string-keyed format */
+  dimensionScores: Record<string, number>;
+  /** Legacy compat field */
   contentLength: number;
+  /** Original index in the input array (for debugging) */
+  index: number;
 }
 
 export interface CoverageGap {
@@ -110,7 +85,19 @@ export interface CoverageGap {
   dimId: number;
   count: number;
   target: string;
-  status: 'SUFFICIENT' | 'MARGINAL' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
+  status: 'SUFFICIENT' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
+}
+
+export interface SelectionResult {
+  selected: ScoredSource[];
+  not_selected: ScoredSource[];
+  coverage: Record<number, number>;
+  gap_report: Record<number, {
+    coverage_count: number;
+    target: number;
+    status: 'SUFFICIENT' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
+  }>;
+  total_chars: number;
 }
 
 export interface Stage5Result {
@@ -124,8 +111,428 @@ export interface Stage5Result {
   };
 }
 
-// ── Run Stage 5 ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// STAGE 5a — DEPTH SCORING (Sonnet, batched, parallel)
+// ══════════════════════════════════════════════════════════════════════
 
+/**
+ * Build the scoring prompt for a single batch of sources.
+ * Sonnet scores each source on the 25 dimensions using integer depth 0-3.
+ */
+function buildScoringBatchPrompt(
+  subjectName: string,
+  sources: ResearchSource[],
+): string {
+  const sourcesText = sources.map((s, i) => {
+    const content = s.content || s.snippet || '';
+    return `### Source ${i + 1}
+URL: ${s.url}
+Title: ${s.title || 'Untitled'}
+Attribution: ${s.attribution || 'unknown'}
+${s.institutionalContext ? `Institutional Context: ${s.institutionalContext}\n` : ''}
+${content}`;
+  }).join('\n\n---\n\n');
+
+  return `You are scoring sources for a behavioral profiling system. For each source below, read the full content and score how much behavioral evidence it contains on each of the 25 dimensions listed.
+
+SUBJECT: ${subjectName}
+
+DEPTH SCALE (integer 0-3, per dimension, per source):
+  0 = No evidence for this dimension
+  1 = Mention — a fact without behavioral detail
+      ("MacDougall joined the board")
+  2 = Passage — a paragraph describing a decision, action, or
+      behavioral moment with context
+  3 = Rich evidence — direct quotes showing how they think,
+      observable behavior under pressure, or multiple data points
+
+Score based on what the content ACTUALLY CONTAINS. Do not infer.
+
+THE 25 DIMENSIONS:
+
+ 1. DECISION_MAKING — How they evaluate proposals and opportunities
+ 2. TRUST_CALIBRATION — What builds or breaks credibility
+ 3. INFLUENCE_SUSCEPTIBILITY — What persuades them, resistance patterns
+ 4. COMMUNICATION_STYLE — Language patterns, directness, framing
+ 5. LEARNING_STYLE — How they take in new information
+ 6. TIME_ORIENTATION — Past/present/future emphasis, urgency triggers
+ 7. IDENTITY_SELF_CONCEPT — How they see and present themselves
+ 8. VALUES_HIERARCHY — What they prioritize when values conflict
+ 9. STATUS_RECOGNITION — How they relate to prestige and credit
+10. BOUNDARY_CONDITIONS — Hard limits and non-negotiables
+11. EMOTIONAL_TRIGGERS — What excites or irritates them
+12. RELATIONSHIP_PATTERNS — Loyalty, collaboration style
+13. RISK_TOLERANCE — Attitude toward uncertainty and failure
+14. RESOURCE_PHILOSOPHY — How they think about money, time, leverage
+15. COMMITMENT_PATTERNS — How they make and keep commitments
+16. KNOWLEDGE_AREAS — Domains of expertise and intellectual passion
+17. CONTRADICTION_PATTERNS — Where stated values and actions diverge
+18. RETREAT_PATTERNS — How they disengage, recover, reset
+19. SHAME_DEFENSE_TRIGGERS — What they protect, what feels threatening
+20. REAL_TIME_INTERPERSONAL_TELLS — Observable behavior in interaction
+21. TEMPO_MANAGEMENT — Pacing of decisions, conversations, projects
+22. HIDDEN_FRAGILITIES — Vulnerabilities they manage or compensate for
+23. RECOVERY_PATHS — How they bounce back from setbacks
+24. CONDITIONAL_BEHAVIORAL_FORKS — If X, they do Y; if not X, they do Z
+25. POWER_ANALYSIS — How they read, navigate, and deploy power
+
+ALSO CLASSIFY EACH SOURCE INTO A SOURCE TIER:
+  Tier 1: Podcast/interview/video — unscripted voice
+  Tier 2: Press profile, journalist coverage, third-party analysis
+  Tier 3: Self-authored (op-eds, LinkedIn posts, blog, Substack)
+  Tier 4: Institutional evidence during tenure (inferential)
+  Tier 5: Structural records (board filings, 990s, lobbying registries)
+
+SOURCES TO SCORE:
+${sourcesText}
+
+OUTPUT — JSON array, one object per source:
+[
+  {
+    "url": "https://example.com/article",
+    "source_tier": 2,
+    "depth_scores": {
+      "1": 2, "4": 3, "7": 1, "8": 2, "25": 1
+    }
+  }
+]
+
+Only include dimensions with non-zero scores in depth_scores. Every source must appear in the output — do not skip any.`;
+}
+
+/**
+ * Score a single batch of sources via Sonnet. Returns ScoredSource[] for the batch.
+ */
+async function scoreBatch(
+  subjectName: string,
+  batch: ResearchSource[],
+  batchOffset: number,
+): Promise<ScoredSource[]> {
+  const prompt = buildScoringBatchPrompt(subjectName, batch);
+
+  const response = await complete(
+    'You are scoring research sources for behavioral evidence. Return JSON only.',
+    prompt,
+    { maxTokens: 8192 },
+  );
+
+  const jsonMatch = response.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) {
+    console.warn(`[Stage 5a] Batch at offset ${batchOffset}: no JSON array found, scoring as all-zeros`);
+    return batch.map((s, j) => makeZeroScoredSource(s, batchOffset + j));
+  }
+
+  const parsed: Array<{
+    url?: string;
+    source_tier?: number;
+    depth_scores?: Record<string, number>;
+  }> = JSON.parse(jsonMatch[0]);
+
+  const results: ScoredSource[] = [];
+  const handledIndices = new Set<number>();
+
+  for (let k = 0; k < parsed.length; k++) {
+    const entry = parsed[k];
+    // Match by position (k) since Sonnet outputs in order
+    const sourceIdx = k < batch.length ? k : -1;
+    if (sourceIdx < 0) continue;
+    handledIndices.add(sourceIdx);
+
+    const source = batch[sourceIdx];
+    const depthScores: Record<number, number> = {};
+    const dimensionScores: Record<string, number> = {};
+
+    if (entry.depth_scores) {
+      for (const [dimStr, score] of Object.entries(entry.depth_scores)) {
+        const dimId = parseInt(dimStr, 10);
+        if (dimId >= 1 && dimId <= 25 && typeof score === 'number') {
+          const clampedScore = Math.min(3, Math.max(0, Math.round(score)));
+          if (clampedScore > 0) {
+            depthScores[dimId] = clampedScore;
+            // Legacy compat: convert to 0.0-1.0 scale string-keyed format
+            const dim = DIMENSIONS.find(d => d.id === dimId);
+            if (dim) {
+              dimensionScores[dimKey(dim)] = clampedScore / 3;
+            }
+          }
+        }
+      }
+    }
+
+    const charCount = (source.content || source.snippet || '').length;
+    results.push({
+      index: batchOffset + sourceIdx,
+      url: source.url,
+      title: source.title,
+      attribution: source.attribution,
+      institutionalContext: source.institutionalContext,
+      sourceTier: (entry.source_tier || 3) as SourceTier,
+      depth_scores: depthScores,
+      dimensionScores,
+      content: source.content,
+      char_count: charCount,
+      contentLength: charCount,
+    });
+  }
+
+  // Handle any sources not covered by the response
+  for (let j = 0; j < batch.length; j++) {
+    if (!handledIndices.has(j)) {
+      results.push(makeZeroScoredSource(batch[j], batchOffset + j));
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Create a ScoredSource with all-zero depth scores (for failed batches or missing sources).
+ */
+function makeZeroScoredSource(source: ResearchSource, index: number): ScoredSource {
+  const charCount = (source.content || source.snippet || '').length;
+  return {
+    index,
+    url: source.url,
+    title: source.title,
+    attribution: source.attribution,
+    institutionalContext: source.institutionalContext,
+    sourceTier: 3 as SourceTier,
+    depth_scores: {},
+    dimensionScores: {},
+    content: source.content,
+    char_count: charCount,
+    contentLength: charCount,
+  };
+}
+
+/**
+ * Stage 5a: Score all sources in parallel batches via Sonnet.
+ * Splits into batches of SCORING_BATCH_SIZE, runs all concurrently,
+ * merges into one flat array.
+ */
+async function scoreAllSources(
+  sources: ResearchSource[],
+  subjectName: string,
+): Promise<ScoredSource[]> {
+  const batches: { batch: ResearchSource[]; offset: number }[] = [];
+  for (let i = 0; i < sources.length; i += SCORING_BATCH_SIZE) {
+    batches.push({
+      batch: sources.slice(i, i + SCORING_BATCH_SIZE),
+      offset: i,
+    });
+  }
+
+  console.log(`[Stage 5a] Scoring ${sources.length} sources in ${batches.length} parallel batches of ≤${SCORING_BATCH_SIZE}`);
+
+  // Run all batches in parallel
+  const batchResults = await Promise.all(
+    batches.map(async ({ batch, offset }, batchIdx) => {
+      try {
+        const result = await scoreBatch(subjectName, batch, offset);
+        console.log(`[Stage 5a] Batch ${batchIdx + 1}/${batches.length}: scored ${result.length} sources`);
+        return result;
+      } catch (err) {
+        console.error(`[Stage 5a] Batch ${batchIdx + 1} failed, retrying once...`, err);
+        // Retry once
+        try {
+          const result = await scoreBatch(subjectName, batch, offset);
+          console.log(`[Stage 5a] Batch ${batchIdx + 1}/${batches.length}: scored ${result.length} sources (retry)`);
+          return result;
+        } catch (retryErr) {
+          console.error(`[Stage 5a] Batch ${batchIdx + 1} failed on retry, scoring as all-zeros`, retryErr);
+          return batch.map((s, j) => makeZeroScoredSource(s, offset + j));
+        }
+      }
+    })
+  );
+
+  // Merge all batch results into one flat array
+  const allScored = batchResults.flat();
+  console.log(`[Stage 5a] Total scored: ${allScored.length} sources`);
+  return allScored;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// STAGE 5b — SOURCE SELECTION ALGORITHM (server code, no LLM)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Iteratively select sources using scarcity-weighted scoring.
+ * After each pick, scarcity recalculates because coverage changes.
+ */
+export function selectSources(allScored: ScoredSource[]): SelectionResult {
+  const selected: ScoredSource[] = [];
+  const remaining = [...allScored];
+  let totalChars = 0;
+
+  // Coverage per dimension: how many selected sources have depth > 0
+  const coverage: Record<number, number> = {};
+  for (let d = 1; d <= 25; d++) coverage[d] = 0;
+
+  // Source tier counts for diversity bonus
+  const tierCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+  while (remaining.length > 0) {
+    let bestIdx = -1;
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const src = remaining[i];
+
+      // Skip sources that don't fit in remaining budget
+      if (totalChars + src.char_count > CONTENT_BUDGET_CHARS) continue;
+
+      // Calculate: Σ(depth × tier_weight × scarcity) × diversity_bonus / char_count × 1000
+      let dimSum = 0;
+      for (let d = 1; d <= 25; d++) {
+        const depth = src.depth_scores[d] || 0;
+        if (depth === 0) continue;
+
+        const tierWeight = TIER_WEIGHTS[d];
+        const target = INVESTMENT_TARGETS[d];
+        const scarcity = Math.min(
+          target / Math.max(coverage[d], 0.5),
+          SCARCITY_CAP
+        );
+        dimSum += depth * tierWeight * scarcity;
+      }
+
+      const tierCount = tierCounts[src.sourceTier] || 0;
+      const diversityBonus = DIVERSITY_BONUSES[Math.min(tierCount, 3)];
+
+      // Guard against zero-length sources
+      const charCount = Math.max(src.char_count, 1);
+      const score = (dimSum * diversityBonus) / charCount * 1000;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+
+    // No source fits — we're done
+    if (bestIdx === -1) break;
+
+    // Select the best source
+    const chosen = remaining.splice(bestIdx, 1)[0];
+    selected.push(chosen);
+    totalChars += chosen.char_count;
+
+    // Update coverage for all dimensions this source covers
+    for (let d = 1; d <= 25; d++) {
+      if ((chosen.depth_scores[d] || 0) > 0) {
+        coverage[d]++;
+      }
+    }
+
+    // Update tier count
+    tierCounts[chosen.sourceTier]++;
+
+    // Scarcity recalculates automatically on next loop iteration
+    // because it reads from the updated coverage object
+  }
+
+  // Build gap report from final coverage state
+  const gap_report: SelectionResult['gap_report'] = {};
+  for (let d = 1; d <= 25; d++) {
+    const target = INVESTMENT_TARGETS[d];
+    const count = coverage[d];
+    let status: 'SUFFICIENT' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
+    if (count === 0) status = 'ZERO_COVERAGE';
+    else if (count < target * 0.5) status = 'CRITICAL_GAP';
+    else if (count < target) status = 'GAP';
+    else status = 'SUFFICIENT';
+    gap_report[d] = { coverage_count: count, target, status };
+  }
+
+  return {
+    selected,
+    not_selected: remaining,
+    coverage,
+    gap_report,
+    total_chars: totalChars,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GAP REPORT FORMATTING (for Stage 6 developer message, Section C)
+// ══════════════════════════════════════════════════════════════════════
+
+const DIMENSION_NAMES: Record<number, string> = {
+  1: 'DECISION_MAKING', 2: 'TRUST_CALIBRATION', 3: 'INFLUENCE_SUSCEPTIBILITY',
+  4: 'COMMUNICATION_STYLE', 5: 'LEARNING_STYLE', 6: 'TIME_ORIENTATION',
+  7: 'IDENTITY_SELF_CONCEPT', 8: 'VALUES_HIERARCHY', 9: 'STATUS_RECOGNITION',
+  10: 'BOUNDARY_CONDITIONS', 11: 'EMOTIONAL_TRIGGERS', 12: 'RELATIONSHIP_PATTERNS',
+  13: 'RISK_TOLERANCE', 14: 'RESOURCE_PHILOSOPHY', 15: 'COMMITMENT_PATTERNS',
+  16: 'KNOWLEDGE_AREAS', 17: 'CONTRADICTION_PATTERNS', 18: 'RETREAT_PATTERNS',
+  19: 'SHAME_DEFENSE_TRIGGERS', 20: 'REAL_TIME_INTERPERSONAL_TELLS',
+  21: 'TEMPO_MANAGEMENT', 22: 'HIDDEN_FRAGILITIES', 23: 'RECOVERY_PATHS',
+  24: 'CONDITIONAL_BEHAVIORAL_FORKS', 25: 'POWER_ANALYSIS',
+};
+
+/**
+ * Format the gap report from the selection algorithm for Stage 6 developer message (Section C).
+ * Input can be either the SelectionResult.gap_report or the legacy CoverageGap[] format.
+ */
+export function formatCoverageGapReport(
+  input: SelectionResult['gap_report'] | CoverageGap[],
+): string {
+  const lines: string[] = [
+    'COVERAGE GAP ANALYSIS FROM PRE-RESEARCH:',
+    'The following dimensions have weak or zero coverage in the pre-loaded',
+    'sources. After you have fully processed all pre-fetched sources,',
+    'conduct a LIMITED round of web searches (no more than 15-20 searches)',
+    'targeting these specific gaps:',
+    '',
+  ];
+
+  // Normalize input to entries
+  let entries: Array<{ dim: number; coverage_count: number; target: number; status: string }>;
+
+  if (Array.isArray(input)) {
+    // Legacy CoverageGap[] format
+    entries = input.map(g => ({
+      dim: g.dimId,
+      coverage_count: g.count,
+      target: INVESTMENT_TARGETS[g.dimId] || 2,
+      status: g.status,
+    }));
+  } else {
+    // New SelectionResult.gap_report format
+    entries = Object.entries(input).map(([d, info]) => ({
+      dim: Number(d),
+      ...info,
+    }));
+  }
+
+  // Filter to non-sufficient and sort: ZERO_COVERAGE first, then CRITICAL_GAP, then GAP
+  const priority: Record<string, number> = { ZERO_COVERAGE: 0, CRITICAL_GAP: 1, GAP: 2, SUFFICIENT: 3 };
+  const gaps = entries
+    .filter(e => e.status !== 'SUFFICIENT')
+    .sort((a, b) => (priority[a.status] ?? 4) - (priority[b.status] ?? 4));
+
+  for (const e of gaps) {
+    lines.push(
+      `${e.dim}. ${DIMENSION_NAMES[e.dim]} — ${e.status} ` +
+      `(${e.coverage_count} sources, need ${e.target})`
+    );
+  }
+
+  if (gaps.length === 0) {
+    lines.push('All dimensions have sufficient coverage. Gap-fill search is optional.');
+  }
+
+  return lines.join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// MAIN ENTRY POINT — runDimensionScoring
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Run Stage 5: Score all sources (5a) then select via algorithm (5b).
+ * Returns selected sources + gap report for Stage 6.
+ */
 export async function runDimensionScoring(
   sources: ResearchSource[],
   subjectName: string,
@@ -134,293 +541,59 @@ export async function runDimensionScoring(
 ): Promise<Stage5Result> {
   console.log(`[Stage 5] Scoring ${sources.length} sources against 25 dimensions`);
 
-  // Build LinkedIn reference
-  const linkedinRef = linkedinData
-    ? `${linkedinData.currentTitle} at ${linkedinData.currentEmployer}; ${(linkedinData.careerHistory || []).slice(0, 4).map((j: any) => `${j.title} at ${j.employer} (${j.startDate}-${j.endDate})`).join('; ')}`
-    : `${identity.currentRole || 'Unknown'} at ${identity.currentOrg || 'Unknown'}`;
+  // ── Stage 5a: Parallel batched scoring ──────────────────────────
+  const allScored = await scoreAllSources(sources, subjectName);
+  console.log(`[Stage 5a] Scored ${allScored.length} sources`);
 
-  // Score in batches (Sonnet can handle ~20-25 sources per call with truncated content)
-  const BATCH_SIZE = 20;
-  const allScored: ScoredSource[] = [];
+  // ── Stage 5b: Iterative selection algorithm (no LLM) ───────────
+  const selectionResult = selectSources(allScored);
 
-  for (let i = 0; i < sources.length; i += BATCH_SIZE) {
-    const batch = sources.slice(i, i + BATCH_SIZE);
-    const batchOffset = i;
+  console.log(`[Stage 5b] Selected ${selectionResult.selected.length} sources (~${selectionResult.total_chars} chars)`);
+  console.log(`[Stage 5b] Not selected: ${selectionResult.not_selected.length} sources`);
 
-    try {
-      const prompt = buildScoringPrompt(subjectName, batch, linkedinRef);
-      const response = await complete(
-        'You are scoring research sources for behavioral evidence. Return JSON only.',
-        prompt,
-        { maxTokens: 8192 },
-      );
-
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const scoredSources = parsed.scored_sources || [];
-
-        for (const scored of scoredSources) {
-          const idx = (scored.index || 1) - 1; // 1-based to 0-based
-          if (idx < 0 || idx >= batch.length) continue;
-
-          const source = batch[idx];
-          allScored.push({
-            index: batchOffset + idx,
-            url: source.url,
-            title: source.title,
-            attribution: source.attribution,
-            institutionalContext: source.institutionalContext,
-            sourceTier: (scored.source_tier || 3) as SourceTier,
-            dimensionScores: scored.dimension_scores || {},
-            content: source.content,
-            contentLength: (source.content || source.snippet || '').length,
-          });
-        }
-
-        // Handle sources not in response (default score)
-        const handledIndices = new Set(scoredSources.map((s: any) => (s.index || 1) - 1));
-        for (let j = 0; j < batch.length; j++) {
-          if (!handledIndices.has(j)) {
-            allScored.push({
-              index: batchOffset + j,
-              url: batch[j].url,
-              title: batch[j].title,
-              attribution: batch[j].attribution,
-              institutionalContext: batch[j].institutionalContext,
-              sourceTier: 3,
-              dimensionScores: {},
-              content: batch[j].content,
-              contentLength: (batch[j].content || batch[j].snippet || '').length,
-            });
-          }
-        }
-      } else {
-        // Parse failure — assign defaults
-        for (let j = 0; j < batch.length; j++) {
-          allScored.push({
-            index: batchOffset + j,
-            url: batch[j].url,
-            title: batch[j].title,
-            attribution: batch[j].attribution,
-            sourceTier: 3,
-            dimensionScores: {},
-            content: batch[j].content,
-            contentLength: (batch[j].content || batch[j].snippet || '').length,
-          });
-        }
-      }
-    } catch (err) {
-      console.error(`[Stage 5] Scoring batch failed:`, err);
-      for (let j = 0; j < batch.length; j++) {
-        allScored.push({
-          index: batchOffset + j,
-          url: batch[j].url,
-          title: batch[j].title,
-          attribution: batch[j].attribution,
-          sourceTier: 3,
-          dimensionScores: {},
-          content: batch[j].content,
-          contentLength: (batch[j].content || batch[j].snippet || '').length,
-        });
-      }
+  // Log coverage summary
+  for (let d = 1; d <= 25; d++) {
+    const info = selectionResult.gap_report[d];
+    if (info.status !== 'SUFFICIENT') {
+      console.log(`[Stage 5b] ${info.status}: ${DIMENSION_NAMES[d]} (${info.coverage_count} sources, need ${info.target})`);
     }
   }
 
-  console.log(`[Stage 5] Scored ${allScored.length} sources`);
-
-  // ── Coverage gap analysis ──────────────────────────────────────────
-
-  const coverageGaps = computeCoverageGaps(allScored);
-
-  // Log gap summary
-  for (const gap of coverageGaps) {
-    if (gap.status !== 'SUFFICIENT') {
-      console.log(`[Stage 5] ${gap.status}: ${gap.dimension} (${gap.count} sources, target: ${gap.target})`);
-    }
+  // Convert SelectionResult.gap_report to CoverageGap[] for backward compat
+  const coverageGaps: CoverageGap[] = [];
+  for (let d = 1; d <= 25; d++) {
+    const info = selectionResult.gap_report[d];
+    const dim = DIMENSIONS.find(dd => dd.id === d)!;
+    coverageGaps.push({
+      dimension: dimKey(dim),
+      dimId: d,
+      count: info.coverage_count,
+      target: `${dim.targetMin}-${dim.targetMax}`,
+      status: info.status,
+    });
   }
 
-  // ── Selection ──────────────────────────────────────────────────────
-
-  const { selected, notSelected } = selectSources(allScored, coverageGaps);
-
-  const estimatedContentChars = selected.reduce((sum, s) => sum + s.contentLength, 0);
-
-  console.log(`[Stage 5] Selected ${selected.length}/${allScored.length} sources (~${estimatedContentChars} chars)`);
+  // Build notSelected reasons for logging
+  const notSelected = selectionResult.not_selected.map(s => ({
+    url: s.url,
+    reason: s.char_count > CONTENT_BUDGET_CHARS ? 'Exceeds budget alone' : 'Lower priority than selected sources',
+  }));
 
   return {
-    selectedSources: selected,
+    selectedSources: selectionResult.selected,
     notSelected,
     coverageGaps,
     stats: {
       totalScored: allScored.length,
-      selected: selected.length,
-      estimatedContentChars,
+      selected: selectionResult.selected.length,
+      estimatedContentChars: selectionResult.total_chars,
     },
   };
 }
 
-// ── Coverage gap computation ────────────────────────────────────────
-
-function computeCoverageGaps(scored: ScoredSource[]): CoverageGap[] {
-  const gaps: CoverageGap[] = [];
-
-  for (const dim of DIMENSIONS) {
-    const key = dimKey(dim);
-    const count = scored.filter(s => (s.dimensionScores[key] || 0) > 0.3).length;
-
-    let status: CoverageGap['status'];
-    if (count >= dim.targetMin) {
-      status = 'SUFFICIENT';
-    } else if (count === 0) {
-      status = 'ZERO_COVERAGE';
-    } else if (count >= dim.targetMin - 1) {
-      status = 'MARGINAL';
-    } else if (dim.tier === 'HIGH' && count < dim.targetMin / 2) {
-      status = 'CRITICAL_GAP';
-    } else {
-      status = 'GAP';
-    }
-
-    gaps.push({
-      dimension: key,
-      dimId: dim.id,
-      count,
-      target: `${dim.targetMin}-${dim.targetMax}`,
-      status,
-    });
-  }
-
-  return gaps;
-}
-
-// ── Source selection logic ───────────────────────────────────────────
-
-const CONTENT_BUDGET_CHARS = 100_000;
-const MAX_SOURCES = 25;
-const MIN_SOURCES = 15;
-
-function selectSources(
-  scored: ScoredSource[],
-  gaps: CoverageGap[],
-): { selected: ScoredSource[]; notSelected: Array<{ url: string; reason: string }> } {
-  // Priority scoring for each source
-  const prioritized = scored.map(s => ({
-    source: s,
-    priority: computeSelectionPriority(s, gaps),
-  }));
-
-  // Sort by priority descending
-  prioritized.sort((a, b) => b.priority - a.priority);
-
-  const selected: ScoredSource[] = [];
-  const notSelected: Array<{ url: string; reason: string }> = [];
-  let totalChars = 0;
-
-  for (const { source, priority } of prioritized) {
-    if (selected.length >= MAX_SOURCES) {
-      notSelected.push({ url: source.url, reason: 'Max source count reached' });
-      continue;
-    }
-
-    if (totalChars + source.contentLength > CONTENT_BUDGET_CHARS && selected.length >= MIN_SOURCES) {
-      notSelected.push({ url: source.url, reason: 'Content budget exceeded' });
-      continue;
-    }
-
-    selected.push(source);
-    totalChars += source.contentLength;
-  }
-
-  return { selected, notSelected };
-}
-
-function computeSelectionPriority(source: ScoredSource, gaps: CoverageGap[]): number {
-  let priority = 0;
-
-  // Priority 1: Source covers a critical gap or zero-coverage dimension
-  const criticalGaps = new Set(
-    gaps.filter(g => g.status === 'CRITICAL_GAP' || g.status === 'ZERO_COVERAGE').map(g => g.dimension)
-  );
-  for (const [dim, score] of Object.entries(source.dimensionScores)) {
-    if (score > 0.3 && criticalGaps.has(dim)) {
-      priority += 50;
-    }
-  }
-
-  // Priority 2: Tier 1 sources (podcasts/interviews) — always valuable
-  if (source.sourceTier === 1) priority += 30;
-
-  // Priority 3: Covers multiple High-tier dimensions
-  const highTierDims = new Set(
-    DIMENSIONS.filter(d => d.tier === 'HIGH').map(d => dimKey(d))
-  );
-  let highDimCount = 0;
-  for (const [dim, score] of Object.entries(source.dimensionScores)) {
-    if (score > 0.3 && highTierDims.has(dim)) {
-      highDimCount++;
-    }
-  }
-  priority += highDimCount * 10;
-
-  // Priority 4: Only source for a given dimension (uniqueness bonus)
-  // (This is approximated — full uniqueness check would require knowing all sources)
-  const gapDims = new Set(gaps.filter(g => g.status === 'GAP' || g.status === 'MARGINAL').map(g => g.dimension));
-  for (const [dim, score] of Object.entries(source.dimensionScores)) {
-    if (score > 0.3 && gapDims.has(dim)) {
-      priority += 15;
-    }
-  }
-
-  // Priority 5: Source tier bonus (Tier 2-3 > Tier 4-5)
-  if (source.sourceTier <= 3) priority += 5;
-
-  // Priority 6: Total dimension coverage breadth
-  const coveredDims = Object.values(source.dimensionScores).filter(s => s > 0.3).length;
-  priority += coveredDims * 3;
-
-  return priority;
-}
-
-// ── Format coverage gap report for Stage 6 ──────────────────────────
-
-export function formatCoverageGapReport(gaps: CoverageGap[]): string {
-  const lines: string[] = [];
-  lines.push('COVERAGE GAP ANALYSIS FROM PRE-RESEARCH:');
-  lines.push('The following dimensions have weak or zero coverage in the pre-loaded');
-  lines.push('sources. After you have fully processed all pre-fetched sources,');
-  lines.push('conduct a LIMITED round of web searches (no more than 15-20 searches)');
-  lines.push('targeting these specific gaps:\n');
-
-  const gapDims = gaps.filter(g => g.status !== 'SUFFICIENT');
-  if (gapDims.length === 0) {
-    lines.push('All dimensions have sufficient coverage. Gap-fill search is optional.');
-    return lines.join('\n');
-  }
-
-  // Sort: critical gaps first, then gaps, then marginal, then zero coverage
-  const statusOrder: Record<string, number> = {
-    'CRITICAL_GAP': 0,
-    'ZERO_COVERAGE': 1,
-    'GAP': 2,
-    'MARGINAL': 3,
-  };
-  gapDims.sort((a, b) => (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4));
-
-  for (const gap of gapDims) {
-    lines.push(`${gap.dimId.toString().padStart(2)}. ${gap.dimension.split('_').slice(1).join('_') || gap.dimension} — ${gap.status} (${gap.count} sources, need ${gap.target})`);
-  }
-
-  lines.push('\nSuggested gap-fill searches: interviews where subject is challenged,');
-  lines.push('moments of public failure/criticism, colleague testimonials about');
-  lines.push('working style under pressure, crisis responses, organizational');
-  lines.push('departures or transitions, restructuring decisions, coalition-building,');
-  lines.push('or descriptions of how internal decisions actually get made.');
-
-  return lines.join('\n');
-}
-
-// ── Format selected sources for Stage 6 input ───────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// FORMAT SELECTED SOURCES FOR STAGE 6 USER MESSAGE
+// ══════════════════════════════════════════════════════════════════════
 
 export function formatSourcesForDeepResearch(
   selected: ScoredSource[],
@@ -435,9 +608,11 @@ export function formatSourcesForDeepResearch(
   for (let i = 0; i < selected.length; i++) {
     const s = selected[i];
     const content = s.content || '';
-    const dimCoverage = Object.entries(s.dimensionScores)
-      .filter(([, score]) => score > 0.3)
-      .map(([dim]) => dim)
+
+    // List covered dimensions with their depth scores
+    const dimCoverage = Object.entries(s.depth_scores)
+      .filter(([, score]) => score > 0)
+      .map(([dimId, score]) => `${DIMENSION_NAMES[Number(dimId)]}(${score})`)
       .join(', ');
 
     lines.push(`=== SOURCE ${i + 1} of ${selected.length} ===`);
@@ -457,7 +632,9 @@ export function formatSourcesForDeepResearch(
   return lines.join('\n');
 }
 
-// ── Backward compatibility exports ──────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// BACKWARD COMPATIBILITY EXPORTS
+// ══════════════════════════════════════════════════════════════════════
 
 export const SOURCE_SCORING_PROMPT = 'DEPRECATED: Use runDimensionScoring() instead';
 
@@ -465,10 +642,9 @@ export function buildScoringPromptCompat(
   donorName: string,
   sources: { url: string; title: string; snippet: string; content?: string }[],
 ): string {
-  return buildScoringPrompt(
+  return buildScoringBatchPrompt(
     donorName,
     sources.map(s => ({ ...s, source: 'tavily' })),
-    '',
   );
 }
 
