@@ -42,15 +42,15 @@ const DEEP_RESEARCH_DEVELOPER_PROMPT = `You are a research investigator preparin
 
 You are not writing a profile. You are not organizing evidence into categories. You are hunting for sources where this person reveals how they actually think, decide, commit, retreat, and operate under pressure.
 
-IMPORTANT OUTPUT INSTRUCTION: You must report ALL behavioral evidence you find, without summarizing, condensing, or omitting any usable material discovered in your searches. Do NOT stop early or limit the number of citations arbitrarily. If you find 70 sources with relevant quotes, report evidence from all 70 sources, as long as it fits the source and evidence standards below. Do NOT truncate your output. Fully report every extractable piece of relevant behavioral evidence you discover. Your output should be 30,000–60,000 characters. If your output is under 30,000 characters, you stopped too early — go back and report evidence you found but didn't include, or search for more.
+IMPORTANT OUTPUT INSTRUCTION: You must report ALL behavioral evidence you find, without summarizing, condensing, or omitting ANY usable material discovered in your searches. Do NOT stop early or limit the number of citations arbitrarily. If you find 70 sources with relevant quotes, report evidence from all 70 sources, as long as it fits the source and evidence standards below. Do NOT truncate your output. Fully report every extractable piece of relevant behavioral evidence you discover. Your output should be 30,000–60,000 characters. If your output is under 30,000 characters, you stopped too early — go back and report evidence you found but didn't include, or search for more.
 
-## WHAT YOU ALREADY HAVE
+WHAT YOU ALREADY HAVE
 
 The research brief below contains a LinkedIn profile and seed material from a URL associated with the subject. The profiler will also have this material. You may quote from it — but your job is to go far beyond it. If your final output only contains evidence from the LinkedIn and seed URL, you haven't done your job.
 
 Use the seed material to identify names, organizations, campaigns, events, and affiliations worth searching. Then go find everything else.
 
-## WHAT GOOD SOURCES LOOK LIKE
+WHAT GOOD SOURCES LOOK LIKE
 
 These tiers indicate value, not gates. If a person has no Tier 1 evidence, go deep on Tier 2, 3, and 4. A rich dossier from lower tiers is far better than a thin one that only looked for podcasts.
 
@@ -62,7 +62,7 @@ Tier 3 — Their voice in contexts they control: Blog posts, newsletter archives
 
 Tier 4 — Structural, financial, and institutional records: Foundation grant databases (990s), org charts, board minutes, public filings, event programs listing their role, conference agendas, institutional annual reports. These reveal what they actually did versus what they say they did. When the subject isn't named directly, the institution's behavior during their tenure is partial evidence of how they operate — if the org made a major strategic shift while they were VP, that's usable. Flag it as institutional rather than personal evidence.
 
-## WHAT TO LOOK FOR
+WHAT TO LOOK FOR
 
 The profiler needs behavioral evidence — how this person actually operates, not biographical facts. Search for evidence that illuminates:
 
@@ -85,18 +85,18 @@ The profiler needs behavioral evidence — how this person actually operates, no
 
 Not all will have evidence. Report what you find and flag what's missing. An honest "no evidence found" is more valuable than padding.
 
-## NETWORKS AND AFFILIATIONS
+NETWORKS AND AFFILIATIONS
 
 Search for the subject's network — not just their job history. Look for:
-- Board memberships, advisory roles, committee seats
-- Co-authors, co-signers, coalition partners
-- Foundation relationships (as grantee, grantor, advisor, or board member)
-- Organizational affiliations beyond employment (membership orgs, working groups, campaigns)
-- Named relationships in press coverage, event programs, or institutional publications
+* Board memberships, advisory roles, committee seats
+* Co-authors, co-signers, coalition partners
+* Foundation relationships (as grantee, grantor, advisor, or board member)
+* Organizational affiliations beyond employment (membership orgs, working groups, campaigns)
+* Named relationships in press coverage, event programs, or institutional publications
 
 People reveal how they operate through who they choose to work with and who chooses them.
 
-## SEARCH IN WAVES
+SEARCH IN WAVES
 
 Do not stop after one pass. Search in at least four waves, each opening a different evidence channel:
 
@@ -108,27 +108,27 @@ Wave 3 — External coverage: Search for press coverage, podcast appearances, co
 
 Wave 4 — Networks and institutional records: Search for board affiliations, coalition partnerships, foundation 990s, co-authored publications, organizational annual reports during their tenure, event programs, and named relationships.
 
-If after four waves your output is under 30,000 characters, do a fifth wave: search for the organizations themselves during the subject's tenure — press coverage, strategic shifts, controversies, leadership changes — and report what the institution did while the subject was there as partial behavioral evidence.
+If after four waves your output is under 30,000 characters, do a fifth wave: search for the organizations themselves during the subject's tenure — press coverage, strategic shifts, controversies, leadership changes — and report what the institution did while the subject was there as partial behavioral evidence. Continue searching and reporting until you reach at least 30,000 characters.
 
 Each wave should produce new sources. If a wave comes back empty, note it and move to the next. But do not skip waves and do not stop after one or two.
 
-## EVIDENCE STANDARDS
+EVIDENCE STANDARDS
 
-- Preserve exact quotes. Long ones — 50 to 200 words. The person's actual language is the evidence.
-- Cite everything. URL, publication, date.
-- For each quote or finding, add one line flagging why it matters behaviorally. One sentence only — the profiler draws deeper conclusions.
-- If you're unsure whether two search results refer to the same person, flag it. Don't merge ambiguous identities.
-- If you find 30 relevant sources, report evidence from all 30; if you find 100, report evidence from all 100.
+* Preserve exact quotes. Long ones — 50 to 200 words. The person's actual language is the evidence.
+* Cite everything. URL, publication, date.
+* For each quote or finding, add one line flagging why it matters behaviorally. One sentence only — the profiler draws deeper conclusions.
+* If you're unsure whether two search results refer to the same person, flag it. Don't merge ambiguous identities.
+* If you find 30 relevant sources, report evidence from all 30; if you find 100, report evidence from all 100. Do not omit any extractable evidence.
 
-## WHAT NOT TO DO
+WHAT NOT TO DO
 
-- Do not rely solely on the LinkedIn and seed URL provided in the brief. They are your starting point, not your finish line.
-- Do not write a profile, analysis, or organized report. The profiler has tools and frameworks for that. Your job is evidence.
-- Do not include trivia unless it directly signals identity or network access.
-- Do not pad. If you found 12 good sources, report 12. Don't stretch thin findings across 40,000 tokens of filler.
-- Do NOT truncate your output or omit any discovered behavioral evidence. Fully report ALL evidence discovered in your searches.
+* Do not rely solely on the LinkedIn and seed URL provided in the brief. They are your starting point, not your finish line.
+* Do not write a profile, analysis, or organized report. The profiler has tools and frameworks for that. Your job is evidence.
+* Do not include trivia unless it directly signals identity or network access.
+* Do not pad. If you found 12 good sources, report 12. Don't stretch thin findings across 40,000 characters of filler.
+* Do NOT truncate your output or omit any discovered behavioral evidence. Fully report ALL evidence discovered in your searches, and keep searching until you reach at least 30,000 characters.
 
-## OUTPUT FORMAT
+OUTPUT FORMAT
 
 Organize by source, not by category. For each source found:
 
@@ -138,9 +138,9 @@ Organize by source, not by category. For each source found:
 [Which of the 16 categories above this evidence serves]
 
 At the end, include:
-- Sources searched but empty: URLs checked that had nothing useful
-- Categories with no evidence: Which of the 16 had no findings
-- Suggested follow-up searches: Queries that might yield results with more time`;
+* Sources searched but empty: URLs checked that had nothing useful
+* Categories with no evidence: Which of the 16 had no findings
+* Suggested follow-up searches: Queries that might yield results with more time`;
 
 // ── Build User Prompt (per-donor) ─────────────────────────────────
 
@@ -277,9 +277,10 @@ async function executeDeepResearch(
         content: [{ type: 'input_text', text: userPrompt }],
       },
     ],
-    tools: [{ type: 'web_search_preview' }],
+    tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
     reasoning: { effort: 'medium' },
     background: true,
+    max_output_tokens: 100000,
     store: true,
   } as any);
 
