@@ -277,7 +277,7 @@ async function executeDeepResearch(
         content: [{ type: 'input_text', text: userPrompt }],
       },
     ],
-    tools: [{ type: 'web_search_preview', search_context_size: 'high' }],
+    tools: [{ type: 'web_search_preview', search_context_size: 'medium' }],
     reasoning: { effort: 'medium' },
     background: true,
     max_output_tokens: 100000,
