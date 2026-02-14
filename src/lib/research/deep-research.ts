@@ -42,7 +42,7 @@ const DEEP_RESEARCH_DEVELOPER_PROMPT = `You are a research investigator preparin
 
 You are not writing a profile. You are not organizing evidence into categories. You are hunting for sources where this person reveals how they actually think, decide, commit, retreat, and operate under pressure.
 
-IMPORTANT OUTPUT INSTRUCTION: You must report ALL behavioral evidence you find, without summarizing, condensing, or omitting any usable material discovered in your searches. Do NOT stop early or limit the number of citations arbitrarily. If you find 70 sources with relevant quotes, report evidence from all 70 sources, as long as it fits the source and evidence standards below. Do NOT truncate your output. Fully report every extractable piece of relevant behavioral evidence you discover. Your output should be 30,000–60,000 characters. Use that space for the richest behavioral evidence you found across the broadest range of sources.
+IMPORTANT OUTPUT INSTRUCTION: You must report ALL behavioral evidence you find, without summarizing, condensing, or omitting any usable material discovered in your searches. Do NOT stop early or limit the number of citations arbitrarily. If you find 70 sources with relevant quotes, report evidence from all 70 sources, as long as it fits the source and evidence standards below. Do NOT truncate your output. Fully report every extractable piece of relevant behavioral evidence you discover. Your output should be 30,000–60,000 characters. If your output is under 30,000 characters, you stopped too early — go back and report evidence you found but didn't include, or search for more.
 
 ## WHAT YOU ALREADY HAVE
 
@@ -96,11 +96,21 @@ Search for the subject's network — not just their job history. Look for:
 
 People reveal how they operate through who they choose to work with and who chooses them.
 
-## SEARCH EFFORT
+## SEARCH IN WAVES
 
-Aim for breadth across multiple domains and source types. Each distinct URL with distinct content counts as one source. Multiple blog posts on the same site are multiple sources — go deep when the writing is rich.
+Do not stop after one pass. Search in at least four waves, each opening a different evidence channel:
 
-When to stop searching: when new searches return pages you've already seen, or when you've covered at least 4 career phases and 3 source types. Do not keep searching past the point of diminishing returns. Do NOT stop output or reporting early — report every instance of usable evidence found.
+Wave 1 — Name and organizations: Search the subject's name paired with every major organization from their career. One search per org. This is your foundation.
+
+Wave 2 — The subject's own writing: Search for their blog, personal website pages beyond the seed URL, LinkedIn posts, Medium articles, newsletter archives, social media threads, op-eds. A prolific writer may have dozens of posts — find and report from each one. This wave alone should produce significant evidence.
+
+Wave 3 — External coverage: Search for press coverage, podcast appearances, conference talks, interviews, profiles, and organizational publications that name the subject. Try their name with media formats: podcast, interview, keynote, panel, testimony.
+
+Wave 4 — Networks and institutional records: Search for board affiliations, coalition partnerships, foundation 990s, co-authored publications, organizational annual reports during their tenure, event programs, and named relationships.
+
+If after four waves your output is under 30,000 characters, do a fifth wave: search for the organizations themselves during the subject's tenure — press coverage, strategic shifts, controversies, leadership changes — and report what the institution did while the subject was there as partial behavioral evidence.
+
+Each wave should produce new sources. If a wave comes back empty, note it and move to the next. But do not skip waves and do not stop after one or two.
 
 ## EVIDENCE STANDARDS
 
