@@ -157,27 +157,5 @@ export type KillReason =
   | 'wrong_attribution'
   | 'wrong_person';
 
-// ── Old dimension name mapping (for migration) ─────────────────────
-
-export const OLD_DIM_RENAMES: Record<string, DimensionKey> = {
-  SELF_CONCEPT: 'IDENTITY_SELF_CONCEPT',
-  VALUE_HIERARCHY: 'VALUES_HIERARCHY',
-  RISK_ARCHITECTURE: 'RISK_TOLERANCE',
-  CONTRADICTION_ARCHITECTURE: 'CONTRADICTION_PATTERNS',
-  STATUS_DYNAMICS: 'STATUS_RECOGNITION',
-};
-
-/** Fold-ins: old non-standard dims → canonical dims they map to */
-export const OLD_DIM_FOLDINS: Record<string, DimensionKey[]> = {
-  INSTITUTIONAL_POSTURE: ['RESOURCE_PHILOSOPHY'],
-  NETWORK_MAP: ['RELATIONSHIP_PATTERNS'],
-  CONTROVERSY_AND_PRESSURE: ['CONTRADICTION_PATTERNS', 'BOUNDARY_CONDITIONS'],
-};
-
-/** Resolve an old dimension name to its canonical key */
-export function resolveOldDimName(name: string): DimensionKey | null {
-  if (DIMENSION_KEYS.includes(name as DimensionKey)) return name as DimensionKey;
-  if (name in OLD_DIM_RENAMES) return OLD_DIM_RENAMES[name];
-  if (name in OLD_DIM_FOLDINS) return OLD_DIM_FOLDINS[name][0]; // primary target
-  return null;
-}
+// Migration artifacts (OLD_DIM_RENAMES, OLD_DIM_FOLDINS, resolveOldDimName) removed Feb 2026.
+// No active code referenced them.

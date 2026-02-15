@@ -139,41 +139,6 @@ ${linkedinJson}`;
   return [sectionA, sectionB, sectionC, sectionD, sectionE, sectionF].join('\n\n---\n\n');
 }
 
-// ── Legacy User Message (for when Stage 5 hasn't run) ───────────────
-
-function buildLegacyUserPrompt(
-  donorName: string,
-  linkedinData: LinkedInData | null,
-  seedUrl: string | null,
-  seedUrlContent: string | null,
-): string {
-  let prompt = `# RESEARCH BRIEF\n\n`;
-  prompt += `## Donor: ${donorName}\n\n`;
-
-  if (linkedinData) {
-    prompt += `## What We Already Know\n`;
-    const linkedinJson: Record<string, any> = {};
-    if (linkedinData.currentTitle) linkedinJson.currentTitle = linkedinData.currentTitle;
-    if (linkedinData.currentEmployer) linkedinJson.currentEmployer = linkedinData.currentEmployer;
-    if (linkedinData.linkedinSlug) linkedinJson.linkedinSlug = linkedinData.linkedinSlug;
-    if (linkedinData.websites?.length) linkedinJson.websites = linkedinData.websites;
-    if (linkedinData.careerHistory?.length) linkedinJson.careerHistory = linkedinData.careerHistory;
-    if (linkedinData.education?.length) linkedinJson.education = linkedinData.education;
-    if (linkedinData.boards?.length) linkedinJson.boards = linkedinData.boards;
-    prompt += JSON.stringify(linkedinJson, null, 2);
-    prompt += `\n\n`;
-  }
-
-  if (seedUrl || seedUrlContent) {
-    prompt += `## Seed Material\n`;
-    if (seedUrl) prompt += `Source: ${seedUrl}\n\n`;
-    if (seedUrlContent) prompt += seedUrlContent.slice(0, 30000) + `\n\n`;
-  }
-
-  prompt += `## Your Assignment\nResearch this person thoroughly. Find everything that helps someone prepare for a high-stakes fundraising meeting with them. Prioritize behavioral evidence — how they think, decide, and operate — over biographical facts.\n`;
-  return prompt;
-}
-
 // ── Execute Deep Research (OpenAI o3-deep-research) ─────────────────
 
 async function executeDeepResearch(
@@ -488,68 +453,7 @@ export async function runDeepResearchV5(
   };
 }
 
-// ── Legacy Entry Point (backward compatible) ────────────────────────
-
-export async function runDeepResearchPipeline(
-  donorName: string,
-  seedUrls: string[],
-  linkedinData: LinkedInData | null,
-  seedUrlContent: string | null,
-  onProgress?: ProgressCallback,
-  abortSignal?: AbortSignal,
-  onActivity?: ActivityCallback,
-): Promise<DeepResearchResult> {
-  const emit = onProgress || (() => {});
-  const seedUrl = seedUrls.length > 0 ? seedUrls[0] : null;
-
-  // Build LinkedIn JSON for Section F
-  const linkedinJson = linkedinData
-    ? JSON.stringify({
-      currentTitle: linkedinData.currentTitle,
-      currentEmployer: linkedinData.currentEmployer,
-      linkedinSlug: linkedinData.linkedinSlug,
-      websites: linkedinData.websites,
-      careerHistory: linkedinData.careerHistory,
-      education: linkedinData.education,
-      boards: linkedinData.boards,
-    }, null, 2)
-    : 'No LinkedIn data available';
-
-  // In legacy mode, build a simpler developer message and user prompt
-  const developerMessage = buildDeveloperMessage(
-    donorName,
-    0, // no pre-fetched sources
-    'No coverage gap analysis available — this is a full search run.',
-    linkedinJson,
-  );
-
-  const userMessage = buildLegacyUserPrompt(donorName, linkedinData, seedUrl, seedUrlContent);
-
-  emit('Launching deep research...', 'research', 2, 38);
-
-  const { dossier, citations, searchCount, tokenUsage, durationMs } = await executeDeepResearch(
-    donorName,
-    developerMessage,
-    userMessage,
-    onProgress,
-    abortSignal,
-    onActivity,
-  );
-
-  let evidenceDensity: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
-  if (dossier.length >= 40000) evidenceDensity = 'HIGH';
-  else if (dossier.length < 20000) evidenceDensity = 'LOW';
-
-  return {
-    dossier,
-    citations,
-    searchCount,
-    tokenUsage,
-    durationMs,
-    researchStrategy: 'legacy-full-search',
-    evidenceDensity,
-  };
-}
+// runDeepResearchPipeline() archived to _archived/deep-research-legacy.ts
 
 // ── Quality Validation ──────────────────────────────────────────────
 

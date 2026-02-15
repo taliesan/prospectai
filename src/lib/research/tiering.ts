@@ -269,6 +269,7 @@ export const TIER_TARGETS = {
   total: { min: 20, max: 30 },
 };
 
+// LEGACY: 3-tier system, active pipeline uses 5-tier in source-scoring.ts
 export function enforceTargets(sources: TieredSource[]): {
   selected: TieredSource[];
   warnings: string[];
