@@ -1,3 +1,9 @@
+// ARCHIVED: Full conversation pipeline (v8 — Single-Call Extraction)
+// Date: February 2026
+// Reason: Replaced by coded pipeline in pipeline.ts (v5 hybrid architecture)
+// Original location: conversation-pipeline.ts (entire file)
+// Contains: runConversationPipeline(), phase orchestration, agentic research loops
+
 /**
  * Conversation Pipeline Architecture (v8 — Single-Call Extraction)
  *

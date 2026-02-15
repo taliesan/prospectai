@@ -15,11 +15,13 @@ export function buildProfilePrompt(
 
 ${exemplars}
 
-QUOTE ISOLATION RULE: The exemplar profiles above are teaching tools. They show you the style, structure, and analytical depth this work requires. Learn from their form.
+QUOTE ISOLATION — HARD RULE: The exemplar profiles above contain direct quotes from Craig Newmark, Roy Bahat, and Lori McGlinchey. Those quotes belong to those donors. They must NEVER appear in a profile about a different person.
 
-But their content belongs to those donors. Never transplant quotes, phrases, or attributed language from the exemplar profiles into this profile. If Craig Newmark said "talk to Anne Marie," that is Newmark's language — it cannot appear in a profile about a different donor. If Roy Bahat said "I don't consider myself to be a particularly ideological person," that is Bahat's language — it cannot appear attributed to anyone else.
+This is not about attribution style. This is about content contamination. When two donors share structural similarities — both uncategorizable, both focused on labor, both direct communicators — the temptation is to borrow language that "fits." Do not. If Roy Bahat said "I don't consider myself to be a particularly ideological person," that sentence cannot appear in any profile except Bahat's, regardless of how well it would describe another donor.
 
-Vocabulary and register from the exemplars are intentional teaching tools — absorb them. Attributed language is not transferable — it stays with the donor who said it.`;
+The rule: every direct quote in this profile must come from a source document about THIS donor. If you cannot find a quote in the source material, write the analytical observation in your own voice instead. A profile with fewer quotes and no contamination is better than a profile with borrowed eloquence.
+
+Vocabulary and register from the exemplars are teaching tools — absorb them. Attributed language is donor-specific — it stays with the person who said it.`;
 
   // --- Layer 3: Canonical Biographical Data (only if linkedinData exists) ---
   let layer3 = '';
