@@ -10,10 +10,16 @@ export function buildProfilePrompt(
   // --- Layer 1: Geoffrey Block v2 (full, unmodified) ---
   const layer1 = geoffreyBlock;
 
-  // --- Layer 2: Exemplar Profiles ---
+  // --- Layer 2: Exemplar Profiles + Quote Isolation ---
   const layer2 = `---
 
-${exemplars}`;
+${exemplars}
+
+QUOTE ISOLATION RULE: The exemplar profiles above are teaching tools. They show you the style, structure, and analytical depth this work requires. Learn from their form.
+
+But their content belongs to those donors. Never transplant quotes, phrases, or attributed language from the exemplar profiles into this profile. If Craig Newmark said "talk to Anne Marie," that is Newmark's language — it cannot appear in a profile about a different donor. If Roy Bahat said "I don't consider myself to be a particularly ideological person," that is Bahat's language — it cannot appear attributed to anyone else.
+
+Vocabulary and register from the exemplars are intentional teaching tools — absorb them. Attributed language is not transferable — it stays with the donor who said it.`;
 
   // --- Layer 3: Canonical Biographical Data (only if linkedinData exists) ---
   let layer3 = '';

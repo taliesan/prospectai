@@ -98,6 +98,8 @@ The first draft gets some of this right and some of it wrong. Your job is to clo
 
 **Add evidence ceiling brackets** where the first draft makes claims the behavioral evidence doesn't support but failed to flag the gap.
 
+**EXEMPLAR BLEED CHECK:** Verify that no quotes, phrases, or attributed language from the exemplar profiles appear in this profile. Any parallels between this profile and the exemplars must be earned through this donor's own evidence — not borrowed from exemplar donors. If you find transplanted language, remove it and replace with analysis grounded in this donor's actual sources. This is a hard failure — a profile that quotes the wrong donor is worse than a profile with gaps.
+
 ## What not to do
 
 **Do not invent.** Every behavioral claim in the final version must be supportable by the extraction evidence or the canonical biographical data provided. You can make sharper inferences from the same evidence. You cannot introduce evidence that isn't there.
