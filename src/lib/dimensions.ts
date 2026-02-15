@@ -17,23 +17,27 @@ export interface DimensionDef {
 }
 
 export const DIMENSION_KEYS = [
+  // HIGH INVESTMENT (1-7)
   'DECISION_MAKING',
   'TRUST_CALIBRATION',
-  'INFLUENCE_SUSCEPTIBILITY',
   'COMMUNICATION_STYLE',
-  'LEARNING_STYLE',
-  'TIME_ORIENTATION',
   'IDENTITY_SELF_CONCEPT',
   'VALUES_HIERARCHY',
-  'STATUS_RECOGNITION',
+  'CONTRADICTION_PATTERNS',
+  'POWER_ANALYSIS',
+  // MEDIUM INVESTMENT (8-15)
+  'INFLUENCE_SUSCEPTIBILITY',
+  'TIME_ORIENTATION',
   'BOUNDARY_CONDITIONS',
   'EMOTIONAL_TRIGGERS',
   'RELATIONSHIP_PATTERNS',
   'RISK_TOLERANCE',
   'RESOURCE_PHILOSOPHY',
   'COMMITMENT_PATTERNS',
+  // LOW INVESTMENT (16-25)
+  'LEARNING_STYLE',
+  'STATUS_RECOGNITION',
   'KNOWLEDGE_AREAS',
-  'CONTRADICTION_PATTERNS',
   'RETREAT_PATTERNS',
   'SHAME_DEFENSE_TRIGGERS',
   'REAL_TIME_INTERPERSONAL_TELLS',
@@ -41,7 +45,6 @@ export const DIMENSION_KEYS = [
   'HIDDEN_FRAGILITIES',
   'RECOVERY_PATHS',
   'CONDITIONAL_BEHAVIORAL_FORKS',
-  'POWER_ANALYSIS',
 ] as const;
 
 export type DimensionKey = typeof DIMENSION_KEYS[number];
@@ -49,31 +52,34 @@ export type DimensionKey = typeof DIMENSION_KEYS[number];
 // ── Canonical dimension definitions ─────────────────────────────────
 
 export const DIMENSIONS: DimensionDef[] = [
+  // HIGH INVESTMENT (1-7)
   { id: 1,  key: 'DECISION_MAKING',              label: 'Decision Making',              description: 'How they evaluate proposals and opportunities. Speed of decisions, gut vs analysis, what triggers yes/no.',                                                                                                                                  tier: 'HIGH',   targetMin: 6, targetMax: 8 },
   { id: 2,  key: 'TRUST_CALIBRATION',             label: 'Trust Calibration',            description: 'What builds or breaks credibility. Verification behavior, skepticism triggers.',                                                                                                                                                                 tier: 'HIGH',   targetMin: 6, targetMax: 8 },
-  { id: 3,  key: 'INFLUENCE_SUSCEPTIBILITY',      label: 'Influence Susceptibility',     description: 'What persuades them, who they defer to, resistance patterns.',                                                                                                                                                                                    tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
-  { id: 4,  key: 'COMMUNICATION_STYLE',           label: 'Communication Style',          description: 'Language patterns, directness, framing, how they explain.',                                                                                                                                                                                       tier: 'HIGH',   targetMin: 6, targetMax: 8 },
-  { id: 5,  key: 'LEARNING_STYLE',                label: 'Learning Style',               description: 'How they take in new information. Reading vs conversation, deep dive vs summary.',                                                                                                                                                                tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 6,  key: 'TIME_ORIENTATION',              label: 'Time Orientation',             description: 'Past/present/future emphasis, patience level, urgency triggers.',                                                                                                                                                                                   tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
-  { id: 7,  key: 'IDENTITY_SELF_CONCEPT',         label: 'Identity & Self-Concept',      description: 'How they see and present themselves. Origin story, identity markers.',                                                                                                                                                                              tier: 'HIGH',   targetMin: 6, targetMax: 8 },
-  { id: 8,  key: 'VALUES_HIERARCHY',              label: 'Values Hierarchy',             description: 'What they prioritize when values conflict. Trade-off decisions.',                                                                                                                                                                                   tier: 'HIGH',   targetMin: 6, targetMax: 8 },
-  { id: 9,  key: 'STATUS_RECOGNITION',            label: 'Status & Recognition',         description: 'How they relate to prestige and credit. Recognition needs.',                                                                                                                                                                                       tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 3,  key: 'COMMUNICATION_STYLE',           label: 'Communication Style',          description: 'Language patterns, directness, framing, how they explain.',                                                                                                                                                                                       tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  { id: 4,  key: 'IDENTITY_SELF_CONCEPT',         label: 'Identity & Self-Concept',      description: 'How they see and present themselves. Origin story, identity markers.',                                                                                                                                                                              tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  { id: 5,  key: 'VALUES_HIERARCHY',              label: 'Values Hierarchy',             description: 'What they prioritize when values conflict. Trade-off decisions.',                                                                                                                                                                                   tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  { id: 6,  key: 'CONTRADICTION_PATTERNS',        label: 'Contradiction Patterns',       description: 'Inconsistencies between stated and revealed preferences. Say/do gaps. MOST IMPORTANT — contradictions reveal where persuasion has maximum leverage.',                                                                                              tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  { id: 7,  key: 'POWER_ANALYSIS',                label: 'Power Analysis',               description: 'How they read, navigate, and deploy power: structural position, coalition dynamics, information asymmetry, their implicit theory of how institutions actually work vs. how they\'re supposed to work, who they think the real decision-makers are.', tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  // MEDIUM INVESTMENT (8-15)
+  { id: 8,  key: 'INFLUENCE_SUSCEPTIBILITY',      label: 'Influence Susceptibility',     description: 'What persuades them, who they defer to, resistance patterns.',                                                                                                                                                                                    tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
+  { id: 9,  key: 'TIME_ORIENTATION',              label: 'Time Orientation',             description: 'Past/present/future emphasis, patience level, urgency triggers.',                                                                                                                                                                                   tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 10, key: 'BOUNDARY_CONDITIONS',           label: 'Boundary Conditions',          description: 'Hard limits and non-negotiables. Explicit red lines.',                                                                                                                                                                                             tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 11, key: 'EMOTIONAL_TRIGGERS',            label: 'Emotional Triggers',           description: 'What excites or irritates them. Energy shifts, enthusiasm spikes.',                                                                                                                                                                                 tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 12, key: 'RELATIONSHIP_PATTERNS',         label: 'Relationship Patterns',        description: 'How they engage with people. Loyalty, collaboration style.',                                                                                                                                                                                       tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 13, key: 'RISK_TOLERANCE',                label: 'Risk Tolerance',               description: 'Attitude toward uncertainty and failure. Bet-sizing, hedging.',                                                                                                                                                                                     tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 14, key: 'RESOURCE_PHILOSOPHY',           label: 'Resource Philosophy',          description: 'How they think about money, time, leverage.',                                                                                                                                                                                                      tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
   { id: 15, key: 'COMMITMENT_PATTERNS',           label: 'Commitment Patterns',          description: 'How they make and keep commitments. Escalation, exit patterns.',                                                                                                                                                                                    tier: 'MEDIUM', targetMin: 4, targetMax: 6 },
-  { id: 16, key: 'KNOWLEDGE_AREAS',               label: 'Knowledge Areas',              description: 'Domains of expertise and intellectual passion.',                                                                                                                                                                                                   tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 17, key: 'CONTRADICTION_PATTERNS',        label: 'Contradiction Patterns',       description: 'Inconsistencies between stated and revealed preferences. Say/do gaps. MOST IMPORTANT — contradictions reveal where persuasion has maximum leverage.',                                                                                              tier: 'HIGH',   targetMin: 6, targetMax: 8 },
-  { id: 18, key: 'RETREAT_PATTERNS',              label: 'Retreat Patterns',             description: 'How they disengage, recover, reset. Procedural delays, topic shifts.',                                                                                                                                                                             tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 19, key: 'SHAME_DEFENSE_TRIGGERS',        label: 'Shame & Defense Triggers',     description: 'What they protect, what feels threatening. Ego-defense behavior when triggered.',                                                                                                                                                                  tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 20, key: 'REAL_TIME_INTERPERSONAL_TELLS', label: 'Real-Time Interpersonal Tells',description: 'Observable behavior in interaction. How they signal evaluation vs collaboration.',                                                                                                                                                                 tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 21, key: 'TEMPO_MANAGEMENT',              label: 'Tempo Management',             description: 'Pacing of decisions, conversations, projects. What each direction signals.',                                                                                                                                                                       tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 22, key: 'HIDDEN_FRAGILITIES',            label: 'Hidden Fragilities',           description: 'Vulnerabilities they manage or compensate for. What they\'re afraid is true about themselves or their work.',                                                                                                                                      tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 23, key: 'RECOVERY_PATHS',                label: 'Recovery Paths',               description: 'How they bounce back from setbacks. Reset mechanisms.',                                                                                                                                                                                            tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 24, key: 'CONDITIONAL_BEHAVIORAL_FORKS',  label: 'Conditional Behavioral Forks', description: 'When X happens, they do Y. When not-X, they do Z. Both branches for every pattern.',                                                                                                                                                              tier: 'LOW',    targetMin: 1, targetMax: 3 },
-  { id: 25, key: 'POWER_ANALYSIS',                label: 'Power Analysis',               description: 'How they read, navigate, and deploy power: structural position, coalition dynamics, information asymmetry, their implicit theory of how institutions actually work vs. how they\'re supposed to work, who they think the real decision-makers are.', tier: 'HIGH',   targetMin: 6, targetMax: 8 },
+  // LOW INVESTMENT (16-25)
+  { id: 16, key: 'LEARNING_STYLE',                label: 'Learning Style',               description: 'How they take in new information. Reading vs conversation, deep dive vs summary.',                                                                                                                                                                tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 17, key: 'STATUS_RECOGNITION',            label: 'Status & Recognition',         description: 'How they relate to prestige and credit. Recognition needs.',                                                                                                                                                                                       tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 18, key: 'KNOWLEDGE_AREAS',               label: 'Knowledge Areas',              description: 'Domains of expertise and intellectual passion.',                                                                                                                                                                                                   tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 19, key: 'RETREAT_PATTERNS',              label: 'Retreat Patterns',             description: 'How they disengage, recover, reset. Procedural delays, topic shifts.',                                                                                                                                                                             tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 20, key: 'SHAME_DEFENSE_TRIGGERS',        label: 'Shame & Defense Triggers',     description: 'What they protect, what feels threatening. Ego-defense behavior when triggered.',                                                                                                                                                                  tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 21, key: 'REAL_TIME_INTERPERSONAL_TELLS', label: 'Real-Time Interpersonal Tells',description: 'Observable behavior in interaction. How they signal evaluation vs collaboration.',                                                                                                                                                                 tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 22, key: 'TEMPO_MANAGEMENT',              label: 'Tempo Management',             description: 'Pacing of decisions, conversations, projects. What each direction signals.',                                                                                                                                                                       tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 23, key: 'HIDDEN_FRAGILITIES',            label: 'Hidden Fragilities',           description: 'Vulnerabilities they manage or compensate for. What they\'re afraid is true about themselves or their work.',                                                                                                                                      tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 24, key: 'RECOVERY_PATHS',                label: 'Recovery Paths',               description: 'How they bounce back from setbacks. Reset mechanisms.',                                                                                                                                                                                            tier: 'LOW',    targetMin: 1, targetMax: 3 },
+  { id: 25, key: 'CONDITIONAL_BEHAVIORAL_FORKS',  label: 'Conditional Behavioral Forks', description: 'When X happens, they do Y. When not-X, they do Z. Both branches for every pattern.',                                                                                                                                                              tier: 'LOW',    targetMin: 1, targetMax: 3 },
 ];
 
 // ── Lookup helpers ──────────────────────────────────────────────────

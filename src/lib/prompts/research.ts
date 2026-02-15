@@ -78,7 +78,7 @@ Annotate each query with its target dimensions.
 
 ${formatDimensionsForPrompt()}
 
-Dimensions 17-25 are the hardest to find and the most tactically
+Dimensions 16-25 (LOW INVESTMENT tier) are the hardest to find and the most tactically
 valuable. Generate at least 5 queries specifically targeting these.
 
 ## Output Format
