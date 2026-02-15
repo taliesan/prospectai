@@ -49,14 +49,16 @@ export async function completeExtended(
   userPrompt: string,
   options: {
     maxTokens?: number;
+    model?: string;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
+    model,
   } = options;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: model || 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: [
@@ -82,17 +84,21 @@ export async function conversationTurn(
   options: {
     maxTokens?: number;
     abortSignal?: AbortSignal;
+    model?: string;
+    systemPrompt?: string;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
     abortSignal,
+    model,
+    systemPrompt,
   } = options;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: model || 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
-    system: 'You are writing a donor persuasion profile.',
+    system: systemPrompt || 'You are writing a donor persuasion profile.',
     messages: messages.map(m => ({
       role: m.role,
       content: m.content

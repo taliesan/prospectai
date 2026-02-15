@@ -999,7 +999,12 @@ ${pdfText}`;
 
   if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
   const critiqueMessages: Message[] = [{ role: 'user', content: critiquePrompt }];
-  const finalProfile = await conversationTurn(critiqueMessages, { maxTokens: 16000, abortSignal });
+  const finalProfile = await conversationTurn(critiqueMessages, {
+    maxTokens: 16000,
+    abortSignal,
+    model: 'claude-opus-4-20250514',
+    systemPrompt: 'You are an editorial critic reviewing a donor persuasion profile against exacting production standards. Your job is to find where the draft fails — weak analysis, register violations, restatement, unsupported claims — and produce a stronger redraft.',
+  });
 
   const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
   console.log(`[Editorial] ${firstDraftProfile.length} → ${finalProfile.length} chars (${reduction}% reduction)`);
@@ -1032,7 +1037,11 @@ ${pdfText}`;
 
   if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
   const meetingGuideMessages: Message[] = [{ role: 'user', content: meetingGuidePrompt }];
-  const meetingGuide = await conversationTurn(meetingGuideMessages, { maxTokens: 8000, abortSignal });
+  const meetingGuide = await conversationTurn(meetingGuideMessages, {
+    maxTokens: 8000,
+    abortSignal,
+    systemPrompt: 'You are a tactical meeting advisor translating a donor persuasion profile into an operational briefing for a fundraiser walking into a high-stakes meeting.',
+  });
   console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
 
   const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
