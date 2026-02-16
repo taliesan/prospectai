@@ -13,6 +13,13 @@ export function buildCritiqueRedraftPrompt(
 ): string {
   let prompt = '';
 
+  // Layer 0: Role framing — tells the model it is editing, not writing
+  prompt += `You are editing a first draft of a donor persuasion profile, not writing one.  You'll receive, in order: the voice and register standard, three exemplar profiles, canonical biographical data, behavioral evidence from research, the first draft, and editorial instructions. Read everything. The editorial instructions at the end tell you exactly what to do.
+
+---
+
+`;
+
   // Layer 1: Geoffrey Block v2
   prompt += geoffreyBlock;
   prompt += '\n\n';
@@ -87,6 +94,8 @@ Reread the three exemplar profiles. Notice:
 The first draft gets some of this right and some of it wrong. Your job is to close the gap.
 
 ## What to do
+
+**Verify against evidence.** Read every factual claim in the first draft against the canonical biographical data and behavioral evidence. If the draft says something the evidence doesn't say — or misreads what the evidence says — fix it or flag it.
 
 **Raise the sophistication.** Where the first draft describes what someone did, convert it to behavioral inference about how they operate. Where it describes an institution's work, redirect it to model the individual's behavioral architecture within that institution. The exemplars never describe organizations — they describe how the person moves through and uses organizations. Apply that standard.
 
