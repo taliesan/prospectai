@@ -95,6 +95,8 @@ The first draft gets some of this right and some of it wrong. Your job is to clo
 
 ## What to do
 
+**Verify against evidence.** Read every factual claim in the first draft against the canonical biographical data and behavioral evidence. If the draft says something the evidence doesn't say — or misreads what the evidence says — fix it or flag it.
+
 **Raise the sophistication.** Where the first draft describes what someone did, convert it to behavioral inference about how they operate. Where it describes an institution's work, redirect it to model the individual's behavioral architecture within that institution. The exemplars never describe organizations — they describe how the person moves through and uses organizations. Apply that standard.
 
 **Compress restatement.** The first draft likely repeats its core thesis across many sections. Find the section where the insight first deploys with full analytical treatment. That stays. Every other appearance gets compressed to a single-sentence reference or gets cut. If a section is entirely composed of insights already deployed elsewhere, reduce it to one or two sentences that hold the slot and do whatever small amount of new work the evidence supports.
