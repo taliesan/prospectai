@@ -28,22 +28,22 @@ import type { ResearchSource } from '../research/screening';
 
 /** Dimension tier weights — how critical each dimension is */
 export const TIER_WEIGHTS: Record<number, number> = {
-  // High: ×3
-  1: 3, 2: 3, 4: 3, 7: 3, 8: 3, 17: 3, 25: 3,
-  // Medium: ×2
-  3: 2, 6: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2,
-  // Low: ×1
-  5: 1, 9: 1, 16: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 23: 1, 24: 1,
+  // High (1-7): ×3
+  1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3,
+  // Medium (8-15): ×2
+  8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2, 14: 2, 15: 2,
+  // Low (16-25): ×1
+  16: 1, 17: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 23: 1, 24: 1, 25: 1,
 };
 
 /** How many evidence entries each dimension needs */
 export const INVESTMENT_TARGETS: Record<number, number> = {
-  // High: 7 (midpoint of 6-8)
-  1: 7, 2: 7, 4: 7, 7: 7, 8: 7, 17: 7, 25: 7,
-  // Medium: 5 (midpoint of 4-6)
-  3: 5, 6: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
-  // Low: 2 (midpoint of 1-3)
-  5: 2, 9: 2, 16: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2, 23: 2, 24: 2,
+  // High (1-7): 7 (midpoint of 6-8)
+  1: 7, 2: 7, 3: 7, 4: 7, 5: 7, 6: 7, 7: 7,
+  // Medium (8-15): 5 (midpoint of 4-6)
+  8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
+  // Low (16-25): 2 (midpoint of 1-3)
+  16: 2, 17: 2, 18: 2, 19: 2, 20: 2, 21: 2, 22: 2, 23: 2, 24: 2, 25: 2,
 };
 
 /** Prevents one zero-coverage dimension from eating the whole budget */
@@ -150,31 +150,36 @@ Score based on what the content ACTUALLY CONTAINS. Do not infer.
 
 THE 25 DIMENSIONS:
 
+HIGH INVESTMENT (1-7):
  1. DECISION_MAKING — How they evaluate proposals and opportunities
  2. TRUST_CALIBRATION — What builds or breaks credibility
- 3. INFLUENCE_SUSCEPTIBILITY — What persuades them, resistance patterns
- 4. COMMUNICATION_STYLE — Language patterns, directness, framing
- 5. LEARNING_STYLE — How they take in new information
- 6. TIME_ORIENTATION — Past/present/future emphasis, urgency triggers
- 7. IDENTITY_SELF_CONCEPT — How they see and present themselves
- 8. VALUES_HIERARCHY — What they prioritize when values conflict
- 9. STATUS_RECOGNITION — How they relate to prestige and credit
+ 3. COMMUNICATION_STYLE — Language patterns, directness, framing
+ 4. IDENTITY_SELF_CONCEPT — How they see and present themselves
+ 5. VALUES_HIERARCHY — What they prioritize when values conflict
+ 6. CONTRADICTION_PATTERNS — Where stated values and actions diverge
+ 7. POWER_ANALYSIS — How they read, navigate, and deploy power
+
+MEDIUM INVESTMENT (8-15):
+ 8. INFLUENCE_SUSCEPTIBILITY — What persuades them, resistance patterns
+ 9. TIME_ORIENTATION — Past/present/future emphasis, urgency triggers
 10. BOUNDARY_CONDITIONS — Hard limits and non-negotiables
 11. EMOTIONAL_TRIGGERS — What excites or irritates them
 12. RELATIONSHIP_PATTERNS — Loyalty, collaboration style
 13. RISK_TOLERANCE — Attitude toward uncertainty and failure
 14. RESOURCE_PHILOSOPHY — How they think about money, time, leverage
 15. COMMITMENT_PATTERNS — How they make and keep commitments
-16. KNOWLEDGE_AREAS — Domains of expertise and intellectual passion
-17. CONTRADICTION_PATTERNS — Where stated values and actions diverge
-18. RETREAT_PATTERNS — How they disengage, recover, reset
-19. SHAME_DEFENSE_TRIGGERS — What they protect, what feels threatening
-20. REAL_TIME_INTERPERSONAL_TELLS — Observable behavior in interaction
-21. TEMPO_MANAGEMENT — Pacing of decisions, conversations, projects
-22. HIDDEN_FRAGILITIES — Vulnerabilities they manage or compensate for
-23. RECOVERY_PATHS — How they bounce back from setbacks
-24. CONDITIONAL_BEHAVIORAL_FORKS — If X, they do Y; if not X, they do Z
-25. POWER_ANALYSIS — How they read, navigate, and deploy power
+
+LOW INVESTMENT (16-25):
+16. LEARNING_STYLE — How they take in new information
+17. STATUS_RECOGNITION — How they relate to prestige and credit
+18. KNOWLEDGE_AREAS — Domains of expertise and intellectual passion
+19. RETREAT_PATTERNS — How they disengage, recover, reset
+20. SHAME_DEFENSE_TRIGGERS — What they protect, what feels threatening
+21. REAL_TIME_INTERPERSONAL_TELLS — Observable behavior in interaction
+22. TEMPO_MANAGEMENT — Pacing of decisions, conversations, projects
+23. HIDDEN_FRAGILITIES — Vulnerabilities they manage or compensate for
+24. RECOVERY_PATHS — How they bounce back from setbacks
+25. CONDITIONAL_BEHAVIORAL_FORKS — If X, they do Y; if not X, they do Z
 
 ALSO CLASSIFY EACH SOURCE INTO A SOURCE TIER:
   Tier 1: Podcast/interview/video — unscripted voice
@@ -459,15 +464,19 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
 // ══════════════════════════════════════════════════════════════════════
 
 const DIMENSION_NAMES: Record<number, string> = {
-  1: 'DECISION_MAKING', 2: 'TRUST_CALIBRATION', 3: 'INFLUENCE_SUSCEPTIBILITY',
-  4: 'COMMUNICATION_STYLE', 5: 'LEARNING_STYLE', 6: 'TIME_ORIENTATION',
-  7: 'IDENTITY_SELF_CONCEPT', 8: 'VALUES_HIERARCHY', 9: 'STATUS_RECOGNITION',
+  // HIGH (1-7)
+  1: 'DECISION_MAKING', 2: 'TRUST_CALIBRATION', 3: 'COMMUNICATION_STYLE',
+  4: 'IDENTITY_SELF_CONCEPT', 5: 'VALUES_HIERARCHY', 6: 'CONTRADICTION_PATTERNS',
+  7: 'POWER_ANALYSIS',
+  // MEDIUM (8-15)
+  8: 'INFLUENCE_SUSCEPTIBILITY', 9: 'TIME_ORIENTATION',
   10: 'BOUNDARY_CONDITIONS', 11: 'EMOTIONAL_TRIGGERS', 12: 'RELATIONSHIP_PATTERNS',
   13: 'RISK_TOLERANCE', 14: 'RESOURCE_PHILOSOPHY', 15: 'COMMITMENT_PATTERNS',
-  16: 'KNOWLEDGE_AREAS', 17: 'CONTRADICTION_PATTERNS', 18: 'RETREAT_PATTERNS',
-  19: 'SHAME_DEFENSE_TRIGGERS', 20: 'REAL_TIME_INTERPERSONAL_TELLS',
-  21: 'TEMPO_MANAGEMENT', 22: 'HIDDEN_FRAGILITIES', 23: 'RECOVERY_PATHS',
-  24: 'CONDITIONAL_BEHAVIORAL_FORKS', 25: 'POWER_ANALYSIS',
+  // LOW (16-25)
+  16: 'LEARNING_STYLE', 17: 'STATUS_RECOGNITION', 18: 'KNOWLEDGE_AREAS',
+  19: 'RETREAT_PATTERNS', 20: 'SHAME_DEFENSE_TRIGGERS',
+  21: 'REAL_TIME_INTERPERSONAL_TELLS', 22: 'TEMPO_MANAGEMENT',
+  23: 'HIDDEN_FRAGILITIES', 24: 'RECOVERY_PATHS', 25: 'CONDITIONAL_BEHAVIORAL_FORKS',
 };
 
 /**
@@ -632,54 +641,5 @@ export function formatSourcesForDeepResearch(
   return lines.join('\n');
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// BACKWARD COMPATIBILITY EXPORTS
-// ══════════════════════════════════════════════════════════════════════
-
-export const SOURCE_SCORING_PROMPT = 'DEPRECATED: Use runDimensionScoring() instead';
-
-export function buildScoringPromptCompat(
-  donorName: string,
-  sources: { url: string; title: string; snippet: string; content?: string }[],
-): string {
-  return buildScoringBatchPrompt(
-    donorName,
-    sources.map(s => ({ ...s, source: 'tavily' })),
-  );
-}
-
-export function calculateWeightedScore(scores: Record<string, number>): number {
-  let total = 0;
-  for (const dim of DIMENSIONS) {
-    const key = dimKey(dim);
-    const score = scores[key] || scores[dim.key] || 0;
-    const weight = dim.tier === 'HIGH' ? 10 : dim.tier === 'MEDIUM' ? 7 : 3;
-    total += weight * score;
-  }
-  return total;
-}
-
-export function selectTopSources(
-  scoredSources: Array<{ source_index: number; total_score: number; word_count: number }>,
-  sources: Array<{ content?: string; snippet: string }>,
-  targetWords: number = 30000,
-): Array<{ index: number; score: number; content: string }> {
-  const sorted = [...scoredSources].sort((a, b) => b.total_score - a.total_score);
-  const selected: Array<{ index: number; score: number; content: string }> = [];
-  let cumulativeWords = 0;
-
-  for (const scored of sorted) {
-    const source = sources[scored.source_index - 1];
-    if (!source) continue;
-    const content = source.content || source.snippet;
-    const wordCount = content.split(/\s+/).length;
-
-    if (cumulativeWords + wordCount <= targetWords || selected.length === 0) {
-      selected.push({ index: scored.source_index, score: scored.total_score, content });
-      cumulativeWords += wordCount;
-    }
-    if (cumulativeWords >= targetWords) break;
-  }
-
-  return selected;
-}
+// Backward-compat exports archived to _archived/source-scoring-legacy.ts:
+// SOURCE_SCORING_PROMPT, buildScoringPromptCompat, calculateWeightedScore, selectTopSources

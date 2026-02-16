@@ -1,3 +1,9 @@
+// ARCHIVED: Legacy profile generation prompts (old section structure)
+// Date: February 2026
+// Reason: Replaced by prompts/profile-prompt.ts (18-section structure with 5-layer architecture)
+// Original location: prompts/profile-prompt.ts (old version with 8-section structure)
+// Contains: Old PROFILE_SECTIONS array (8 items), buildProfilePrompt() (old signature)
+
 // Prompts for Step 3: Profile Generation
 
 export const PROFILE_SECTIONS = [

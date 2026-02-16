@@ -16,23 +16,23 @@ A community email list for San Francisco tech events accidentally became a platf
 
 ## Who They Think They Are
 
-The nerd identity is both completely authentic and completely architectural. "I'm an old-school nerd helping to protect the people who protect our country" — this isn't humility, it's operational self-concept. He defines himself by what he can't do (manage, socialize, read people) rather than what he accomplished (building Craigslist, accumulating billions). By pre-announcing every limitation, he controls the terms of every interaction. You can't outmaneuver someone who has already conceded every point you might use as leverage.
+The nerd identity is both completely authentic and completely architectural. "I'm an old-school nerd helping to protect the people who protect our country" — this isn't humility, it's who he needs to be in order to operate. He defines himself by what he can't do (manage, socialize, read people) rather than what he accomplished (building Craigslist, accumulating billions). By pre-announcing every limitation, he controls the terms of every interaction. You can't outmaneuver someone who has already conceded every point you might use as leverage.
 
-"Even now, I'm only faking social skills" and "I can't read people, and I take them too literally." These disclosures create a cleared field where the only things left are operational competence and moral alignment — which happen to be the only two things he can reliably evaluate.
+"Even now, I'm only faking social skills" and "I can't read people, and I take them too literally." These disclosures clear the field. The only things left to evaluate are operational competence and moral alignment — which happen to be the only two things he can reliably judge.
 
-But the nerd identity also functions as permission structure. It lets him deploy hundreds of millions of dollars while claiming to be "not that big a deal." It lets him rename journalism schools after himself while framing it as institutional credibility rather than personal legacy. Every massive commitment can be processed as "just a nerd doing his part" rather than a billionaire exercising power. Without the nerd frame, the scale of his interventions would require a different self-narrative — one he has never built and shows no interest in building.
+But the nerd identity also lets him do enormous things without having to own them as power moves. It lets him deploy hundreds of millions of dollars while claiming to be "not that big a deal." It lets him rename journalism schools after himself while framing it as institutional credibility rather than personal legacy. Every massive commitment can be processed as "just a nerd doing his part" rather than a billionaire exercising power. Without the nerd frame, the scale of his interventions would require a different self-narrative — one he has never built and shows no interest in building.
 
 ## What They Value Most
 
-His values are organized around a single civic-scale diagnosis: American democratic infrastructure is under distributed attack that doesn't resemble traditional warfare, and the institutions that should be defending it either don't see the threat or can't organize against it. Cybersecurity threats are "like World War II except that the enemy is already here." Journalism is "the immune system of democracy." These aren't metaphors — they're his governing model of system decay.
+His values are organized around a single diagnosis: American democratic infrastructure is under distributed attack that doesn't resemble traditional warfare, and the institutions that should be defending it either don't see the threat or can't organize against it. Cybersecurity threats are "like World War II except that the enemy is already here." Journalism is "the immune system of democracy." These aren't metaphors — they're how he actually sees the decay happening.
 
-The values hierarchy: national security (protecting those who protect the country) above democratic institutions (journalism, voter protection) above social equity (women in tech, veteran support) above personal interests (pigeon rescue). The categories are integrated around a single principle of protecting people who serve others.
+The hierarchy: national security (protecting those who protect the country) above democratic institutions (journalism, voter protection) above social equity (women in tech, veteran support) above personal interests (pigeon rescue). The categories are integrated around a single principle of protecting people who serve others.
 
 ## Where to Start
 
 The central contradiction: he built one of the most successful platforms in internet history while maintaining he "kinda sucks" as a manager and lacks business acumen. He consistently attributes Craigslist's success to luck, yet his philanthropic portfolio demonstrates sophisticated pattern recognition that luck doesn't explain. The nerd who can't read people has assembled a network of domain experts across cybersecurity, journalism, and veteran advocacy who execute his moral framework with minimal oversight. That's not an accident. That's someone who built a system to route around limitations he can see with perfect clarity — and the system works better than most people's direct management.
 
-He genuinely can't do the thing he says he can't do. He genuinely has built a system that doesn't require him to do it. Both are true simultaneously. His retreat pattern (routing to intermediaries, delegating to proven networks) is the architecture working. His authorship mode (fund at scale, withdraw from operations) flows from it. Organizations that deliver results while requiring nothing from him beyond resources hit this need precisely. Those requiring his participation — board seats, strategy sessions, speaking engagements — are asking for the one resource he has never been willing to deploy: sustained personal presence.
+He genuinely can't do the thing he says he can't do. He genuinely has built a system that doesn't require him to do it. Both are true simultaneously. When he retreats — routing to intermediaries, delegating to proven networks — that's the system working, not avoidance. He funds at scale, withdraws from operations, and has his name associated with the durable result. Organizations that deliver results while requiring nothing from him beyond resources hit this need precisely. Those requiring his participation — board seats, strategy sessions, speaking engagements — are asking for the one resource he has never been willing to deploy: sustained personal presence.
 
 The invisibility narrative needs correction, however. He says he doesn't want profile, but his behavior says otherwise — regular LinkedIn posts, high-profile press coverage, a journalism school bearing his name. He'll accept public acknowledgment when it's framed as service to the mission but not when it's framed as personal celebration. He accepts far more visibility than the "invisible nerd" narrative suggests, which matters for anyone designing an ask that includes naming, public credit, or institutional association.
 
@@ -46,15 +46,19 @@ He is not influenced by vision, inspiration, charisma, or strategic brilliance. 
 
 ## How They Decide
 
-His decision reflex follows a three-stage sequence. Entry condition: demonstrated operational competence within one of his moral categories. Permission logic: the nerd identity, which lets him authorize enormous commitments without requiring a power narrative. Behavioral commitment: large, immediate, no conditions. If the entry condition is unmet, no amount of logic activates engagement. If permission logic is disrupted — if the interaction forces him to acknowledge himself as a power player rather than a helpful nerd — the commitment stalls. His early philanthropy was "scattershot"; instead of expanding, he narrowed to areas where his assessment capability was reliable and refused to operate outside that zone.
+He decides in three stages. First, you have to demonstrate operational competence within one of his moral categories — cybersecurity, journalism, veterans, voter protection. That's the threshold. Without it, no amount of logic gets you in.
 
-The commitments — $100 million to cybersecurity, $100 million to veteran support, then doubled based on results — are not deliberated. Once the moral category is clear, the decision is already made.
+Second, the nerd identity has to hold. It lets him authorize enormous commitments without having to see himself as a power player. If the interaction forces him to acknowledge that he's wielding power rather than just helping out, the commitment stalls.
+
+Third, when both conditions are met, the commitment is large, immediate, and unconditional. His early philanthropy was "scattershot"; instead of expanding, he narrowed to areas where he could reliably judge competence and refused to operate outside that zone.
+
+The numbers — $100 million to cybersecurity, $100 million to veteran support, then doubled based on results — are not deliberated. Once the moral category is clear, the decision is already made.
 
 ## How They Build Trust
 
-The Markup failure is the scar that governs current trust calibration. He gave $20 million to a journalism startup that imploded due to leadership conflicts. The response was architectural: he now routes every major commitment through established intermediaries. Bob Woodruff Foundation for veterans. ProPublica for journalism. Proven networks for cybersecurity. If your organization reads as a promising experiment rather than a proven operation, it triggers the Markup pattern.
+The Markup failure is the scar that governs how carefully he trusts now. He gave $20 million to a journalism startup that imploded due to leadership conflicts. The response was architectural: he now routes every major commitment through established intermediaries. Bob Woodruff Foundation for veterans. ProPublica for journalism. Proven networks for cybersecurity. If your organization reads as a promising experiment rather than a proven operation, it triggers the Markup pattern.
 
-The operational trust test is tolerance for his communication style: "people who can tolerate my sense of humor." This is a filter for operating-system compatibility — people who need rapport-building, contextual warmth, or diplomatic scaffolding can't work with him because his architecture doesn't support those protocols.
+The operational trust test is tolerance for his communication style: "people who can tolerate my sense of humor." This is a filter for compatibility — people who need rapport-building, contextual warmth, or diplomatic scaffolding can't work with him because he doesn't operate that way.
 
 The asker's posture matters more than the pitch. He classifies people within minutes as operators he can fund or noise he needs to route around. Don't pitch. Don't inspire. Don't build rapport. Show him you understand the problem operationally, name it in his moral category, and let him classify you as someone competent enough to receive resources.
 
@@ -62,9 +66,9 @@ The asker's posture matters more than the pitch. He classifies people within min
 
 He is triggered by the Craigslist-destroyed-journalism narrative: "People throw the accusation. I look at the facts and stick with that." Don't implicate tech broadly in his presence. He'll hear the accusation he's been fighting for a decade, and the meeting shifts from assessment to self-defense.
 
-His defensive motion is Warm Detachment with Procedural Cushion. He doesn't get aggressive — he stays pleasant and routes you away. "Talk to Anne Marie." "Send it to Bob Woodruff Foundation." If you notice him redirecting to intermediaries mid-meeting when he wasn't before, you've triggered something. The recovery move is to return to operational specifics within his moral framework — not to address the trigger directly.
+When he's triggered, he doesn't get aggressive. He stays warm and reroutes you. "Talk to Anne Marie." "Send it to Bob Woodruff Foundation." The pleasantness is real. So is the distance. If you notice him redirecting to intermediaries mid-meeting when he wasn't before, you've hit something. The recovery move is to return to operational specifics within his moral framework — not to address the trigger directly.
 
-He is also triggered by visible failures in protecting vulnerable people — food insecurity among military families, inadequate cybersecurity for critical infrastructure — moments that activate his governing diagnosis that the system is failing and no one is organizing the defense.
+He is also triggered by visible failures in protecting vulnerable people — food insecurity among military families, inadequate cybersecurity for critical infrastructure — moments that activate the core fear that the system is failing and no one is organizing the defense.
 
 ## Where They Draw Lines
 
@@ -76,7 +80,7 @@ Deliberately compressed. "Hey," "folks," and immediate transition to concrete sp
 
 ## How They Commit
 
-No pilots. No phased approaches. No milestones. When he decides, he provides significant resources immediately — $100 million to veteran support, then another $100 million based on results. Only fundamental mission drift triggers exit. His authorship mode is Acceleration: fund competent people, watch the machine run, and have his name associated with the durable result.
+No pilots. No phased approaches. No milestones. When he decides, he provides significant resources immediately — $100 million to veteran support, then another $100 million based on results. Only fundamental mission drift triggers exit. He funds competent people, watches the machine run, and wants his name associated with the durable result.
 
 ## How They Think About Resources
 
@@ -88,7 +92,7 @@ Extremely high financial risk within his focus areas, zero tolerance for scope e
 
 ## How They Build Relationships
 
-Functional, intermediary-buffered, and minimal — the same routing-around-limitations architecture that governs everything else in this profile.
+Functional, intermediary-buffered, and minimal — the same routing-around-limitations approach that governs everything else in this profile.
 
 ## How They Think About Time
 
@@ -96,7 +100,7 @@ He is operating in "Now" mode with emerging legacy awareness. The urgency is rea
 
 ## How They Read Status
 
-His status metabolism is specific: he accepts recognition framed as service (journalism school naming helps the school recruit) and deflects recognition framed as celebration (galas, awards, spotlights). The "invisible nerd" narrative understates how much public identification he tolerates when it passes through his permission structure.
+He accepts recognition framed as service — the journalism school naming helps the school recruit — and deflects recognition framed as celebration — galas, awards, spotlights. The "invisible nerd" narrative understates how much public identification he'll tolerate, as long as it passes through the nerd frame: helping, not wielding.
 
 ## How They Learn
 
@@ -118,13 +122,13 @@ Bloomberg Beta is a $75 million fund backed exclusively by Bloomberg L.P., focus
 
 ## Who They Think They Are
 
-Bahat's self-concept requires him to be uncategorizable. "I don't consider myself to be a particularly ideological person." This is not accurate — someone who spends a decade on "making work work," teaches labor organizing at a business school, and takes publicly unpopular positions has an ideology. But if he's ideological, he's capturable — sortable into progressive, activist, labor-aligned, and therefore dismissible by the institutional players he needs in the room. If he's pragmatic, he can sit at every table. His Medium alignment is "Neutral good" — ethical commitment without partisan positioning. His career is "messy." He "doesn't even like VCs." None of these are contradictions he's blind to. They're the boundary position working — letting him convene Labor Notes organizers and Bloomberg executives in the same orbit without either group disqualifying him.
+Bahat needs to be uncategorizable. That's not a personality trait — it's how he operates. "I don't consider myself to be a particularly ideological person." This is not accurate — someone who spends a decade on "making work work," teaches labor organizing at a business school, and takes publicly unpopular positions has an ideology. But if he admits it, he becomes sortable — progressive, activist, labor-aligned — and therefore dismissible by the institutional players he needs in the room. If he's pragmatic, he can sit at every table. His Medium alignment is "Neutral good" — ethical commitment without partisan positioning. His career is "messy." He "doesn't even like VCs." None of these are contradictions he's blind to. They're the space between worlds working — letting him convene Labor Notes organizers and Bloomberg executives in the same orbit without either group disqualifying him.
 
-He sees the same structural pattern across domains most people treat as opposed: "I'm drawn to entrepreneurs... they are underdogs trying to prove something when the odds are stacked against them. I'm drawn to the stories of these labor organizers for exactly the same reason." Entrepreneurs and labor organizers, in his architecture, are the same actor in different contexts. The moment you categorize him — conventional VC, ideologue, theorist, someone whose career makes linear sense — you've told him you can't see the boundary he occupies, and if you can't see it, you can't be trusted with anything that requires it.
+He sees the same structural pattern across domains most people treat as opposed: "I'm drawn to entrepreneurs... they are underdogs trying to prove something when the odds are stacked against them. I'm drawn to the stories of these labor organizers for exactly the same reason." Entrepreneurs and labor organizers, in his architecture, are the same actor in different contexts. The moment you categorize him — conventional VC, ideologue, theorist, someone whose career makes linear sense — you've told him you can't see the space he occupies, and if you can't see it, you can't be trusted with anything that requires it.
 
 ## What They Value Most
 
-"Work is broken in America, and it is tearing our society apart." This isn't advocacy language. It's his governing model of system decay — the institution that gives most people economic security and daily meaning is fracturing in ways that undermine democratic society itself. When he evaluates an investment, a partnership, or an ask, the operative question is: does this make work work better for real people, or does it make the fracture worse?
+"Work is broken in America, and it is tearing our society apart." This isn't advocacy language. It's how he sees things breaking — the institution that gives most people economic security and daily meaning is fracturing in ways that undermine democratic society itself. When he evaluates an investment, a partnership, or an ask, the operative question is: does this make work work better for real people, or does it make the fracture worse?
 
 "I think of worker power as a source of demand." If worker power creates markets, then supporting it is good capitalism, not charity or ideology — which lets him fund "exit to community" models without abandoning his fiduciary obligation to Bloomberg L.P. When someone frames labor as a cost center, they're revealing they operate with the model he's spent a decade replacing. The conversation continues. The evaluation is over.
 
@@ -132,11 +136,11 @@ His wife is a doctor who delivers babies. He brings this up when someone suggest
 
 ## Where to Start
 
-Bahat has built his entire professional architecture around occupying the fault line between capital and labor, institution and disruption, power and critique — but the boundary position requires him to never fully commit to either side. His deepest convictions can only be expressed as "pragmatism." His most powerful interventions must be framed as experiments rather than positions. The man who spends every professional hour on the belief that work is broken must introduce himself as not particularly ideological.
+Bahat has built his entire professional life around occupying the space between capital and labor, institution and disruption, power and critique — but the space only works if he never fully commits to either side. His deepest convictions can only be expressed as "pragmatism." His most powerful interventions must be framed as experiments rather than positions. The man who spends every professional hour on the belief that work is broken must introduce himself as not particularly ideological.
 
-This isn't hypocrisy. It's structural necessity. The boundary is the source of his power — convening people who'd never sit together, investing where conventional VCs won't, teaching labor organizing at a business school. But it has a cost: constant epistemological hedging. "Maybe in five years I'll have the data." "We might just be wrong." "I generally try to avoid predictions, because I think they're mostly lullabies." These aren't intellectual humility. They're the price of admission. If he claims certainty, he becomes categorizable. If he becomes categorizable, the boundary collapses.
+This isn't hypocrisy. It's structural necessity. The in-between space is the source of his power — convening people who'd never sit together, investing where conventional VCs won't, teaching labor organizing at a business school. But it has a cost: constant hedging. "Maybe in five years I'll have the data." "We might just be wrong." "I generally try to avoid predictions, because I think they're mostly lullabies." These aren't intellectual humility. They're the price of admission. If he claims certainty, he becomes categorizable. If he becomes categorizable, the space collapses.
 
-Under pressure — pushed toward one side of any binary — he retreats into three moves: the epistemological hedging, scope limitation ("I'm hesitant to speak on their behalf"), and preemptive framing ("that's going to be an unpopular view, but it's my view"). The third is most revealing. He flags social cost before stating the position, which simultaneously claims the contrarian identity and softens the structural commitment. He's not saying "this is true." He's saying "this is my view and I know you might not like it" — keeping the position personal rather than categorical.
+Under pressure — pushed toward one side of any binary — he retreats into three moves: the hedging, scope limitation ("I'm hesitant to speak on their behalf"), and preemptive framing ("that's going to be an unpopular view, but it's my view"). The third is most revealing. He flags social cost before stating the position, which simultaneously claims the contrarian identity and softens the structural commitment. He's not saying "this is true." He's saying "this is my view and I know you might not like it" — keeping the position personal rather than categorical.
 
 ## What Moves Them
 
@@ -148,15 +152,15 @@ Industry convention triggers immediate rejection — artificial delays, strategi
 
 ## How They Decide
 
-Entry condition: practitioner knowledge of a problem within his existing commitments. "We have passed on companies because we did not think the founders were crazy enough." He's looking for conviction that only comes from having seen the problem up close and refused to accept it.
+He decides in three stages. First, you have to know the problem from the inside. "We have passed on companies because we did not think the founders were crazy enough." He's looking for conviction that only comes from having seen the problem up close and refused to accept it.
 
-Permission logic: the boundary identity. Once the entry condition is met, his self-concept lets him commit without political narrative or institutional rationale. The unanimous-yes structure — "if anyone on the team says yes, we'll do it, there's no voting" — eliminates the committee filtering that would force categorization of each investment.
+Second, the uncategorizable identity has to hold. Once that first condition is met, he can commit without needing a political narrative or institutional rationale. The unanimous-yes structure — "if anyone on the team says yes, we'll do it, there's no voting" — eliminates the committee filtering that would force each investment into a category.
 
-Behavioral commitment: immediate and sustained. "I could pretend to think about it and not email you for a week and then tell you. Or I can tell you right now." No is instant and unpadded. Yes is fast and durable. Slow bad news is cruelty disguised as process. Rushed good news is extraction disguised as urgency — one founder held an offer open for seven months without pressure. "Price is the dependent variable." When conviction is present, terms adjust. When it's absent, no terms work.
+Third, the commitment is immediate and sustained. "I could pretend to think about it and not email you for a week and then tell you. Or I can tell you right now." No is instant and unpadded. Yes is fast and durable. Slow bad news is cruelty disguised as process. Rushed good news is extraction disguised as urgency — one founder held an offer open for seven months without pressure. "Price is the dependent variable." When conviction is present, terms adjust. When it's absent, no terms work.
 
 ## How They Build Trust
 
-Trust is a sorting mechanism, not a relationship stage. He delivers unfiltered feedback and watches the flinch. "Everyone wants you to be blunt and transparent until you're in the room with them." If you absorb directness and engage — push back, sharpen your position — you pass into his operating circle. If you retreat, deflect, or perform toughness, you've been sorted out.
+Trust is a sorting mechanism, not a relationship stage. He delivers unfiltered feedback and watches the flinch. "Everyone wants you to be blunt and transparent until you're in the room with them." If you absorb directness and engage — push back, sharpen your position — you pass into his inner circle. If you retreat, deflect, or perform toughness, you've been sorted out.
 
 He flips the VC-founder dynamic: provides tools for founders to evaluate investors, advocates they "do references" on VCs, open-sourced his entire fund model on GitHub. Founders who defer to the conventional power dynamic have failed his filter without knowing it.
 
@@ -170,9 +174,9 @@ Categorization. Standard pitch language, standard process assumptions, standard 
 
 Ungrounded positions. Advocacy for labor without understanding how companies operate, or for technology without understanding what it costs workers. Someone claiming the cross-domain credibility he has without having done the work across domains to earn it.
 
-Missed precedence. "It always makes me crazy when I'm like, 'Oh, the first investor in the company, they're like, no, there was an angel in there before.'" The "makes me crazy" is unhedged in a way his other positions never are — the boundary position is supposed to give him vision that conventional positioning doesn't, and when it doesn't deliver, the self-concept absorbs a hit.
+Missed precedence. "It always makes me crazy when I'm like, 'Oh, the first investor in the company, they're like, no, there was an angel in there before.'" The "makes me crazy" is unhedged in a way his other positions never are — the in-between space is supposed to give him vision that conventional positioning doesn't, and when it doesn't deliver, the identity absorbs a hit.
 
-His defensive motion: he gets careful. Hedging multiplies, qualifications appear, scope narrows. Watch the ratio of clean declaratives to hedged statements. When it shifts, something has threatened the boundary.
+His defensive motion: he gets careful. Hedging multiplies, qualifications appear, scope narrows. Watch the ratio of clean declaratives to hedged statements. When it shifts, something has threatened the space he occupies.
 
 ## Where They Draw Lines
 
@@ -182,21 +186,21 @@ The Bloomberg LP relationship is the hardest structural constraint. "We aren't a
 
 ## How They Communicate
 
-"There's a term of art in venture, they say he's just being slippery, and it's implied that some degree of being slippery is okay, maybe even good. Well that doesn't really work for me." He named the industry's default, rejected it, and built a fund that selects against it. When he's certain about a principle, you get clean declaratives. When he's about to say something contrarian, he flags the social cost first. When the topic moves to communities he's not part of, he narrows his scope. When he doesn't know an outcome, he deflects into time — "maybe in five years." The shifts between these registers are the tell.
+"There's a term of art in venture, they say he's just being slippery, and it's implied that some degree of being slippery is okay, maybe even good. Well that doesn't really work for me." He named the industry's default, rejected it, and built a fund that selects against it. When he's certain about a principle, you get clean declaratives. When he's about to say something contrarian, he flags the social cost first. When the topic moves to communities he's not part of, he narrows his scope. When he doesn't know an outcome, he deflects into time — "maybe in five years." The shifts between these modes are the tell.
 
 ## How They Commit
 
 Binary and mission-anchored. "In the past decade, I have put that issue — making work work — at the centre of my professional life." Thirteen years teaching at Berkeley, exclusive Bloomberg LP across multiple fund cycles, annual Going to Work conference — parallel channels, same problem. When a founder's idea failed and she tried to return the capital, he refused and told her to keep building. Performance failure doesn't break the commitment. Mission drift does.
 
-He enters early and stays. "$250,000 first check... get involved really early and remain valuable and invest much more over time." The uncertainty stage — where an investment could be visionary or delusional — is where the boundary-occupier is most comfortable and most useful.
+He enters early and stays. "$250,000 first check... get involved really early and remain valuable and invest much more over time." The uncertainty stage — where an investment could be visionary or delusional — is where someone with his between-worlds vantage is most comfortable and most useful.
 
 ## How They Think About Resources
 
-Everything depends on worker power actually generating demand. If it does, "exit to community" models are market creation on a longer timeline. If it doesn't, the entire justification collapses back into conventional philanthropy — which his identity can't metabolize. Resources beyond capital — Bloomberg's platform, customer access, technical infrastructure — are abundant once mission alignment is established, invisible before it.
+Everything depends on worker power actually generating demand. If it does, "exit to community" models are market creation on a longer timeline. If it doesn't, the entire justification collapses back into conventional philanthropy — which his identity can't absorb. Resources beyond capital — Bloomberg's platform, customer access, technical infrastructure — are abundant once you've proven mission alignment, invisible before it.
 
 ## What They'll Risk
 
-"At the seed stage, the risk of missing something is worse than the risk of investing in the wrong company." Bad investments lose money. Missed investments mean his self-concept — the person who sees what conventional investors miss — failed at its core function. He designs for controversial investments: "the best deals tend to be controversial." He's metabolized the possibility of total failure: "there's some chance that you create something special. There's also a chance that you create something that blows up in your face." What he won't risk is the boundary position itself.
+"At the seed stage, the risk of missing something is worse than the risk of investing in the wrong company." Bad investments lose money. Missed investments mean the thing he's built himself to be — the person who sees what conventional investors miss — failed at its core function. He designs for controversial investments: "the best deals tend to be controversial." He's metabolized the possibility of total failure: "there's some chance that you create something special. There's also a chance that you create something that blows up in your face." What he won't risk is the in-between space itself.
 
 ## How They Build Relationships
 
@@ -208,7 +212,7 @@ Two clocks. The venture clock: "a chess game, where every move is separated by a
 
 ## How They Read Status
 
-He accepts recognition that positions him as useful and deflects recognition that positions him as elevated. Teaching: status-compatible. Open-sourcing the fund: status-compatible. Public praise for character: status-incompatible, because it fixes him in place as a person of achievement rather than a person in motion. He absorbs social cost for contrarian positions, but the preemptive framing — "that's going to be an unpopular view" — reveals he tracks the price. He pays it anyway. He needs you to know he knows.
+He accepts recognition that positions him as useful and deflects recognition that positions him as elevated. Teaching fits his self-image. Open-sourcing the fund fits. Public praise for character doesn't — because it fixes him in place as a person of achievement rather than a person in motion. He absorbs social cost for contrarian positions, but the preemptive framing — "that's going to be an unpopular view" — reveals he tracks the price. He pays it anyway. He needs you to know he knows.
 
 ## How They Learn
 
@@ -228,7 +232,7 @@ The career doesn't read like a ladder. It reads like someone who keeps finding t
 
 Amherst College, American Studies — a discipline that trains you to read systems, not specialize in one. Then the Yiddish Book Center, where she produced a 13-hour NPR radio series on Eastern European Jewish literature — a co-production with KCRW that ran on half the NPR network and required coordinating high-profile talent around an unfashionable cause. Rescuing a language most people had written off. The instinct to build infrastructure for things the mainstream has abandoned shows up in everything she does afterward.
 
-Open Society Foundations for roughly a decade, moving across programs that share a single structural pattern: the Project on Death in America ($45 million, credited with moving hospital palliative care units from zero to 75% coverage), then a special initiative on the politicization of science-based policymaking, then the U.S. Democracy Fund running media, internet policy, investigative journalism, and documentary film funding. At each stop, she built connective infrastructure — a capacity-strengthening program for OSF grantees covering communications, governance, fundraising, leadership, and technology.
+Open Society Foundations for roughly a decade, moving across programs that share a single structural pattern: the Project on Death in America ($45 million, credited with moving hospital palliative care units from zero to 75% coverage), then a special initiative on the politicization of science-based policymaking, then the U.S. Democracy Fund running media, internet policy, investigative journalism, and documentary film funding. At each stop, she built the connective tissue — a capacity-strengthening program for OSF grantees covering communications, governance, fundraising, leadership, and technology.
 
 Ford Foundation since 2014. Director of the Technology and Society program: $14 million annual domestic budget, $7 million international, 118 grantees. Under her leadership, Ford secured a $50 million special allocation to create the PIT Catalyst Fund, launched the Public Interest Technology University Network with 36 institutions, co-created the Spyware Accountability Initiative with Apple, built the Disability x Tech Fund, and co-funded the $10 million Antimonopoly Fund. Total Ford commitment to public interest technology since 2016: over $100 million, with $150 million mobilized from co-funders.
 
@@ -236,7 +240,7 @@ Seven current governance positions, including the Partnership on AI (alongside A
 
 ## Who They Think They Are
 
-Her self-concept is field-builder, not funder. The distinction is structural. A funder picks winners. A field-builder creates the conditions under which winners can emerge — university pipelines, co-funding vehicles, cross-sector tables, governance seats that give civil society standing against corporate and state power.
+She sees herself as a field-builder, not a funder. The distinction is structural. A funder picks winners. A field-builder creates the conditions under which winners can emerge — university pipelines, co-funding vehicles, cross-sector tables, governance seats that give civil society standing against corporate and state power.
 
 The PIT Catalyst Fund is the clearest expression. It wasn't grants to individual organizations. It was a $50 million bet that if you train technologists across disciplines at universities, the universities will institutionalize the field after the money runs out. Finite. High-intensity. Designed to trigger institutional adoption, not perpetual grantmaking. When the fund spent its full allocation in three years, that was the plan.
 
@@ -244,15 +248,15 @@ She cannot tolerate being mistaken for a gatekeeper. The role she's built — co
 
 ## What They Value Most
 
-Her governing diagnosis: technology reproduces and accelerates existing inequality unless civil society has the technical capacity, institutional standing, and legal infrastructure to intervene. This is an operational model with a specific failure mode — when the people most affected by technology are excluded from designing, governing, and regulating it, the technology entrenches the exclusion.
+Her read on what's broken: technology reproduces and accelerates existing inequality unless civil society has the technical capacity, institutional standing, and legal tools to intervene. The failure mode is specific — when the people most affected by technology are excluded from designing, governing, and regulating it, the technology entrenches the exclusion.
 
 Her test for whether something passes: does it build permanent capacity in civil society, or does it create temporary dependence on philanthropic funding?
 
 ## Where to Start
 
-The central contradiction: she builds coalitions to counterbalance concentrated power, but the coalition-building model requires her to work with the concentrators. Ford co-launched the Spyware Accountability Initiative with Apple — the same Apple whose app store policies, device ecosystems, and market position are subjects of the antimonopoly movement Ford also funds. She sits on Partnership on AI's board between the ACLU's deputy director for speech and privacy and Microsoft's Chief Responsible AI Officer.
+The central contradiction: she builds coalitions to counterbalance concentrated power, but doing so requires her to work with the concentrators. Ford co-launched the Spyware Accountability Initiative with Apple — the same Apple whose app store policies, device ecosystems, and market position are subjects of the antimonopoly movement Ford also funds. She sits on Partnership on AI's board between the ACLU's deputy director for speech and privacy and Microsoft's Chief Responsible AI Officer.
 
-This isn't hypocrisy. It's the structural logic of foundation-led field-building at the $16 billion endowment scale. Ford can't fund direct opposition to its own programmatic partners without destroying the coalition architecture. But it can fund the field conditions — university pipelines, civil rights tables, investigative journalism, legal infrastructure — that produce the opposition organically. The field does what the foundation can't say.
+This isn't hypocrisy. It's the structural logic of foundation-led field-building at the $16 billion endowment scale. Ford can't fund direct opposition to its own programmatic partners without destroying the web of partnerships she's spent a decade building. But it can fund the field conditions — university pipelines, civil rights tables, investigative journalism, legal infrastructure — that produce the opposition organically. The field does what the foundation can't say.
 
 Under pressure — when the gap between the institutional language and the adversarial funding becomes visible — the decision record suggests she adds partners rather than takes positions. The Disability x Tech Fund was created with an advisory committee of people with disabilities who nominated and selected grantees. The Spyware Accountability Initiative has an independent global technical advisory committee. The Antimonopoly Fund is managed by the Economic Security Project, not Ford. When the work is politically exposed, she builds governance structures that distribute the risk and the decision authority.
 
@@ -266,15 +270,15 @@ The most important sentence in this profile for anyone trying to move her: if yo
 
 ## How They Decide
 
-Entry condition: a visible gap between practitioners doing real work and the institutional infrastructure needed to sustain it. Real people already in the space without the architecture to connect, professionalize, or protect them.
+She decides in three stages. First, there has to be a visible gap between practitioners doing real work and the institutional infrastructure needed to sustain it. Real people already in the space without the architecture to connect, professionalize, or protect them.
 
-Permission logic: co-funding. Almost nothing in her portfolio is Ford-only. The PIT Catalyst Fund mobilized $150 million in complementary funding. The Spyware Accountability Initiative launched with Apple, OSF, Okta for Good, and Craig Newmark Philanthropies. The European AI Fund has seventeen foundation partners. If she can't attract co-funders, the field isn't ready. Co-funding is both validation mechanism and risk-distribution strategy.
+Second, she needs co-funders. Almost nothing in her portfolio is Ford-only. The PIT Catalyst Fund mobilized $150 million in complementary funding. The Spyware Accountability Initiative launched with Apple, OSF, Okta for Good, and Craig Newmark Philanthropies. The European AI Fund has seventeen foundation partners. If she can't attract co-funders, the field isn't ready. Co-funding is both how she validates an opportunity and how she distributes risk.
 
-Behavioral commitment: finite, high-intensity, designed for institutional adoption. The Catalyst Fund was three years, $50 million, spent in full. Not renewable. If the investment doesn't trigger permanent institutional change within the time window, more money won't fix the problem.
+Third, the commitment is finite, high-intensity, and designed for institutional adoption. The Catalyst Fund was three years, $50 million, spent in full. Not renewable. If the investment doesn't trigger permanent institutional change within the time window, more money won't fix the problem.
 
 ## How They Build Trust
 
-The trust mechanism is delegation. She builds advisory committees, steering committees, independent governance structures — and populates them with practitioners, not funders. The behavioral logic: if Ford controls grantee selection, Ford is a gatekeeper. If an advisory committee of affected communities controls selection, Ford is infrastructure.
+The trust mechanism is delegation. She builds advisory committees, steering committees, independent governance structures — and populates them with practitioners, not funders. The logic: if Ford controls grantee selection, Ford is a gatekeeper. If an advisory committee of affected communities controls selection, Ford is infrastructure.
 
 For the person entering a meeting: the trust test is whether you understand that power should flow through you to someone else, not accumulate with you. If your ask positions you as the expert Ford should back, you're speaking gatekeeper language. If your ask positions you as infrastructure that enables practitioners Ford can't reach directly, you're speaking her language.
 
@@ -282,27 +286,27 @@ For the person entering a meeting: the trust test is whether you understand that
 
 The exclusion of affected communities from technology decisions that affect them. "The support for them is not large — it's not even modest." The second clause is the tell — it carries frustration at the philanthropic sector's failure, not just a funding gap. She built the Disability x Tech Fund specifically because Ford's own civil-rights framing had excluded disability for years. She named the institutional failure publicly. That takes a specific kind of anger.
 
-Technological solutionism without power analysis. When someone presents technology as a solution without naming whose power it serves and whose it threatens, they've failed her diagnostic. Single-organization impact stories fail for the same reason — she funds fields, not programs.
+Technological solutionism without power analysis. When someone presents technology as a solution without naming whose power it serves and whose it threatens, they've failed her test. Single-organization impact stories fail for the same reason — she funds fields, not programs.
 
-Philanthropic siloing. The entire co-funding architecture she's built is designed to force foundations into shared strategy. Isolated foundation grantmaking is, in her model, a structural failure.
+Philanthropic siloing. The entire co-funding model she's built is designed to force foundations into shared strategy. Isolated foundation grantmaking is, in her view, a structural failure.
 
 ## Where They Draw Lines
 
-Ford's institutional constraints are the hardest boundaries — the coalition architecture can't survive grants that contradict its own programmatic partnerships. These aren't her personal lines. They're non-negotiable.
+Ford's institutional constraints are the hardest boundaries — the web of partnerships can't survive grants that contradict its own programmatic partners. These aren't her personal lines. They're non-negotiable.
 
-The personal line is harder to see but absolute: the community most affected leads the design. Not consulted. Not included. Leads. Propose something designed for a community rather than by it and you've confirmed that you don't understand the operating principle.
+The personal line is harder to see but absolute: the community most affected leads the design. Not consulted. Not included. Leads. Propose something designed for a community rather than by it and you've confirmed that you don't understand how she works.
 
 ## How They Communicate
 
-She operates in two registers. The institutional one is precise, structural, power-literate, with no emotional valence. "Addressing the global spyware industry cannot be the work of any one company or funder or government; it requires an approach as interconnected as our world is today." Coalition language — it distributes agency, names the architecture, avoids positioning Ford as protagonist.
+She operates in two modes. The institutional one is precise, structural, power-literate, with no emotional valence. "Addressing the global spyware industry cannot be the work of any one company or funder or government; it requires an approach as interconnected as our world is today." Coalition language — it distributes agency, names the architecture, avoids positioning Ford as protagonist.
 
-The candid register is rare. "We had this civil-rights framing, yet we were missing a very significant component of civil rights." These sentences admit institutional failure and imply personal responsibility. They appear in the Chronicle of Philanthropy — a trade publication read by peers, not the general public. She's candid with the sector, institutional with the public.
+The candid mode is rare. "We had this civil-rights framing, yet we were missing a very significant component of civil rights." These sentences admit institutional failure and imply personal responsibility. They appear in the Chronicle of Philanthropy — a trade publication read by peers, not the general public. She's candid with the sector, institutional with the public.
 
-[**Evidence ceiling:** Zero data on her verbal style in meetings, her listening patterns, or the tells embedded in shifts between registers. Both registers above are written, both in institutional contexts.]
+[**Evidence ceiling:** Zero data on her verbal style in meetings, her listening patterns, or the tells embedded in shifts between modes. Both modes above are written, both in institutional contexts.]
 
 ## How They Commit
 
-Over a decade at Ford in a single program area. The commitment is to the architecture, not the architect. Organizations receive Ford support, but the commitment is to the field the organization operates within. The Markup received $2.5 million not because Ford is loyal to The Markup but because investigative tech journalism is a field Ford is building. The distinction matters: if your organization drifts from the field logic, the commitment doesn't follow you.
+Over a decade at Ford in a single program area. The commitment is to the field, not the individual organization. Organizations receive Ford support, but the commitment is to the field the organization operates within. The Markup received $2.5 million not because Ford is loyal to The Markup but because investigative tech journalism is a field Ford is building. The distinction matters: if your organization drifts from the field's purpose, the commitment doesn't follow you.
 
 ## How They Think About Resources
 
@@ -312,7 +316,7 @@ What's scarce is not Ford's money. What's scarce is philanthropic coordination. 
 
 She'll risk Ford's institutional brand by partnering with corporations whose practices in other domains conflict with Ford's values. She'll risk philanthropic capital on finite, spend-down initiatives where the entire investment fails if institutional adoption doesn't happen within the time window.
 
-She won't risk the coalition architecture itself. That's load-bearing. A risk that threatens a single grantee is manageable. A risk that threatens the multi-foundation model threatens everything she's built.
+She won't risk the coalition itself. That's the load-bearing structure — everything else she's built depends on it. A risk that threatens a single grantee is manageable. A risk that threatens the multi-foundation model threatens everything.
 
 She admitted Ford's civil-rights framing excluded disability — a public acknowledgment of institutional failure that most program directors would avoid. She risks institutional embarrassment when the naming serves institutional learning. Narrow risk appetite — she doesn't risk for visibility or contrarianism, only for field correction.
 
@@ -322,7 +326,7 @@ If you're working on the problem inside her architecture, the relationship exist
 
 ## How They Think About Time
 
-Two time horizons. The catalytic horizon: three to five years. The field-building horizon: decades. The PIT movement traces to NetGain in 2015 and continues through Current AI in 2025. Her tenure at Ford matches the longer timeline.
+Two time horizons. The short one: three to five years — finite bets designed to catalyze permanent change. The long one: decades. The PIT movement traces to NetGain in 2015 and continues through Current AI in 2025. Her tenure at Ford matches the longer timeline.
 
 The fundraiser should expect her to ask: what happens after our money runs out?
 
@@ -336,7 +340,7 @@ The status she accepts is governance authority: board seats, steering committees
 
 The career arc — Yiddish Book Center to Project on Death in America to science policy to media and internet policy to technology and society — suggests she learns by moving across domains and finding the structural pattern that connects them. The common thread: institutions that should serve the public interest but don't, because the people most affected aren't in the room where decisions are made.
 
-At Ford, the learning mechanism is structured evaluation — advisory committees, program evaluations, convenings. The 2018 Ford-Hewlett disinformation convening is the clearest example: 50-plus scholars, think tank leaders, funders, and platform representatives brainstorming research questions. The output was explicitly framed as "not a reflection of any plans or endorsements by the Ford or Hewlett foundations, or the participants themselves." She convenes the learning and lets the field own the conclusions.
+At Ford, she learns through structured evaluation — advisory committees, program evaluations, convenings. The 2018 Ford-Hewlett disinformation convening is the clearest example: 50-plus scholars, think tank leaders, funders, and platform representatives brainstorming research questions. The output was explicitly framed as "not a reflection of any plans or endorsements by the Ford or Hewlett foundations, or the participants themselves." She convenes the learning and lets the field own the conclusions.
 
 ## What They Know
 

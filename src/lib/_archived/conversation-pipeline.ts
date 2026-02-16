@@ -1,3 +1,9 @@
+// ARCHIVED: Full conversation pipeline (v8 — Single-Call Extraction)
+// Date: February 2026
+// Reason: Replaced by coded pipeline in pipeline.ts (v5 hybrid architecture)
+// Original location: conversation-pipeline.ts (entire file)
+// Contains: runConversationPipeline(), phase orchestration, agentic research loops
+
 /**
  * Conversation Pipeline Architecture (v8 — Single-Call Extraction)
  *
@@ -25,11 +31,8 @@
  *   - "Research package" = extraction output with sources, evidence gaps, 24-dim extraction (~25-30K tokens)
  *   - "Persuasion Profile" = final 18-section output (user-facing)
  *
- * Cost per profile: ~$9-10
- *   - Tavily searches: ~$0.50-1.00
- *   - Extraction (Opus, single call): ~$4.50
- *   - Profile generation (Opus): ~$2.00
- *   - Editorial pass (Opus): ~$2.00
+ * (Cost estimates removed — they were inaccurate. All conversationTurn calls
+ *  were actually using Sonnet, not Opus as claimed.)
  */
 
 import { conversationTurn, Message } from './anthropic';

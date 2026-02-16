@@ -98,6 +98,14 @@ The first draft gets some of this right and some of it wrong. Your job is to clo
 
 **Add evidence ceiling brackets** where the first draft makes claims the behavioral evidence doesn't support but failed to flag the gap.
 
+**EXEMPLAR BLEED CHECK — HARD FAILURE:** Read every direct quote in this profile. For each one, verify: does this quote come from a source document about this donor, or does it appear in one of the exemplar profiles (Newmark, Bahat, McGlinchey)?
+
+If ANY quote from the exemplar profiles appears in this profile — even if it would perfectly describe this donor — remove it immediately. Replace it with either: (a) A quote from this donor's actual source material, or (b) An analytical observation in the profile's own voice.
+
+This is the single most damaging error a profile can contain. A transplanted quote means the profile is describing someone else's behavior, attributed to this donor. It destroys the profile's credibility with anyone who knows the donor.
+
+Also check for close paraphrases of exemplar language. If a sentence in this profile closely mirrors a distinctive phrase from an exemplar (e.g., "work is broken in America," "everyone wants you to be blunt and transparent"), it is likely contaminated. Rewrite from this donor's own evidence.
+
 ## What not to do
 
 **Do not invent.** Every behavioral claim in the final version must be supportable by the extraction evidence or the canonical biographical data provided. You can make sharper inferences from the same evidence. You cannot introduce evidence that isn't there.

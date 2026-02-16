@@ -26,6 +26,8 @@ export interface ResearchSource {
   // v5 attribution fields (set by Stage 3)
   attribution?: AttributionType;
   institutionalContext?: string; // e.g. "VP Engagement, Mozilla Foundation, 2012-2016"
+  /** Whether this source was properly screened by the LLM. False = passed through on fail-open. */
+  screened?: boolean;
 }
 
 export interface ScreeningResult {
@@ -293,12 +295,13 @@ export async function runScreeningPipeline(
   const bypassedSources = autoSurvived.filter(s => s.bypassScreening);
   const needsScreening = autoSurvived.filter(s => !s.bypassScreening);
 
-  // Set attribution for bypassed sources
+  // Set attribution for bypassed sources (these are pre-verified, mark as screened)
   for (const s of bypassedSources) {
     if (s.source === 'blog_crawl') s.attribution = 'target_authored';
     else if (s.source === 'linkedin_post') s.attribution = 'target_authored';
     else if (s.source === 'user_supplied') s.attribution = 'target_coverage';
     else s.attribution = 'target_coverage';
+    s.screened = true;
     allSurviving.push(s);
   }
 
@@ -328,6 +331,7 @@ export async function runScreeningPipeline(
           if (r.decision === 'KEEP') {
             const source = batch[r.index];
             source.attribution = r.attribution as AttributionType;
+            source.screened = true;
             if (r.institutional_context) {
               source.institutionalContext = r.institutional_context;
             }
@@ -343,25 +347,34 @@ export async function runScreeningPipeline(
           }
         }
 
-        // Fail open: sources not in response get accepted with default attribution
+        // Fail open: sources not in response get accepted but flagged as unscreened
+        const unhandledCount = batch.length - handledIndices.size;
+        if (unhandledCount > 0) {
+          console.warn(`[SCREENING] Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${unhandledCount} sources not in LLM response — passed through unscreened`);
+        }
         for (let j = 0; j < batch.length; j++) {
           if (!handledIndices.has(j)) {
             batch[j].attribution = 'target_coverage';
+            batch[j].screened = false;
             allSurviving.push(batch[j]);
           }
         }
       } else {
-        // Parse failure — fail open
+        // Parse failure — fail open but flag all as unscreened
+        console.warn(`[SCREENING] Batch ${Math.floor(i / BATCH_SIZE) + 1} failed — ${batch.length} sources passed through unscreened (no JSON in response)`);
         for (const s of batch) {
           s.attribution = 'target_coverage';
+          s.screened = false;
           allSurviving.push(s);
         }
       }
     } catch (err) {
-      console.error('[Stage 3] LLM screening batch failed:', err);
-      // On error, accept all (fail open)
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[SCREENING] Batch ${Math.floor(i / BATCH_SIZE) + 1} failed — ${batch.length} sources passed through unscreened: ${errMsg}`);
+      // On error, accept all (fail open) but flag as unscreened
       for (const s of batch) {
         s.attribution = 'target_coverage';
+        s.screened = false;
         allSurviving.push(s);
       }
     }
@@ -376,11 +389,16 @@ export async function runScreeningPipeline(
 
   // Log attribution distribution
   const attrCounts: Record<string, number> = {};
+  let unscreenedCount = 0;
   for (const s of allSurviving) {
     attrCounts[s.attribution || 'unknown'] = (attrCounts[s.attribution || 'unknown'] || 0) + 1;
+    if (s.screened === false) unscreenedCount++;
   }
   for (const [attr, count] of Object.entries(attrCounts)) {
     console.log(`[Stage 3]   ${attr}: ${count}`);
+  }
+  if (unscreenedCount > 0) {
+    console.warn(`[Stage 3]   UNSCREENED: ${unscreenedCount} sources passed through without LLM vetting`);
   }
 
   return {

@@ -1,3 +1,9 @@
+// ARCHIVED: Legacy extraction prompts and dimension definitions
+// Date: February 2026
+// Reason: Dimensions moved to dimensions.ts; extraction prompt moved to prompts/extraction-prompt.ts
+// Original location: prompts/extraction-prompt.ts (old version with inline dimension defs)
+// Contains: Old DIMENSIONS array (16 items), EXTRACTION_SYSTEM_PROMPT, buildExtractionPrompt()
+
 // Prompts for Step 2: Behavioral Evidence Extraction
 
 export const DIMENSIONS = [

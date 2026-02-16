@@ -43,54 +43,22 @@ export async function complete(
   return textContent.text;
 }
 
-export async function completeWithHistory(
-  systemPrompt: string,
-  messages: Message[],
-  options: {
-    maxTokens?: number;
-    temperature?: number;
-    model?: string;
-  } = {}
-): Promise<string> {
-  const {
-    maxTokens = 8192,
-    temperature = 0.7,
-    model = 'claude-sonnet-4-20250514'
-  } = options;
-
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: messages.map(m => ({
-      role: m.role,
-      content: m.content
-    })),
-    temperature,
-  });
-
-  const textContent = response.content.find(c => c.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in response');
-  }
-  
-  return textContent.text;
-}
-
 // For longer generation tasks
 export async function completeExtended(
   systemPrompt: string,
   userPrompt: string,
   options: {
     maxTokens?: number;
+    model?: string;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
+    model,
   } = options;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: model || 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: [
@@ -116,17 +84,21 @@ export async function conversationTurn(
   options: {
     maxTokens?: number;
     abortSignal?: AbortSignal;
+    model?: string;
+    systemPrompt?: string;
   } = {}
 ): Promise<string> {
   const {
     maxTokens = 16000,
     abortSignal,
+    model,
+    systemPrompt,
   } = options;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: model || 'claude-sonnet-4-20250514',
     max_tokens: maxTokens,
-    system: 'You are writing a donor persuasion profile.',
+    system: systemPrompt || 'You are writing a donor persuasion profile.',
     messages: messages.map(m => ({
       role: m.role,
       content: m.content

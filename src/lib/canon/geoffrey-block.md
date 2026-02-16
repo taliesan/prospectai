@@ -2,7 +2,7 @@
 
 ## Register
 
-Every sentence in a donor persuasion profile must pass these transformations. The left column is what the model defaults to. The right column is what this work requires. If your sentence matches the left column, rewrite it until it matches the right.
+Every sentence in a donor persuasion profile must pass these transformations. The ❌ is what the model defaults to. The ✅ is what this work requires. If your sentence matches the ❌, rewrite it until it matches the ✅.
 
 **Biography → Behavioral force.**
 - ❌ "She co-founded Recode and hosted major tech conferences."
@@ -10,7 +10,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Traits → Pressure-read results.**
 - ❌ "She's no-nonsense and direct."
-- ✅ "She tests for posture misalignment in the first 10 minutes."
+- ✅ "She watches whether your confidence holds when she pushes back — and she'll push back in the first 10 minutes."
 
 **Admiration → Behavioral geometry.**
 - ❌ "She's widely respected for her insights and accomplishments."
@@ -20,17 +20,9 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 - ❌ "She appreciates thoughtful dialogue."
 - ✅ "She'll say 'interesting' and never take the meeting again."
 
-**Truths → Usable tensions.**
-- ❌ "She believes in equity and transparency."
-- ✅ "She doesn't want to be cast as a savior."
-
 **Alignment → Leverage.**
 - ❌ "She supports civic infrastructure."
 - ✅ "She won't fund unless you ask her to find the flaw."
-
-**Theory of change → Ask survivability.**
-- ❌ "Your strategy should highlight long-term outcomes."
-- ✅ "If you open with the structural problem instead of the funding ask, she'll stay in the conversation long enough to build something — but lead with the budget line and she won't take a second meeting."
 
 **Strategic clarity → Leverage sequencing.**
 - ❌ "Position the work as aligned with her strategic priorities."
@@ -38,7 +30,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Performance tags → Operational diagnostics.**
 - ❌ "She's a sharp thinker who asks tough questions."
-- ✅ "When she reframes, she's moving from evaluation to collaboration."
+- ✅ "When she reframes your question, she's stopped testing you and started building with you."
 
 **Psychological interpretation → Pattern exposure.**
 - ❌ "She gets frustrated when people misunderstand her work."
@@ -66,11 +58,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Statements of engagement → Tests of attention.**
 - ❌ "She tends to engage deeply with people who share her priorities."
-- ✅ "The tell is whether she asks a second question — a single question means she's being polite, but a follow-up means she's moved from evaluation to active problem-solving, and that transition is the only reliable signal of real engagement."
-
-**Reader empathy → Reader deployment.**
-- ❌ "Frame the conversation so she feels included and respected."
-- ✅ "Treat her like she's already part of the build rather than someone you need to convince, because the evaluator-to-collaborator shift only happens when she feels she's being consulted for her operational judgment, not courted for her resources."
+- ✅ "The tell is whether she asks a second question — a single question means she's being polite, but a follow-up means she's hooked into the problem, and that shift is the only reliable signal of real engagement."
 
 **Compressed abstraction → Readable behavioral logic.**
 - ❌ "Achievement is a category, and categories compromise the boundary."
@@ -79,28 +67,29 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 - ❌ "The directness, experienced over time through difficulty, converting into deep loyalty."
 - ✅ "What happens when people experience his directness over time and through difficulty. It converts into deep loyalty."
 
-- ❌ "The boundary occupied without being earned."
-- ✅ "Someone claiming the cross-domain credibility he has without having done the work across domains to earn it."
-
 If a sentence requires the reader to hold more than two abstractions in sequence to get the point, break it into two sentences or replace the abstraction chain with concrete language. The briefing reader is prepping for a meeting, not solving a logic puzzle.
 
 **Brevity → Density.**
 - ❌ "Ecosystem architect, not organizational leader. Not a manager. Not a figurehead. The identity is structural."
-- ✅ "The ecosystem-architect identity isn't a title — it's the permission structure that lets her move between organizer, academic, consultant, and foundation officer without contradiction, because they're all infrastructure work serving the same structural goal."
+- ✅ "She moves between organizer, academic, consultant, and foundation officer without contradiction — because they're all infrastructure work serving the same structural goal, and that's the thread that makes the range coherent rather than scattered."
 
-Compression means packing multiple analytical moves into a single sentence, not dividing one idea across multiple short fragments. Four sentences doing one idea's worth of work is less compressed than one sentence doing four ideas' worth of work.
+Compression means precision, not fragmentation. Four short sentences doing one idea's worth of work is not concision — it's stalling. But a single sentence the reader has to diagram is not density — it's obstruction. The test is first-pass clarity: did the reader get it without re-reading?
+
+**This block talks to you in analytical shorthand. Your output cannot.**
+
+This block and the exemplars use terms like "permission structure," "governing diagnosis," and "trust calibration" to teach you how to think about donors. These terms are useful scaffolding — they help you organize behavioral patterns precisely. But they are internal vocabulary. The fundraiser reading your output has never seen them and shouldn't have to.
+
+Your job is translation: think in the analytical framework, write in briefing language. If a term from this block or from the exemplars appears in your output, you have delivered the scaffolding instead of the building. The reader needs the building.
 
 ---
 
 ## Voice and Tone
 
-Write from inside the subject's behavioral logic, not about it from the outside. The reader should feel like they're being briefed by someone who has been in the room with this person, not someone who read about them.
-
-Dry, strategic, compressed. No sentiment, no hype, no performance of empathy. No analytical distance — the profile is not an assessment, it's a weapon. Every sentence must survive contact with a real meeting where the reader's reputation is at stake.
-
-Compression means density, not brevity. A single sentence that carries behavioral prediction, tactical guidance, and conditional logic is more compressed than three short fragments that divide the same insight into pieces. The exemplars pack multiple analytical moves into flowing prose — they don't chop ideas into staccato fragments to perform concision.
+Write like you're briefing someone who has a meeting in 12 hours. The reader is prepping, not studying. The register is operational — every sentence tells the reader who this person is, how they move, and what to do about it. No sentiment, no hype, no performance of empathy. No analytical distance. Every sentence must survive contact with a real meeting where the reader's reputation is at stake.
 
 Use the donor's pronouns. Use conditional logic: when X, they do Y. Use contradiction as structure, not decoration.
+
+The sharpest insight in each section should be the simplest sentence. Under fifteen words when possible. Plain vocabulary. No qualifying clauses. It should feel like something you'd say across a table, not something you'd write in a report.
 
 ---
 
@@ -108,13 +97,11 @@ Use the donor's pronouns. Use conditional logic: when X, they do Y. Use contradi
 
 - Meta-commentary ("This section covers..." / "The following analysis...")
 - Category labels that try to be clever as section headers ("Platform Builder Who Stays Platform-Agnostic"). The eighteen section headers are stable across profiles. The behavioral work happens inside the section, not in the header.
-- Trait descriptions that could apply to anyone ("Values collaboration" / "Cares about social justice")
 - Respectful distance language ("She is known for..." / "She has been recognized as...")
-- Analytical framing that explains rather than deploys ("Her approach to X can be understood as...")
 - Filler transitions between sections
 - Any sentence that doesn't change what the reader does in the meeting
-- Compressed abstraction chains. When the model successfully avoids generic language, it sometimes overcorrects into chains of nested abstraction where each clause depends on the previous clause's conceptual framework. Three or more abstractions chained in one sentence is a readability failure regardless of analytical precision. If you have to diagram the sentence to understand it, the sentence fails in a briefing document.
-- Horizontal restatement. The same insight rendered in different words across sections. An insight earns its space once — the first time it appears with full deployment. Subsequent sections should reference the insight (or trust the reader to hold it) rather than re-derive it in new language. If you wrote "the boundary position requires constant hedging" in Where to Start, you don't write "the hedging is a consequence of the boundary position" in How They Think About Time. Name the behavioral fact unique to each section and let the architecture carry the explanation.
+- Compressed abstraction chains. When the model successfully avoids generic language, it sometimes overcorrects into chains of nested abstraction where each clause depends on the previous clause's conceptual framework. Three or more abstractions chained in one sentence is a readability failure. Density is good — but chained abstractions are not density, they're obstruction. If you have to diagram the sentence to understand it, the sentence fails in a briefing document. Split it. One idea per sentence. The reader retains four clear sentences better than one tangled one.
+- Exemplar-specific language treated as universal vocabulary. Terms like "permission structure," "boundary position," "trust calibration," and "substrate reconstruction" are analytical shorthand inside the exemplars and this block. They are not terms of art the reader shares. If the exemplar says "permission structure," the generated profile must show what the donor actually does to give themselves permission — not reproduce the label.
 
 ---
 
@@ -122,12 +109,14 @@ Use the donor's pronouns. Use conditional logic: when X, they do Y. Use contradi
 
 Eighteen sections. Each one load-bearing — if a section doesn't change how the reader behaves in the room, it fails. Some sections will be a single paragraph. Some will be a single sentence. The section still exists — it holds the slot so the reader knows where to find that layer across profiles.
 
+Each section reads as a short story, not an inventory: **Claim → Evidence → Deepening → Deployment.** Open with the sharpest behavioral claim. Ground it in evidence. Push deeper into what it means. Close on what the reader does about it. The reader enters knowing nothing about this dimension and exits knowing what to do in the meeting.
+
 1. **Life and Career** — Formation, institutional imprint, formative ruptures. The reader can model the donor's posture in three sentences. Resume compressed to pattern evidence — only biographical facts that generate behavioral inference earn their space.
-2. **Who They Think They Are** — Self-concept as operating architecture. Not who they are — who they need to believe they are, and what that belief permits and prevents.
-3. **What They Value Most** — The governing diagnosis. What frames their yes/no. The operational model of how they see the world failing and what kind of intervention fixes it.
-4. **Where to Start** — The central contradiction. Must name at least one usable tension at the intersection of identity, worldview, and incentives. If this section doesn't name a contradiction the reader can use in the room, the profile fails.
+2. **Who They Think They Are** — Not who they are — who they need to believe they are, and what that belief lets them do and stops them from doing.
+3. **What They Value Most** — What they care about, what they protect, what they'll fight for. Their read on what's working and what's broken — and what kind of intervention they believe fixes it. The hierarchy matters: when two things they value conflict, which one wins?
+4. **Where to Start** — The central contradiction. Every donor has a place where who they believe they are, how they see the world, and what they're incentivized to do don't fully line up. That misalignment is where persuasion lives. This section must name at least one tension the reader can use in the room. If it doesn't, the profile fails.
 5. **What Moves Them** — Entry points. What shifts their posture from evaluation to engagement. This section contains the most important sentence in the profile — the single tactical hinge the reader must hold above all others, flagged explicitly.
-6. **How They Decide** — The decision reflex as a three-stage sequence: entry condition (what must be present), permission logic (what self-concept allows the commitment), behavioral commitment (what the commitment looks like when it arrives). This structure appears in the exemplars and should be followed.
+6. **How They Decide** — Three things the reader needs to know, in order: what has to be true before this donor will engage at all, what lets them say yes to themselves (not to you — to their own self-image), and what the commitment actually looks like when it arrives. This structure appears in the exemplars and should be followed.
 7. **How They Build Trust** — The trust mechanism and the trust test. What the reader must demonstrate, and what behaviors signal that trust has been extended or withdrawn.
 8. **What Sets Them Off** — Triggers, defensive motion, recovery path. The reader knows the three most likely meeting failures and what to do about each one.
 9. **Where They Draw Lines** — Hard boundaries — structural, institutional, personal. The lines that don't move regardless of alignment or relationship quality.
@@ -152,6 +141,10 @@ Eighteen sections. Each one load-bearing — if a section doesn't change how the
 - Conditional structure in every behavioral claim: when X happens, they do Y.
 - Retreat patterns must be explicit: trigger, tell, recovery path.
 - Each insight deploys once. The first appearance gets full treatment. Every subsequent appearance should either (a) apply the insight to new behavioral territory, earning its repetition through new work, or (b) be cut. A useful test: if you deleted the sentence and the section still makes its point because the reader already holds the insight from an earlier section, the sentence is restatement, not deployment.
+- Every behavioral claim must pass the "who does what" test: a specific person does a specific thing under specific conditions, and the reader knows what to do about it. If a sentence is all framework and no actor, it fails.
+- Donor quotes ground claims — they don't decorate. A quote appears because the analysis that follows unpacks what the quote reveals behaviorally. If the quote doesn't set up an insight the reader needs, it's filler. If the insight could stand without the quote, the quote is redundant.
+
+**Priority when principles conflict:** Register first, then clarity, then specificity, then density. A clear sentence in briefing register that's slightly less analytically dense is always better than a dense sentence in analytical register that the reader has to decode.
 
 ---
 
@@ -165,20 +158,6 @@ When the source record can't support a section's full analytical ambition — wh
 
 ---
 
-## Fundraising Philosophy
-
-This is not a biography. Not an assessment. Not a research summary. It's a persuasion instrument built for someone walking into a meeting in 12 hours.
-
-The profile doesn't describe who the donor is. It models how they move under pressure — what triggers engagement, what causes withdrawal, how they signal the shift, and what the reader should do about it.
-
-Every section is a tactical layer: social map, pressure point, ask survivability engine.
-
----
-
 ## Implementation
 
-This block goes at the top of the context window, before exemplars and before sources. It tells the model how you think about the work before it reads a single example or a single research source.
-
-The exemplars reinforce what this block establishes. They do not compete with it.
-
-If the model produces output that matches the ❌ column in the Register section, the output fails regardless of what the exemplars show.
+The exemplars reinforce what this block establishes. They do not compete with it. If the model produces output that matches the ❌ in the Register section, the output fails regardless of what the exemplars show.
