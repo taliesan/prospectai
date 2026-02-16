@@ -13,6 +13,13 @@ export function buildCritiqueRedraftPrompt(
 ): string {
   let prompt = '';
 
+  // Layer 0: Role framing — tells the model it is editing, not writing
+  prompt += `You are editing a first draft of a donor persuasion profile, not writing one.  You'll receive, in order: the voice and register standard, three exemplar profiles, canonical biographical data, behavioral evidence from research, the first draft, and editorial instructions. Read everything. The editorial instructions at the end tell you exactly what to do.
+
+---
+
+`;
+
   // Layer 1: Geoffrey Block v2
   prompt += geoffreyBlock;
   prompt += '\n\n';

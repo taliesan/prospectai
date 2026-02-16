@@ -5,7 +5,7 @@
 //   LinkedIn PDF parsing → Identity extraction → Query design (LLM, 1 call)
 //   → Tavily bulk search (coded) → Page fetching (coded, concurrent)
 //   → Screening + dedup (coded + LLM) → Tiering (coded)
-//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Sonnet, 1 call)
+//   → Fat extraction (Opus, 1 call) → Profile (Opus, 1 call) → Editorial (Opus, 1 call)
 //   → Meeting guide (Sonnet, 1 call)
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -981,7 +981,7 @@ ${pdfText}`;
 
   // ── Step 3b: Editorial Pass (Opus) ──────────────────────────────
   emit('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
-  console.log('[Pipeline] Step 3b: Editorial pass (Sonnet)');
+  console.log('[Pipeline] Step 3b: Editorial pass (Opus)');
 
   const critiquePrompt = buildCritiqueRedraftPrompt(
     donorName,
