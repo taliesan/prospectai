@@ -71,7 +71,31 @@ Your job is NOT:
 - Writing a finished behavioral profile or persuasion document
 - Producing a readable narrative for an end user
 - Paraphrasing source material when the original language is stronger
-- Editorializing about the subject's character
+- Editorializing about the subject's character, personality, or motivations in academic language ("suggests a pattern of," "indicates a relationship style rooted in," "implies a tendency toward," "this reveals an underlying preference for," "consistent with a personality that"). These phrases signal the wrong output register. Your commentary should describe observable behavior and its implications for someone in the room with the subject — not psychological interpretation.
+
+ANALYTICAL REGISTER: When you write commentary after quotes or in pattern flags, write what the behavior looks like in the room and what it means for someone sitting across the table. Do not write personality descriptions or academic behavioral analysis.
+
+Wrong register: "She frequently acknowledges others' contributions, indicating a relationship style rooted in loyalty and collaborative values. She likely engenders strong loyalty in return."
+
+Right register: "She names her collaborators before she names her results — every time, in every interview. When someone in the room takes credit for shared work, watch for her to go quiet. That quiet isn't agreement. When someone names their team unprompted, she leans in. That's the trust signal."
+
+Wrong register: "His grant-making history suggests he calibrates trust through incremental commitment, beginning with small exploratory gifts before scaling to major institutional support."
+
+Right register: "He gave $25K, then $100K, then $1.2M to the same org over four years. He doesn't decide once — he decides in stages, and each stage is a test. If you ask for the big number first, you've skipped the audition he needs to see."
+
+Wrong register: "Her public statements reveal a communication style characterized by directness and analytical rigor, suggesting she values substantive discourse over diplomatic framing."
+
+Right register: "She told a panel audience 'that's a bad question' and then answered the question she thought they should have asked. If you soften your language around her, she reads it as evasion. Say the hard thing plainly — she'll respect the nerve even if she disagrees with the conclusion."
+
+Wrong register: "He appears to manage tensions between his stated commitment to equity and his institutional position, suggesting an internal conflict between idealism and pragmatism."
+
+Right register: "He writes about dismantling gatekeeping from inside the biggest gate in the field. He knows the contradiction. If you pretend it isn't there, he'll be polite and not return your call. If you name it directly — 'you're the establishment figure funding anti-establishment work, how do you think about that?' — he'll talk for twenty minutes. The contradiction is the door, not the obstacle."
+
+Wrong register: "Interview footage suggests she processes information through questioning rather than declarative engagement, indicating a Socratic learning orientation."
+
+Right register: "She asks three questions before she makes a single statement. The questions aren't curiosity — they're load tests. She's mapping whether your answers hold weight before she puts anything of her own on the table. If she stops asking and starts telling, she's decided you're worth building with."
+
+Your commentary should answer: "What does this person do, when do they do it, what does it look like, and what should someone across the table do about it?" Not: "What does this behavior suggest about the subject's inner life?"
 
 The downstream profiler needs BOTH the subject's original language AND your analytical flags identifying patterns across sources. Pure quotes without pattern identification leave too much work for the profiler. Pure analysis without quotes strips the evidence. Both layers are required.
 
@@ -88,7 +112,17 @@ OUTPUT REQUIREMENTS:
 - Target length: 30,000-60,000 characters
 - If your output is under 25,000 characters, you stopped too early
 - Organize entries by behavioral dimension, not by source. Group evidence under each dimension heading so the downstream profiler can see all evidence for DECISION_MAKING together, all evidence for TRUST_CALIBRATION together, etc.
-- For each dimension: lead with the strongest quotes, follow with supporting quotes, then add your CROSS-SOURCE PATTERN or CONTRADICTION flags if applicable
+- For each dimension, use this two-block structure:
+
+  QUOTES:
+  [All extracted quotes for this dimension, each tagged with source type and URL. No commentary between quotes. Just the quotes, one after another, strongest first.]
+
+  ANALYSIS:
+  [Your CROSS-SOURCE PATTERN, CONTRADICTION, and CONDITIONAL flags for this dimension. This is where ALL of your analytical work goes — not between individual quotes. Write in the behavioral register described above: what the person does, when they do it, what it looks like, and what someone across the table should do about it.]
+
+  This separation is mandatory. Do not insert interpretive commentary between quotes in the QUOTES block. The downstream profiler needs to read the subject's own words without your framing layered on top. Your analytical work is valuable — it goes in the ANALYSIS block where the profiler can read it as a separate input.
+
+- The QUOTES block for each dimension should be substantially longer than the ANALYSIS block. Aim for at least a 3:1 ratio of quote content to analysis content. If your ANALYSIS block for a dimension is longer than your QUOTES block, you are over-interpreting and under-extracting. Go back to the sources and pull more quotes.
 - Report evidence gaps honestly: "No usable behavioral evidence found" for dimensions with no coverage`;
 
   // Section B — 25 Behavioral Dimensions

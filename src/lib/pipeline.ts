@@ -941,7 +941,13 @@ ${pdfText}`;
   const exemplars = loadExemplars();
 
   const researchPackagePreamble = deepResearchResult
-    ? `The behavioral evidence below is a deep research dossier compiled from ${deepResearchResult.searchCount} web searches with ${deepResearchResult.citations.length} cited sources. It preserves the subject's original voice in long direct quotes, structured evidence by category, and inline citations.\n\n`
+    ? `The behavioral evidence below is a deep research dossier compiled from ${deepResearchResult.searchCount} web searches with ${deepResearchResult.citations.length} cited sources. Each behavioral dimension contains two blocks:
+
+QUOTES — the subject's own words and direct evidence from sources. These are your primary evidence. Build your behavioral claims from what the subject actually said and did, not from the research analyst's interpretation of what they said and did.
+
+ANALYSIS — one research analyst's interpretive commentary on the quotes. This commentary is a first read — useful as a starting hypothesis, but not authoritative. It was written by a model optimized for research synthesis, not for the operational briefing register this profile requires. When the commentary and a quote point in different directions, follow the quote. When the commentary describes a personality trait or uses academic language ("suggests a pattern of," "indicates a relationship style"), look past it to the quote underneath for the behavioral pattern you can actually deploy in a meeting.
+
+The quotes are your evidence. The analysis is scaffolding. Build from the evidence.\n\n`
     : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
   const extractionForProfile = researchPackagePreamble + researchPackage;
 
