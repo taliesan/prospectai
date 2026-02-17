@@ -1,6 +1,6 @@
 # EXEMPLAR PROFILES
 
-The following three profiles are the production standard. They demonstrate the Geoffrey Block register, the 18-section structure, correct evidence deployment, and appropriate section length variation. Model the voice, the structure, and the judgment about when a section earns three paragraphs and when it earns one sentence.
+The following three profiles are the production standard. They demonstrate the Geoffrey Block register, the 7-section structure, correct evidence deployment, and appropriate section length variation. Each profile shows when evidence supports rich behavioral claims and when it requires an honest evidence ceiling. Model the voice, the structure, and the judgment about when a section earns three paragraphs and when it earns one.
 
 # PERSUASION PROFILE — CRAIG NEWMARK
 

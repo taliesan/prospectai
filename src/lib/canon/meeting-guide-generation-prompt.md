@@ -5,7 +5,7 @@ You are generating a Meeting Guide for a fundraising meeting.
 ## INPUTS
 
 **Persuasion Profile:**
-The completed 18-section behavioral profile for this donor is provided below. This tells you how the donor moves under pressure — what triggers engagement, what causes withdrawal, how they signal commitment, how they retreat.
+The completed 7-section behavioral profile for this donor is provided below. This tells you how the donor moves under pressure — what triggers engagement, what causes withdrawal, how they signal commitment, how they retreat.
 
 **Organization Layer:**
 The asking organization's mission, theory of change, portfolio, and values are provided below. This shapes what you're asking for, where alignment lives, and what vocabulary to use.
