@@ -1,351 +1,298 @@
 # EXEMPLAR PROFILES
 
-The following three profiles are the production standard. They demonstrate the Geoffrey Block register, the 18-section structure, correct evidence deployment, and appropriate section length variation. Model the voice, the structure, and the judgment about when a section earns three paragraphs and when it earns one sentence.
+The following three profiles are the production standard. They demonstrate the Geoffrey Block register, the seven-section structure, correct evidence deployment, and appropriate section length variation. The voice is direct, warm, and talking to a person — not performing on the page. If a sentence sounds like something you'd write in a report rather than say to a colleague, it fails. Model the voice, the structure, and the judgment about when evidence is rich enough for strong claims and when it requires an honest ceiling.
 
 # PERSUASION PROFILE — CRAIG NEWMARK
 
 ---
 
-## Life and Career
+### 1. THE OPERATING SYSTEM
 
-His father died when he was thirteen. His Sunday School teachers — Holocaust survivors, both of them — taught him two rules: treat people the way you want to be treated, and know when enough is enough. These aren't values he adopted. They're the operating system. Everything since — Craigslist, the philanthropy, the Giving Pledge, the pigeons — runs on firmware installed in a New Jersey Sunday School before he could drive.
+**He built one thing, stayed with it for thirty years, and descended rather than climbed.** An email list became craigslist — no business plan, no grand vision, "no imagination whatsoever" by his own admission. The site's famously ugly design was "mainly a result of his own limitations as a designer." He ran it for five years, staff told him he was a bad manager, he accepted the verdict, stepped down as CEO in 2000, and went to the literal bottom of the org chart — customer service representative — where he stayed for over two decades. His title today: "Founder and Customer Service Representative." He reports to a senior customer service rep boss while sitting on the board. There's no second chapter, no pivot to the next thing.
 
-He grew up "hovering not far above poverty," occasionally digging into savings for groceries. He "really did wear a plastic pocket protector" and "thick black glasses taped together." He was on the debate team, where he developed what he calls "dangerous illusions about the power of reason and logic." The nerd origin story is unusually literal — and unusually structural. When he calls himself a nerd at seventy-three, he's not performing humility. He's referencing an identity that was fixed before he had any choice in the matter and has never been revised.
+**"Old-school nerd" is not a persona. It's who he actually is.** Socially isolated through adolescence and into his 40s. Seventeen years at IBM learning to "at least simulate social skills." "Whenever I hear the symptoms associated with Asperger's, they feel uncomfortably familiar." He can "simulate social skills, maybe as long as ninety minutes at a time." No personal assistant, no car, a Greenwich Village townhouse, and a favorite pigeon named Ghostface Killah whose "social skills are far better than mine." He has a painting of Ghostface Killah on his mantle.
 
-A community email list for San Francisco tech events accidentally became a platform generating hundreds of millions in revenue. He turned down $11 billion in monetization offers, stepped away from management in 2000, stayed in customer service until 2018, then moved entirely to philanthropy. He married Eileen Whelpley in 2012, lives between San Francisco and New York, and signed the Giving Pledge on his seventy-third birthday in December 2025.
+**The nerd thing is real, and it's also how $450 million gets deployed.** Most profiles surface the gap between self-presentation and behavioral reality because that gap is where the useful information lives. With Newmark, the gap is narrow. He didn't build craigslist with "no vision" as a modesty play — he actually had no business plan. He really is that modest. He also really has given away $450 million and reshaped the infrastructure of American journalism, cybersecurity, and veteran support. When the room accepts the nerd at face value, the relationship works. When the room treats him like a strategic philanthropist, his social battery drains faster and the conversation gets stilted. Accept the nerd. You'll get further.
 
-## Who They Think They Are
+---
 
-The nerd identity is both completely authentic and completely architectural. "I'm an old-school nerd helping to protect the people who protect our country" — this isn't humility, it's who he needs to be in order to operate. He defines himself by what he can't do (manage, socialize, read people) rather than what he accomplished (building Craigslist, accumulating billions). By pre-announcing every limitation, he controls the terms of every interaction. You can't outmaneuver someone who has already conceded every point you might use as leverage.
+### 2. THE CONTRADICTION
 
-"Even now, I'm only faking social skills" and "I can't read people, and I take them too literally." These disclosures clear the field. The only things left to evaluate are operational competence and moral alignment — which happen to be the only two things he can reliably judge.
+**The man whose platform helped destroy the newspaper industry's economic model has given approximately $200 million to journalism and named a journalism school after himself.** He's been publicly blamed for killing newspapers for over 20 years. Every journalist covering him notes the irony.
 
-But the nerd identity also lets him do enormous things without having to own them as power moves. It lets him deploy hundreds of millions of dollars while claiming to be "not that big a deal." It lets him rename journalism schools after himself while framing it as institutional credibility rather than personal legacy. Every massive commitment can be processed as "just a nerd doing his part" rather than a billionaire exercising power. Without the nerd frame, the scale of his interventions would require a different self-narrative — one he has never built and shows no interest in building.
+**He rejects the guilt frame completely, and it irritates him.** "That takes an active imagination that I don't understand. I have very little imagination." He argues the decline was inevitable — television started it in the 1960s, newspapers' 30% profit margins from classified monopolies were unsustainable, if not craigslist then someone else. He follows the evidence. But the evidence hasn't settled the question publicly, and the man who has given $200M to journalism can't fully escape it.
 
-## What They Value Most
+**Don't touch the guilt lever. It's not a lever — it's a tripwire.** If the philanthropy is atonement, then craigslist was the sin — and the nerd who just wanted to help people becomes the guy who destroyed an industry. He needs the philanthropy to be about values — trustworthy press as "the immune system of democracy," a phrase from his high school civics teacher in 1970 — not about repair. If you frame your work as helping him address the damage craigslist caused, the meeting shifts from assessment to self-defense. Frame it within his values and let him hold the journalism connection on his own terms.
 
-His values are organized around a single diagnosis: American democratic infrastructure is under distributed attack that doesn't resemble traditional warfare, and the institutions that should be defending it either don't see the threat or can't organize against it. Cybersecurity threats are "like World War II except that the enemy is already here." Journalism is "the immune system of democracy." These aren't metaphors — they're how he actually sees the decay happening.
+**The more useful contradiction: an extreme introvert with a 90-minute social battery has built one of the most visible philanthropic operations in America.** He speaks at conferences, does podcast tours, coordinates hundreds of grantees, and has named institutions after himself. He's solved this by delegating the social infrastructure to trusted intermediary organizations — Bob Woodruff Foundation, Blue Star Families, Aspen Digital. If your work can plug into that existing network rather than creating new social demands he can't sustain, you're working with his architecture instead of against it.
 
-The hierarchy: national security (protecting those who protect the country) above democratic institutions (journalism, voter protection) above social equity (women in tech, veteran support) above personal interests (pigeon rescue). The categories are integrated around a single principle of protecting people who serve others.
+---
 
-## Where to Start
+### 3. WHAT DRIVES THEM
 
-The central contradiction: he built one of the most successful platforms in internet history while maintaining he "kinda sucks" as a manager and lacks business acumen. He consistently attributes Craigslist's success to luck, yet his philanthropic portfolio demonstrates sophisticated pattern recognition that luck doesn't explain. The nerd who can't read people has assembled a network of domain experts across cybersecurity, journalism, and veteran advocacy who execute his moral framework with minimal oversight. That's not an accident. That's someone who built a system to route around limitations he can see with perfect clarity — and the system works better than most people's direct management.
+**His values hierarchy: the Golden Rule first, "enough is enough" second, protect the country third, simplicity always.** The Golden Rule comes from Mr. and Mrs. Levin, Holocaust survivors who taught his Sunday school class. It's the principle behind craigslist's minimal monetization, his customer service devotion, and his philanthropy. "Enough is enough" — also from the Levins — made him turn down approximately $11 billion. "Protect the country" is patriotic, not partisan — he frames cybersecurity as "duck and cover for the digital age." And he follows evidence over sentiment. He's pulling back from journalism because "a lot of my efforts haven't been as effective as I'd like them to be," and he'll redirect resources when the evidence says to.
 
-He genuinely can't do the thing he says he can't do. He genuinely has built a system that doesn't require him to do it. Both are true simultaneously. When he retreats — routing to intermediaries, delegating to proven networks — that's the system working, not avoidance. He funds at scale, withdraws from operations, and has his name associated with the durable result. Organizations that deliver results while requiring nothing from him beyond resources hit this need precisely. Those requiring his participation — board seats, strategy sessions, speaking engagements — are asking for the one resource he has never been willing to deploy: sustained personal presence.
+**This is the most important sentence in this profile: he funds people who are "getting stuff done" — his phrase — and he evaluates by watching whether you're doing the work, not by analyzing your theory of change.**
 
-The invisibility narrative needs correction, however. He says he doesn't want profile, but his behavior says otherwise — regular LinkedIn posts, high-profile press coverage, a journalism school bearing his name. He'll accept public acknowledgment when it's framed as service to the mission but not when it's framed as personal celebration. He accepts far more visibility than the "invisible nerd" narrative suggests, which matters for anyone designing an ask that includes naming, public credit, or institutional association.
+He visits sites. He does customer service himself. He knocked on doors. He will probe for whether you're a practitioner or a presenter. If you've done the work and can describe it simply, he'll engage. If you come with a sophisticated strategic framework, he'll probe for the evidence of action underneath it. The things that activate him: patriotic framing ("protecting the country," "defending democracy"), practitioner credibility, nerd identity (lead with competence over charisma), humor ("can tolerate my sense of humor"), and underdog identification — "No one is looking out for regular people — and that's how I identify, if nothing else because I've been a customer-service rep for the great majority of my work life."
 
-## What Moves Them
+**"I find people who are really good at their jobs, and who can tolerate my sense of humor. I provide them with resources, and then get outta their way."** No employees at the foundation. He's deliberately outsourced his own due diligence: "These days I cheat. I found people who really know a specific area... and then I get help from them." Current focus: cybersecurity ($200M committed), veterans and military families ($200M committed), pigeon rescue (small but symbolically important). Don't ask for detailed reporting or micromanaged oversight. That violates his entire model.
 
-He is highly susceptible to influence from domain experts within his focus areas — Anne Marie Dougherty on veteran needs, cybersecurity professionals framing infrastructure threats — and completely resistant to influence outside them. He doesn't want to be convinced of new causes. He wants to be shown superior execution within commitments he's already made.
+---
 
-He is a pure builder. He funds infrastructure — journalism schools, veteran support networks, cybersecurity systems — and never funds confrontation, advocacy campaigns, or public pressure. If your ask is framed as a fight, you've lost him. If it's framed as building a durable system that protects people, you're speaking his language.
+### 4. HOW TO READ THEM IN REAL TIME
 
-He is not influenced by vision, inspiration, charisma, or strategic brilliance. He is influenced by operational competence demonstrated within moral categories he has already accepted. This is the most important sentence in this profile for anyone trying to move him.
+**"The deal is..." is how he starts most sentences. "Nerd" constantly. "I suck as a manager." "I'm an amateur." "I'm pretty much clueless."** The self-deprecating humor is his primary social tool — it's not warming up, it IS the conversation. He deflects credit systematically and uses military/patriotic language when discussing philanthropy. Match his register. If you shift to formal, strategic, or institutional language, you're forcing him to simulate at a higher cost. Keep it simple and human.
 
-## How They Decide
+**The 90-minute social limit is real.** He means it literally. If a meeting runs long, his social simulation degrades — he'll get quieter, shorter, more hedged. He won't tell you it's happening. The best version of a meeting with him is 45–60 minutes of genuine, simple conversation. Don't schedule 90 and hope for the best.
 
-He decides in three stages. First, you have to demonstrate operational competence within one of his moral categories — cybersecurity, journalism, veterans, voter protection. That's the threshold. Without it, no amount of logic gets you in.
+**Under pressure, he hedges — and the hedging is a tell.** In the eBay trial: "Rarely gave yes or no answers, giving responses such as 'it appears to be so' or 'that would be my understanding.'" When eBay betrayed him: "I never accused them with my specific unhappiness, which was a betrayal of trust." He kept his disappointment to himself rather than confront. If you see him shift from casual self-deprecation to careful, qualified statements — "it appears to be" language, indirect answers — something has gone wrong. Don't push. He's managing discomfort, not deliberating.
 
-Second, the nerd identity has to hold. It lets him authorize enormous commitments without having to see himself as a power player. If the interaction forces him to acknowledge that he's wielding power rather than just helping out, the commitment stalls.
+**Behavioral forks:**
 
-Third, when both conditions are met, the commitment is large, immediate, and unconditional. His early philanthropy was "scattershot"; instead of expanding, he narrowed to areas where he could reliably judge competence and refused to operate outside that zone.
+- If you **present yourself as someone "getting stuff done"** — practitioner language, field experience, concrete results — he'll engage fully and potentially fast-track to funding. If you **come with theory or strategy** without evidence of action, he'll be polite but will probe until he finds the doing underneath. If there's nothing there, the energy drops.
+- If you **approach with humor** — self-deprecating, nerd-friendly, tolerant of pigeon references — rapport builds fast. If you're purely serious and formal, you're creating distance his operating system can't close.
+- If you **ask for unrestricted funding** with a "get outta the way" frame, you're aligned with his entire philosophy. If you ask for detailed project funding with extensive reporting, you've triggered his distrust of micromanagement.
+- If you **frame your work as protecting the country** — patriotic, civil defense, protecting regular people — you're activating his deepest values.
 
-The numbers — $100 million to cybersecurity, $100 million to veteran support, then doubled based on results — are not deliberated. Once the moral category is clear, the decision is already made.
+---
 
-## How They Build Trust
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
 
-The Markup failure is the scar that governs how carefully he trusts now. He gave $20 million to a journalism startup that imploded due to leadership conflicts. The response was architectural: he now routes every major commitment through established intermediaries. Bob Woodruff Foundation for veterans. ProPublica for journalism. Proven networks for cybersecurity. If your organization reads as a promising experiment rather than a proven operation, it triggers the Markup pattern.
+**Triggers, ordered by severity:**
 
-The operational trust test is tolerance for his communication style: "people who can tolerate my sense of humor." This is a filter for compatibility — people who need rapport-building, contextual warmth, or diplomatic scaffolding can't work with him because he doesn't operate that way.
+*Status performance or wealth display.* He doesn't own a car. He doesn't have an assistant. He told a court he "was not comfortable with luxury." If you treat him as a billionaire, a tech mogul, or a strategic philanthropist, you've activated the wrong frame. He's a nerd who happened into money and is giving it away. The moment the interaction feels like a fundraising meeting with a wealthy person, it goes sideways. *Cools the room immediately.*
 
-The asker's posture matters more than the pitch. He classifies people within minutes as operators he can fund or noise he needs to route around. Don't pitch. Don't inspire. Don't build rapport. Show him you understand the problem operationally, name it in his moral category, and let him classify you as someone competent enough to receive resources.
+*Corporate polish.* eBay executives mocked him for "amateurish board meetings" and inability to use PowerPoint. They treated his simplicity as incompetence. The experience left a mark. If your approach feels corporate, polished, or strategically managed, it triggers the same pattern — people who see his simplicity and think they're smarter than him. *Shifts from engagement to withdrawal.*
 
-## What Sets Them Off
+*The newspaper guilt frame.* Twenty years of this accusation have not made it easier. If you implicate him or tech broadly in journalism's decline, the meeting shifts to self-defense. *May be unrecoverable in that meeting.*
 
-He is triggered by the Craigslist-destroyed-journalism narrative: "People throw the accusation. I look at the facts and stick with that." Don't implicate tech broadly in his presence. He'll hear the accusation he's been fighting for a decade, and the meeting shifts from assessment to self-defense.
+**When he withdraws, he doesn't confront — he reroutes.** "Talk to Anne Marie." "Send it to Bob Woodruff Foundation." He'll stay warm and pleasant the whole time. You just won't get another meeting. He kept his unhappiness about eBay's betrayal to himself for years rather than address it directly. If he starts routing you to intermediaries mid-meeting when he wasn't before, you've hit something.
 
-When he's triggered, he doesn't get aggressive. He stays warm and reroutes you. "Talk to Anne Marie." "Send it to Bob Woodruff Foundation." The pleasantness is real. So is the distance. If you notice him redirecting to intermediaries mid-meeting when he wasn't before, you've hit something. The recovery move is to return to operational specifics within his moral framework — not to address the trigger directly.
+**Hard limits:** The sex trafficking criticism of craigslist is a domain where he does NOT practice his usual transparency. Don't go there. The craigslist business model and internal culture are private — Jim Buckmaster gives almost no interviews. Don't probe craigslist operations.
 
-He is also triggered by visible failures in protecting vulnerable people — food insecurity among military families, inadequate cybersecurity for critical infrastructure — moments that activate the core fear that the system is failing and no one is organizing the defense.
+**Hidden fragility:** His father died of cancer when he was 13. "It probably contributed to my social isolation. I had no good role model. My mother didn't fill that role, and I had to do my own thing, which led me into a fair amount of social dysfunction." This is the origin of the social isolation that became the nerd identity that became the operating system. It's old but still openly referenced.
 
-## Where They Draw Lines
+**Recovery: return to simplicity, humor, and his values frame.** If you've over-formalized the conversation, break it with something human — a joke, an admission of your own awkwardness. If you've triggered the newspaper wound, don't repair it directly — pivot to the positive frame (trustworthy press, protecting democracy) and let the tension dissipate. If he's routing you to intermediaries, the recovery isn't in this meeting — it's in the follow-up, through substance. If you've treated him as a billionaire rather than a nerd, the only fix is to stop. Talk to him like a person.
 
-He provides resources and expects complete autonomy. He won't micromanage, provide strategic guidance, rescue failing initiatives, join boards, or attend events. If your model requires ongoing donor involvement, you've disqualified yourself.
+---
 
-## How They Communicate
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
 
-Deliberately compressed. "Hey," "folks," and immediate transition to concrete specifics. No rapport, no context, no emotional scaffolding. Match his compression. Lead with numbers and operational specifics. If you open with vision or inspiration, you're speaking a language his system doesn't process.
+**He trusts people by default, and that makes the betrayal response disproportionate.** "I've observed that in life, offline or online, people are overwhelmingly good and trustworthy." He built craigslist on "a pervasive culture of trust." He takes people at their word — literally said so under oath. So the threshold for initial engagement is lower than most major donors. He's not suspicious by default. But the eBay experience tells you what happens when it breaks: he doesn't confront, he just cuts the line. He never spoke to Meg Whitman again. Don't break a commitment to him. The recovery cost isn't proportional — it's permanent.
 
-## How They Commit
+**His grantmaking has evolved from "winging it" to routing through trusted intermediaries.** Bob Woodruff Foundation (veterans), Blue Star Families (military families), Aspen Digital (cybersecurity) — these organizations do the due diligence he doesn't want to do. If you're approaching through one of them, you've already passed the first filter. If you're approaching cold, expect a longer process — he'll need to see evidence you're "getting stuff done" through multiple touchpoints before resources flow.
 
-No pilots. No phased approaches. No milestones. When he decides, he provides significant resources immediately — $100 million to veteran support, then another $100 million based on results. Only fundamental mission drift triggers exit. He funds competent people, watches the machine run, and wants his name associated with the durable result.
+**When he commits, it's large, unrestricted, and long-hold.** $200M to cybersecurity, $200M to veterans — decade-scale decisions, not annual ones. He signed the Giving Pledge and is in spend-down mode: "a finite amount of money and a finite amount of longevity." He's 72. The decisions he makes now define the legacy. Show him something durable, simple, and aligned with what he already cares about.
 
-## How They Think About Resources
+**He accepts naming for cause-signaling, not ego.** CUNY Craig Newmark Graduate School of Journalism, Craig Newmark Center at Columbia — these exist to signal that journalism and cybersecurity matter. "It's nice to be noticed and then it's back to work." Don't plan a gala.
 
-Concentrated deployment within a spend-down framework. Large commitments to a few areas at seventy-three with the Giving Pledge signed. Additional wealth above sufficiency is "a burden" to be deployed, not accumulated.
+---
 
-## What They'll Risk
+### 7. THE DINNER PARTY TEST
 
-Extremely high financial risk within his focus areas, zero tolerance for scope expansion. The Markup failure didn't reduce journalism funding — it shifted method from new ventures to established organizations. He metabolized the failure as information about method, not mission.
+**What bores him:** Status performance. Corporate polish. Complexity for its own sake. Anyone who treats philanthropy as a strategic exercise rather than a moral one. People who don't laugh.
 
-## How They Build Relationships
+**What lights him up:** Nerd humor. Pigeon stories. Someone who's "getting stuff done" and can describe it without jargon. Patriotic framing that connects to real people's lives. Simple moral clarity. "A nerd's gotta do what a nerd's gotta do." Someone who sees the awkward guy from Morristown who got lucky, not the $450M philanthropist.
 
-Functional, intermediary-buffered, and minimal — the same routing-around-limitations approach that governs everything else in this profile.
+**How he moves a room:** He doesn't command it — he disarms it. He'll reference a pigeon in the same sentence as a $100 million commitment. He makes people comfortable by being the most openly uncomfortable person there.
 
-## How They Think About Time
+**What he watches for:** Whether you treat people like you want to be treated. Whether you're doing the work or talking about the work. Whether you can tolerate his sense of humor. Whether you're trying to be impressive or trying to be useful.
 
-He is operating in "Now" mode with emerging legacy awareness. The urgency is real: cybersecurity and disinformation are immediate crises, and at seventy-three he wants to "spend everything during my lifetime." But the journalism school naming, the Giving Pledge timing, the profile cultivation — these suggest he's not just spending down. He's spending down in a way that will be identified with him. If you can frame your work as both urgent and durable — a crisis response that becomes a lasting institution — you've hit his temporal sweet spot.
-
-## How They Read Status
-
-He accepts recognition framed as service — the journalism school naming helps the school recruit — and deflects recognition framed as celebration — galas, awards, spotlights. The "invisible nerd" narrative understates how much public identification he'll tolerate, as long as it passes through the nerd frame: helping, not wielding.
-
-## How They Learn
-
-Historical pattern matching, not analysis. Cybersecurity is "World War II except the enemy is already here." Journalism is "the immune system of democracy." These frames come from high school history, not policy study. Frame your work in his analogies, not yours.
-
-## What They Know
-
-Deep on internet infrastructure from building Craigslist. Shallow on everything he funds. He knows it, names it, and delegates accordingly.
+---
 
 # PERSUASION PROFILE — ROY BAHAT
 
 ---
 
-## Life and Career
+### 1. THE OPERATING SYSTEM
 
-Roy Bahat didn't climb a career ladder. He moved laterally across fault lines — media, tech platforms, venture capital, academia, labor — staying long enough to learn each institution's logic, never long enough to be captured by it. Rhodes Scholar in economics at Oxford. President of IGN Entertainment. Digital strategy at News Corp. Then Bloomberg offered him a venture fund in 2013 and he said yes despite, by his own account, not liking VCs.
+**He went on 102 interviews and the consistent feedback was: "Nice guy, seems smart, don't know what I'd do with him."** He sat on his couch for entire days writing follow-up emails, struggling to answer "what do you want to do." He was uncategorizable and the world punished him for it. Then he spent the next twenty years building a career that couldn't reject him for being uncategorizable — by creating roles that hadn't existed before.
 
-Bloomberg Beta is a $75 million fund backed exclusively by Bloomberg L.P., focused on the future of work and machine intelligence. Early investments in Slack, MasterClass, Flexport, Codecademy — companies where technology reshapes how people work. He teaches media and organized labor at UC Berkeley's Haas School of Business, hosts Labor Notes conferences while managing Bloomberg's capital, and references his wife's work delivering babies when someone suggests technology should reinvent everything. VC who teaches labor organizing. Capitalist who believes worker power creates demand. Fund manager who open-sourced his entire operating model on GitHub.
+**The range is the point, not a liability.** He ran a media company for Rupert Murdoch's News Corp. He co-founded OUYA, an indie gaming console that raised $8.6 million on Kickstarter. He's been at Bloomberg Beta for 12 years — longer than any other job by a factor of three — investing at the earliest stage in companies reshaping how people work. He chairs the Aspen Roundtable on Organized Labor, advised the first Starbucks union organizers, and teaches two courses at Berkeley (media and managing unionized workforces). He lists his credentials in alphabetical order — Abraham Joshua Heschel School before Harvard, World Series of Poker alongside Rhodes Scholarship. He's not deflating his status. He's controlling how it gets read.
 
-## Who They Think They Are
+**He published a document listing his own flaws as a leader and posted it publicly.** The anti-sell document warns prospective hires: he's a chronic interrupter, his tone comes across as short, he changes his mind week to week, and he reaches for the first person when delegating. He also lists his unemployment periods on his public resume — "Unemployed (happily)" and "Unemployed (unhappily)" — and calls his failed MBO at IGN and his wrong call on AI investing by name. He puts everything on the table before anyone can use it against him. This isn't humility as performance. It's preemptive disclosure as operating principle, and it extends to the fund: Bloomberg Beta was the first VC fund to open-source its entire operating manual.
 
-Bahat needs to be uncategorizable. That's not a personality trait — it's how he operates. "I don't consider myself to be a particularly ideological person." This is not accurate — someone who spends a decade on "making work work," teaches labor organizing at a business school, and takes publicly unpopular positions has an ideology. But if he admits it, he becomes sortable — progressive, activist, labor-aligned — and therefore dismissible by the institutional players he needs in the room. If he's pragmatic, he can sit at every table. His Medium alignment is "Neutral good" — ethical commitment without partisan positioning. His career is "messy." He "doesn't even like VCs." None of these are contradictions he's blind to. They're the space between worlds working — letting him convene Labor Notes organizers and Bloomberg executives in the same orbit without either group disqualifying him.
+**His D&D alignment is "Neutral Good."** He leads with "husband, father of two, brother, son" before any professional identity. He has a personal blog protected by robots.txt — "the best privacy feature I know of" — where he writes "about the important stuff." The professional self is radically transparent. The family self is walled off. Respect the partition.
 
-He sees the same structural pattern across domains most people treat as opposed: "I'm drawn to entrepreneurs... they are underdogs trying to prove something when the odds are stacked against them. I'm drawn to the stories of these labor organizers for exactly the same reason." Entrepreneurs and labor organizers, in his architecture, are the same actor in different contexts. The moment you categorize him — conventional VC, ideologue, theorist, someone whose career makes linear sense — you've told him you can't see the space he occupies, and if you can't see it, you can't be trusted with anything that requires it.
+---
 
-## What They Value Most
+### 2. THE CONTRADICTION
 
-"Work is broken in America, and it is tearing our society apart." This isn't advocacy language. It's how he sees things breaking — the institution that gives most people economic security and daily meaning is fracturing in ways that undermine democratic society itself. When he evaluates an investment, a partnership, or an ask, the operative question is: does this make work work better for real people, or does it make the fracture worse?
+**He is a venture capitalist funded by a billionaire's company who chairs the most prominent business-labor dialogue in the country and advised the first Starbucks union organizers.** He ran a media company for Rupert Murdoch and now calls organized worker power "the single most important lever" for economic progress. He teaches MBAs how to work WITH unions rather than crush them — the first course of its kind in the country.
 
-"I think of worker power as a source of demand." If worker power creates markets, then supporting it is good capitalism, not charity or ideology — which lets him fund "exit to community" models without abandoning his fiduciary obligation to Bloomberg L.P. When someone frames labor as a cost center, they're revealing they operate with the model he's spent a decade replacing. The conversation continues. The evaluation is over.
+**He knows this looks contradictory and he doesn't try to resolve it.** "There are plenty of people for whom the fact that I have the word 'capitalist' in my job title means they'd rather not have dialogue with me." He doesn't pretend to be one side or the other. His argument is that the frame is wrong: it's not business vs. labor, it's both or neither. Worker power creates demand, which benefits business. He rejects the zero-sum framing and substitutes a demand-side argument.
 
-His wife is a doctor who delivers babies. He brings this up when someone suggests technology should disrupt everything: "You don't really want to reinvent the wheel there, right?" The future-of-work thesis has a hard limit — not everything should be optimized, not everything should be rebuilt. Some forms of human work are sacred in their current form. He's not a techno-utopian. He's someone who believes some things are broken and need rebuilding while other things are working and need protecting from the people who can't tell the difference.
+**The contradiction is functional — it gives him access to both boardrooms and union halls.** He put Amazon Labor Union founder Christian Smalls on stage at a Fortune event. He visited the Carpenters' Union training center in Las Vegas and called it "maybe the best training facility I've ever seen." Ai-jen Poo of the National Domestic Workers Alliance says he's "really trying to create space for people to come together and have honest conversations." He has credibility with neither side because he pretends to be one of them — he has credibility because he doesn't pretend.
 
-## Where to Start
+**What you do with it:** if you name the contradiction directly — "you're a VC who supports unions, how does that work?" — he won't get defensive. He'll enjoy the conversation. If you try to force him to pick a side, he'll resist. If you come from the labor side suspicious of his motives, he's prepared for that and will try to demonstrate alignment through action and specifics, not argument. If you come from the business side thinking his labor stance is performative, he'll push back with the Carpenters' center, Starbucks organizing, and sectoral bargaining.
 
-Bahat has built his entire professional life around occupying the space between capital and labor, institution and disruption, power and critique — but the space only works if he never fully commits to either side. His deepest convictions can only be expressed as "pragmatism." His most powerful interventions must be framed as experiments rather than positions. The man who spends every professional hour on the belief that work is broken must introduce himself as not particularly ideological.
+---
 
-This isn't hypocrisy. It's structural necessity. The in-between space is the source of his power — convening people who'd never sit together, investing where conventional VCs won't, teaching labor organizing at a business school. But it has a cost: constant hedging. "Maybe in five years I'll have the data." "We might just be wrong." "I generally try to avoid predictions, because I think they're mostly lullabies." These aren't intellectual humility. They're the price of admission. If he claims certainty, he becomes categorizable. If he becomes categorizable, the space collapses.
+### 3. WHAT DRIVES THEM
 
-Under pressure — pushed toward one side of any binary — he retreats into three moves: the hedging, scope limitation ("I'm hesitant to speak on their behalf"), and preemptive framing ("that's going to be an unpopular view, but it's my view"). The third is most revealing. He flags social cost before stating the position, which simultaneously claims the contrarian identity and softens the structural commitment. He's not saying "this is true." He's saying "this is my view and I know you might not like it" — keeping the position personal rather than categorical.
+**His values hierarchy, when forced to choose: dignity for working people first, transparency second, family and civic responsibility third, financial return fourth.** He explicitly says work "does not work for the typical American" and has oriented his fund thesis, teaching, and public advocacy around fixing that. He open-sourced the fund's manual, writes about taboo VC topics (founder finances, money attitudes), and built anonymous feedback channels for founders. He uprooted his family to a Wisconsin swing state for three months during COVID to model civic engagement for his children — "shame on us for the example we'd be setting." Financial return is real but instrumental: "How many founders have become millionaires after we invested? That's the point of pride more than rate of return." The moral line: "Profiting during a crisis is okay. Profiting from a crisis is not."
 
-## What Moves Them
+**This is the most important sentence in this profile: if you teach him something new — especially from direct experience in the field — you'll have his full attention, and if you confirm what he already knows, the energy will be lower.**
 
-He's moved by practitioners who show him something he hasn't seen about a problem he already cares about. Not vision. Not rhetoric. His partner Cham says "don't be where the bot, be where the boss" and Bahat absorbs the framework, repeats it across interviews, integrates it into his investment logic. He doesn't generate original frameworks. He recognizes them in practitioners and amplifies them.
+He was "totally wrong" about AI as an investment thesis — admitted it publicly and credited the partner who overruled him. He visited the Carpenters' training center in person rather than reading about it. He teaches to learn — 14 years at Berkeley as a forcing mechanism to stay current and challenged. He changes his mind regularly and advertises it as a feature. People who've changed his mind tend to be practitioners — union organizers, founders, workers — rather than other VCs or policy experts. If you want to influence him, bring a story from the field, not a slide deck. If you've done the work and have evidence, he'll listen even if it contradicts his current view. If you try to influence him through status or credentials alone, it won't land.
 
-He hears unmet need and thinks simultaneously about company formation and labor organizing: "it's this great force of people wanting to make a new technology or of people wanting to organize." If you can speak in both registers at once — this is a market and this is a justice problem — you're speaking his native language. If you can only speak one, you've already been sorted. This is the most important sentence in this profile for anyone trying to move him: arrive with a framework grounded in practice that connects individual opportunity to systemic repair, and his posture shifts from evaluation to absorption.
+**Money is instrumental, not central.** Bloomberg Beta invests for financial return, and those returns fund Bloomberg Philanthropies. He has a single LP (Bloomberg L.P.), which gives him unusual independence — no fundraising pressure, no LP politics, no need to posture about returns. Five successive $75M funds over 12 years, same thesis, same size — patient, consistent deployment. He advocates for frank conversations about money between founders and investors, noting that founder financial stress is a business risk VCs should help mitigate. If you come seeking resources, lead with the problem and the founder, not the financial terms.
 
-Industry convention triggers immediate rejection — artificial delays, strategic ambiguity, pitch-deck polish. He built his entire fund to route around it.
+---
 
-## How They Decide
+### 4. HOW TO READ THEM IN REAL TIME
 
-He decides in three stages. First, you have to know the problem from the inside. "We have passed on companies because we did not think the founders were crazy enough." He's looking for conviction that only comes from having seen the problem up close and refused to accept it.
+**He's a chronic interrupter — he says so himself. The interruptions are the engagement signal. When they stop, something has gone wrong.** His anti-sell document lays it out: he interrupts constantly, his tone comes across as short, he questions quickly and it can feel like criticism. These are not signs of hostility — they're signs of engagement. When he goes quiet and polite after being energetic, that's when you should worry. The energy is the signal: high energy with rough edges means you have him, low energy with smooth politeness means you've lost him.
 
-Second, the uncategorizable identity has to hold. Once that first condition is met, he can commit without needing a political narrative or institutional rationale. The unanimous-yes structure — "if anyone on the team says yes, we'll do it, there's no voting" — eliminates the committee filtering that would force each investment into a category.
+**His own anti-sell document tells you how to handle him: set context at the beginning.** "People on the team can often minimize this reaction by setting context at the beginning of a conversation and being explicit about where you would like Roy's input." If you frame what you want to cover and where you want his input before diving in, his rapid-fire questioning becomes collaborative instead of adversarial. If you don't set context, it feels like an interrogation.
 
-Third, the commitment is immediate and sustained. "I could pretend to think about it and not email you for a week and then tell you. Or I can tell you right now." No is instant and unpadded. Yes is fast and durable. Slow bad news is cruelty disguised as process. Rushed good news is extraction disguised as urgency — one founder held an offer open for seven months without pressure. "Price is the dependent variable." When conviction is present, terms adjust. When it's absent, no terms work.
+**He changes his mind mid-conversation and you need to push back.** His anti-sell document warns: "You'll need to push back if you want to avoid being whipsawed." If you hold your ground with evidence when he challenges, he'll respect it — and may adopt your view. If you capitulate at the first challenge, he'll worry you don't have conviction. If he starts reframing your idea out loud, that's not co-opting — that's co-creation. You've won.
 
-## How They Build Trust
+**Behavioral forks:**
 
-Trust is a sorting mechanism, not a relationship stage. He delivers unfiltered feedback and watches the flinch. "Everyone wants you to be blunt and transparent until you're in the room with them." If you absorb directness and engage — push back, sharpen your position — you pass into his inner circle. If you retreat, deflect, or perform toughness, you've been sorted out.
+- If you **bring practitioner experience** — field visits, case studies, direct work — he defers and learns. If you **bring theory without practice**, he'll challenge until you connect it to reality.
+- If you **present something as a surprise reveal or dramatic pitch**, he'll distrust it. He explicitly dislikes "pulling rabbits out of hats." Come with your reasoning visible.
+- If you **lead with transparency about your problems**, he'll lean in — that's his language. If you **lead with polish and manage impressions**, he'll start questioning and the dynamic shifts to interrogation.
+- If you **name power dynamics explicitly** — who has it, who doesn't, how to shift it — he'll engage deeply. If you **pretend power dynamics don't exist**, he'll find the conversation shallow.
 
-He flips the VC-founder dynamic: provides tools for founders to evaluate investors, advocates they "do references" on VCs, open-sourced his entire fund model on GitHub. Founders who defer to the conventional power dynamic have failed his filter without knowing it.
+---
 
-Trust deepens through challenge. He positions himself as student — if you teach him something he didn't know, you've earned it. If you treat his models as correct rather than improvable, you've earned nothing.
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
 
-## What Sets Them Off
+**Triggers, ordered by severity:**
 
-Three triggers, ordered by severity.
+*Status performance or credential-leading.* He lists Harvard and P.S. 87 on the same line. He published his own flaws. If you lead with your credentials or try to impress him with status, he'll be polite but internally checked out. Lead with what you've done and what you've learned — especially from failure. *Cools engagement quickly.*
 
-Categorization. Standard pitch language, standard process assumptions, standard deference — he registers it as evidence you haven't understood what he is. No anger. Quiet reclassification: noise, not signal. The meeting continues. The evaluation doesn't.
+*Information management or polish.* He built his entire fund philosophy around the idea that openness creates trust faster than polish or secrecy. If you sugarcoat, he'll probe until the coating comes off anyway. If you wait too long to share bad news, trust erodes. *Shifts from collaboration to interrogation.*
 
-Ungrounded positions. Advocacy for labor without understanding how companies operate, or for technology without understanding what it costs workers. Someone claiming the cross-domain credibility he has without having done the work across domains to earn it.
+*Zero-sum framing about labor.* "I do not see it as a trade-off." If you frame worker power and business success as inherently opposed, you're speaking a language he's spent a decade arguing against. *He'll push back directly and the conversation will become a debate rather than exploration.*
 
-Missed precedence. "It always makes me crazy when I'm like, 'Oh, the first investor in the company, they're like, no, there was an angel in there before.'" The "makes me crazy" is unhedged in a way his other positions never are — the in-between space is supposed to give him vision that conventional positioning doesn't, and when it doesn't deliver, the identity absorbs a hit.
+*Dismissive categorization.* Don't call him "a VC" as if that's the whole picture. That echoes the 102 interviewers who couldn't place him. Don't reduce his breadth to a weakness. *He won't say anything, but the connection won't deepen.*
 
-His defensive motion: he gets careful. Hedging multiplies, qualifications appear, scope narrows. Watch the ratio of clean declaratives to hedged statements. When it shifts, something has threatened the space he occupies.
+**When he's disengaged, the energy drops.** The interruptions stop. He becomes polite and measured. The rough edges smooth out. If you're getting pleasant, even-toned responses from someone who was just energetic and interruptive, you've lost him. Change approach — introduce something novel, ask a genuine question, or name something that's broken.
 
-## Where They Draw Lines
+**Recovery is direct.** If you've misstepped, acknowledge it and move to action. He processes through public disclosure and forward motion, and he responds to the same. If you try to pretend the misstep didn't happen, the gap grows. If you show him how you've learned from a mistake, that's his language.
 
-The Bloomberg LP relationship is the hardest structural constraint. "We aren't a strategic investor, but our LP cares about tech companies." "There are never companion deals." "We don't do financial services." Without these, the fund loses its credibility as independent. Push against them and you've confirmed his concern that people don't understand the independence he's maintaining.
+---
 
-"If a founder doesn't like directness, we are not their people." "I'm not one of them, so I'm hesitant to speak on their behalf." Both boundaries drawn at intake. The ethical boundary on investments operates upstream of financial analysis — companies that exploit workers or eliminate meaningful work never enter evaluation regardless of returns.
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
 
-## How They Communicate
+**His trust model is transparency-first.** He built Bloomberg Beta around the idea that openness creates trust faster than anything else. Open-sourced processes, anonymous feedback channels, public writing about taboo topics. A 20-year colleague calls him "a student of human nature" whose people-reads are reliable. If you're candid about what's broken, you build trust. If you try to manage information asymmetry, he'll notice.
 
-"There's a term of art in venture, they say he's just being slippery, and it's implied that some degree of being slippery is okay, maybe even good. Well that doesn't really work for me." He named the industry's default, rejected it, and built a fund that selects against it. When he's certain about a principle, you get clean declaratives. When he's about to say something contrarian, he flags the social cost first. When the topic moves to communities he's not part of, he narrows his scope. When he doesn't know an outcome, he deflects into time — "maybe in five years." The shifts between these modes are the tell.
+**He builds relationships through shared action, not networking.** He co-teaches, co-invests, organizes Walk the Vote parades, puts people on stages they wouldn't otherwise reach. If you build the relationship by doing something together, he'll invest more. If you try to build rapport through social pleasantries alone, it'll feel thin. If you bridge worlds the way he does — labor and tech, government and startups — he'll be drawn to you.
 
-## How They Commit
+**Before Bloomberg Beta, his career was 1-5 year chapters with sharp transitions.** McKinsey (2 years), Mayor's office (1 year), IGN (5 years), OUYA (1 year). Bloomberg Beta broke the pattern — 12 years and counting — which suggests he found the thing that integrates all his interests. He designs the fund itself for turnover ("most roles last a few years"), but his personal commitment is long. If you're building something with staying power that integrates multiple interests, he'll relate. If you're a founder who's been through multiple failures and pivots, he'll see that as a feature — it mirrors his own path.
 
-Binary and mission-anchored. "In the past decade, I have put that issue — making work work — at the centre of my professional life." Thirteen years teaching at Berkeley, exclusive Bloomberg LP across multiple fund cycles, annual Going to Work conference — parallel channels, same problem. When a founder's idea failed and she tried to return the capital, he refused and told her to keep building. Performance failure doesn't break the commitment. Mission drift does.
+**When he commits, it's early, small, and long-hold.** Bloomberg Beta invests "first money in" at $25K-$250K — the riskiest possible stage. Five $75M funds over 12 years, same thesis. He doesn't chase cycles. He wants the generational ambition and the thing you're doing this quarter. Show him both.
 
-He enters early and stays. "$250,000 first check... get involved really early and remain valuable and invest much more over time." The uncertainty stage — where an investment could be visionary or delusional — is where someone with his between-worlds vantage is most comfortable and most useful.
+---
 
-## How They Think About Resources
+### 7. THE DINNER PARTY TEST
 
-Everything depends on worker power actually generating demand. If it does, "exit to community" models are market creation on a longer timeline. If it doesn't, the entire justification collapses back into conventional philanthropy — which his identity can't absorb. Resources beyond capital — Bloomberg's platform, customer access, technical infrastructure — are abundant once you've proven mission alignment, invisible before it.
+**What bores him:** Scripted pitches. Credential-led introductions. Conventional VC framing. Zero-sum thinking. Anyone who's managing impressions instead of sharing information. Smooth politeness without substance.
 
-## What They'll Risk
+**What lights him up:** Practitioner stories from the field. Someone who teaches him something he didn't know. The intersection of labor and technology. Founders who've failed and learned. Structural problems worth solving. Self-deprecating honesty. Someone who bridges worlds that don't normally talk to each other.
 
-"At the seed stage, the risk of missing something is worse than the risk of investing in the wrong company." Bad investments lose money. Missed investments mean the thing he's built himself to be — the person who sees what conventional investors miss — failed at its core function. He designs for controversial investments: "the best deals tend to be controversial." He's metabolized the possibility of total failure: "there's some chance that you create something special. There's also a chance that you create something that blows up in your face." What he won't risk is the in-between space itself.
+**How he moves a room:** Fast, interruptive, energetic. He asks sharp questions, reframes your idea out loud, and changes direction mid-conversation. He physically knocked holes in his office walls with a sledgehammer so he could talk to his team more easily. He puts people on stage who wouldn't otherwise be there — Christian Smalls at a Fortune event. He flattens hierarchy by demolishing it, literally and figuratively.
 
-## How They Build Relationships
+**What he watches for:** Whether you push back when he challenges you. Whether you lead with what's broken rather than what's polished. Whether you've done the work or just read about it. Whether you can hold multiple, contradictory ideas without needing to resolve them into a neat frame. Whether you treat him as the whole picture — not just a VC, not just a labor guy, not just a tech person — but the uncategorizable kid from the 102 interviews who built a career around making that work.
 
-Reveals itself under stress. "Roy was, in her words, 'a rock'" during difficult periods — operational continuity, not emotional scaffolding. Harper Reed's testimonial, prefaced by "it'll embarrass him for me to post this," is what happens when people experience his directness over time and through difficulty. It converts into deep loyalty. If you're working on the problem, he's in the relationship. If you're not, the relationship was never about you personally.
-
-## How They Think About Time
-
-Two clocks. The venture clock: "a chess game, where every move is separated by a year to 18 months." The urgency clock: work is breaking now, AI is accelerating the fracture now, the window for new structures is closing now.
-
-## How They Read Status
-
-He accepts recognition that positions him as useful and deflects recognition that positions him as elevated. Teaching fits his self-image. Open-sourcing the fund fits. Public praise for character doesn't — because it fixes him in place as a person of achievement rather than a person in motion. He absorbs social cost for contrarian positions, but the preemptive framing — "that's going to be an unpopular view" — reveals he tracks the price. He pays it anyway. He needs you to know he knows.
-
-## How They Learn
-
-Practitioners, never analysts. Raw data, never presentations. "I'd rather be on the private Github repository of a startup... than have them bloviate on the state of the industry." The commit log can't perform. The board deck can. He trusts accordingly.
-
-## What They Know
-
-He saw AI as a future-of-work force before consensus formed — pattern recognition at the intersection, not technical depth. His competence spans domains without going deep in any: enough VC, enough labor organizing, enough media, enough economics. None specialist-grade. The value is the combination — connections between systems that specialists can't see because they're inside one, not between them.
+---
 
 # PERSUASION PROFILE — LORI McGLINCHEY
 
 ---
 
-## Life and Career
+### 1. THE OPERATING SYSTEM
 
-The career doesn't read like a ladder. It reads like someone who keeps finding the same problem in different institutional clothing and staying until the institution catches up or she outgrows it.
+**She is a career grantmaker — thirty years inside two foundations — and her identity is the institutional role itself.** Ten years at Open Society Foundations, eleven and counting at Ford. The subject matter changes every chapter — Yiddish cultural preservation, end-of-life care, U.S. democracy, internet freedom, AI governance — but the function never does: design a funding strategy, build a coalition, grow a field. She has no personal brand, no thought-leadership blog, no keynote speeches, no podcast appearances, no bylined opinion pieces. When she speaks publicly, she says "we." She sits on the Partnership on AI board as Ford's representative, not as Lori McGlinchey. The authority comes from the portfolio, not the person.
 
-Amherst College, American Studies — a discipline that trains you to read systems, not specialize in one. Then the Yiddish Book Center, where she produced a 13-hour NPR radio series on Eastern European Jewish literature — a co-production with KCRW that ran on half the NPR network and required coordinating high-profile talent around an unfashionable cause. Rescuing a language most people had written off. The instinct to build infrastructure for things the mainstream has abandoned shows up in everything she does afterward.
+**Her public identity is so thoroughly institutional that the person underneath is nearly invisible — but one detail breaks through.** Before the policy career, she was a cultural worker. Amherst College, then the Yiddish Book Center, then an NPR radio series — *Selected Shorts: A Program of Jewish Short Stories from Eastern Europe and Beyond* — hosted by Leonard Nimoy, featuring Isaac Babel, Grace Paley, Philip Roth, Isaac Bashevis Singer. Someone who spent her mid-twenties producing radio about Yiddish literature has aesthetic and humanistic instincts that the current institutional role completely conceals. The Jewish cultural identity is deep and early. It doesn't surface in her current public presence, but it's there.
 
-Open Society Foundations for roughly a decade, moving across programs that share a single structural pattern: the Project on Death in America ($45 million, credited with moving hospital palliative care units from zero to 75% coverage), then a special initiative on the politicization of science-based policymaking, then the U.S. Democracy Fund running media, internet policy, investigative journalism, and documentary film funding. At each stop, she built the connective tissue — a capacity-strengthening program for OSF grantees covering communications, governance, fundraising, leadership, and technology.
+**She runs one of the largest technology accountability programs in American philanthropy.** Technology and Society has an $80 million BUILD budget for long-term organizational capacity investment alone, with annual grantmaking likely in the $20-40 million range. Her portfolio has funded AI Now, EPIC, the Distributed AI Research Institute, the American Economic Liberties Project, and the Public Interest Technology University Network (now 48 universities). She co-convened the Spyware Accountability Initiative with Apple, Open Society Foundations, Craig Newmark Philanthropies, and Okta. This is not a small program officer approving grants. This is someone who has shaped the technology accountability field as much as anyone in American philanthropy over the past decade. And every public statement positions Ford as one partner among many.
 
-Ford Foundation since 2014. Director of the Technology and Society program: $14 million annual domestic budget, $7 million international, 118 grantees. Under her leadership, Ford secured a $50 million special allocation to create the PIT Catalyst Fund, launched the Public Interest Technology University Network with 36 institutions, co-created the Spyware Accountability Initiative with Apple, built the Disability x Tech Fund, and co-funded the $10 million Antimonopoly Fund. Total Ford commitment to public interest technology since 2016: over $100 million, with $150 million mobilized from co-funders.
+---
 
-Seven current governance positions, including the Partnership on AI (alongside Apple, Microsoft, Google DeepMind, and the ACLU), Georgetown Law's Center on Privacy and Technology, and the interim committee for Current AI (with MacArthur, Google DeepMind, and the French government). She sits in rooms where philanthropy, government, and industry negotiate the rules for AI, surveillance, and digital rights — and she sits there as both funder and governance participant. She shapes the field and then allocates capital within it.
+### 2. THE CONTRADICTION
 
-## Who They Think They Are
+**She funds organizations that hold tech companies accountable, from inside a foundation whose $16 billion endowment is invested in the same markets.** Ford likely holds positions in companies building the AI systems her grantees are trying to regulate. This is the standard philanthropic contradiction, but it's particularly sharp in her domain.
 
-She sees herself as a field-builder, not a funder. The distinction is structural. A funder picks winners. A field-builder creates the conditions under which winners can emerge — university pipelines, co-funding vehicles, cross-sector tables, governance seats that give civil society standing against corporate and state power.
+**She builds participatory, community-governed funding structures while working inside one of the most hierarchical institutions in American philanthropy.** The Disability x Tech Fund routes decisions through Borealis Philanthropy and affected communities. The Table gave coalition members shared governance over strategy. The Spyware Initiative is a multi-funder collaborative. Every instinct pushes toward distributed power — and every grant goes through Ford's internal review process. She reports upward. The community governs outward.
 
-The PIT Catalyst Fund is the clearest expression. It wasn't grants to individual organizations. It was a $50 million bet that if you train technologists across disciplines at universities, the universities will institutionalize the field after the money runs out. Finite. High-intensity. Designed to trigger institutional adoption, not perpetual grantmaking. When the fund spent its full allocation in three years, that was the plan.
+**There's a third contradiction the reader should know about: she's a humanities-trained cultural worker leading one of philanthropy's most technically sophisticated technology governance portfolios.** She has never worked in technology. This could be read as a gap — can she evaluate technical claims? — or as precisely the point. Her entire career suggests she evaluates through a humanistic lens, not a technical one. She centers impact on people, not sophistication of systems. If you're pitching technically complex work, frame it in terms of what it means for communities, not what it does computationally.
 
-She cannot tolerate being mistaken for a gatekeeper. The role she's built — convener, architect, coalition-designer — requires that she be understood as someone who distributes power rather than concentrates it. Her framing of the Antimonopoly Fund: "The greatest threat to monopoly power is distributed power, where a well-resourced field of advocates work across sectors with common purpose." That's not a comment on corporate concentration. It's a description of how she designs every initiative she runs.
+**She names contradictions rather than hiding them.** She publicly said Ford was "missing a very significant component of civil rights" by excluding disability from its technology work — an unusual level of institutional self-critique for a program director. Then she built a fund to fix it. The pattern: name the failure, broaden it beyond Ford to the whole sector ("too many funders"), create a structural fix, move forward. If you surface a blind spot in her portfolio, frame it the way she frames her own — structurally ("the field is missing X"), not personally ("you're missing X"). The disability precedent suggests she'll engage rather than defend.
 
-## What They Value Most
+---
 
-Her read on what's broken: technology reproduces and accelerates existing inequality unless civil society has the technical capacity, institutional standing, and legal tools to intervene. The failure mode is specific — when the people most affected by technology are excluded from designing, governing, and regulating it, the technology entrenches the exclusion.
+### 3. WHAT DRIVES THEM
 
-Her test for whether something passes: does it build permanent capacity in civil society, or does it create temporary dependence on philanthropic funding?
+**Her values hierarchy, revealed through where the money goes: equity for people experiencing persistent discrimination first, community governance second, field-building third, institutional honesty fourth.** The phrase "persistent discrimination" appears in virtually every program document — it's the filter through which everything passes. It's not episodic inequality or situational disadvantage. It's structural, long-duration exclusion. Every major initiative routes governance through the communities served — not just serving them, but putting them in decision-making roles. She funds ecosystems, not stars. And she'll name what's broken, including in her own institution, before she'll protect the reputation.
 
-## Where to Start
+**She explicitly seeks contrarians.** This is the single most revealing quote in her public record: "We don't want our ideas to get stale. So we often look for ways to refresh and sharpen our thinking. We're encouraged to seek out interactions with contrarians — people who may be approaching the issues we work on from a different perspective. The question is how to increase our access to forward-thinking people and ideas that will help us anticipate future challenges coming five or ten years down the road." She's thinking on a 5-to-10-year horizon and she wants people who can help her see around corners. If you bring conventional wisdom repackaged, you're offering her what she already has. If you bring a genuinely contrarian perspective grounded in evidence — especially one that names a challenge her current portfolio doesn't address — you're offering what she says she's looking for.
 
-The central contradiction: she builds coalitions to counterbalance concentrated power, but doing so requires her to work with the concentrators. Ford co-launched the Spyware Accountability Initiative with Apple — the same Apple whose app store policies, device ecosystems, and market position are subjects of the antimonopoly movement Ford also funds. She sits on Partnership on AI's board between the ACLU's deputy director for speech and privacy and Microsoft's Chief Responsible AI Officer.
+**This is the most important sentence in this profile: she doesn't fund projects — she funds fields, and every initiative she's built follows the same structure: identify a gap, convene a coalition, build shared infrastructure, then fund the ecosystem that emerges.**
 
-This isn't hypocrisy. It's the structural logic of foundation-led field-building at the $16 billion endowment scale. Ford can't fund direct opposition to its own programmatic partners without destroying the web of partnerships she's spent a decade building. But it can fund the field conditions — university pipelines, civil rights tables, investigative journalism, legal infrastructure — that produce the opposition organically. The field does what the foundation can't say.
+The civil rights/technology Table is the purest example. She didn't fund individual organizations to do tech policy. She created a forum where civil rights organizations and technology organizations could build shared analysis over eight years of monthly meetings, then funded the coalition's priorities. The Table grew from 10 organizations to 30+ and produced concrete policy wins — including Facebook ending discriminatory ad targeting by race, gender, and age. The PIT University Network follows the same pattern: 48 universities embedding public interest technology in their curricula, shaping a generation of practitioners. If your ask fits this shape — fill a structural gap, build coalition infrastructure, grow a field — you're aligned. If your ask is a standalone project disconnected from the broader ecosystem, she'll ask how it connects.
 
-Under pressure — when the gap between the institutional language and the adversarial funding becomes visible — the decision record suggests she adds partners rather than takes positions. The Disability x Tech Fund was created with an advisory committee of people with disabilities who nominated and selected grantees. The Spyware Accountability Initiative has an independent global technical advisory committee. The Antimonopoly Fund is managed by the Economic Security Project, not Ford. When the work is politically exposed, she builds governance structures that distribute the risk and the decision authority.
+---
 
-## What Moves Them
+### 4. HOW TO READ THEM IN REAL TIME
 
-She's moved by gaps — places where real people are doing real work without the architecture to sustain it. Public interest technology wasn't a named field when Ford started funding it. The Civil Rights, Privacy, and Technology Table bridged communities that had never worked together. The Disability x Tech Fund was explicitly about absence: "There's a relatively small roster of people and organizations with expertise in issues related to disability and technology, and the support for them is not large — it's not even modest."
+*[Evidence ceiling: no observations of her interpersonal behavior exist in the public record. Whether she's warm or formal, fast or deliberate, whether she asks questions or makes statements, whether she speaks as "I" or "we" in person — all unknown. Everything below is drawn from institutional patterns and the handful of direct quotes available.]*
 
-When she told the Chronicle of Philanthropy "We had this civil-rights framing, yet we were missing a very significant component of civil rights," she was naming the gap that excited her, not a failure that embarrassed her. She needs proof of absence, not proof of concept.
+**Her institutional tempo is patient — eight-year convenings, five-year programs, multi-year BUILD grants.** Don't expect a single meeting to produce a decision. Her entire decision architecture is built on accumulated evidence over time. If you need something fast, her pattern suggests that's not how she operates. If you can commit to a sustained engagement cadence — regular check-ins, multi-year relationship building — that matches how she works.
 
-The most important sentence in this profile for anyone trying to move her: if you show her a problem where practitioners exist but the field doesn't, and you're willing to build the architecture from zero with those practitioners leading the design, her posture shifts from evaluation to collaboration. She doesn't need to see a field. She needs to see the gap where a field should be.
+**She routes influence through structured analysis, not charisma or social capital.** The Table model brought in consultants who produced reports on body-worn cameras, facial recognition, predictive policing, payday loans. Those reports shaped the coalition's positions. She's not influenced by a single meeting or a single voice — she's influenced by the accumulated weight of evidence presented through trusted channels. If you bring evidence, data, and structured analysis, you're speaking her language. If you come with anecdotes alone, she'll likely want to see the evidence underneath.
 
-## How They Decide
+**Behavioral forks (institutional, not interpersonal):**
 
-She decides in three stages. First, there has to be a visible gap between practitioners doing real work and the institutional infrastructure needed to sustain it. Real people already in the space without the architecture to connect, professionalize, or protect them.
+- If you **frame your work as field-building, coalition architecture, or ecosystem development**, you're speaking the language of every major initiative she's led. If you bring a **standalone project disconnected from the broader field**, expect her to ask how it connects — and the disconnect may be disqualifying.
+- If your **governance includes the communities most impacted**, that matches her stated values and every community-governed fund she's created. If your governance is **expert-led without meaningful community participation**, expect probing. This isn't a soft preference — it's structural.
+- If you **demonstrate knowledge of the field she's built and where you fit in it** — the existing grantees, the co-funder relationships, the university pipeline — you signal that you're a serious player. If you **approach cold without awareness of the ecosystem**, you're asking her to evaluate you without context.
+- If you **name contradictions and gaps honestly**, the disability precedent suggests receptivity. If you **present a polished, gap-free narrative**, nothing in her record suggests she rewards polish over honesty.
 
-Second, she needs co-funders. Almost nothing in her portfolio is Ford-only. The PIT Catalyst Fund mobilized $150 million in complementary funding. The Spyware Accountability Initiative launched with Apple, OSF, Okta for Good, and Craig Newmark Philanthropies. The European AI Fund has seventeen foundation partners. If she can't attract co-funders, the field isn't ready. Co-funding is both how she validates an opportunity and how she distributes risk.
+---
 
-Third, the commitment is finite, high-intensity, and designed for institutional adoption. The Catalyst Fund was three years, $50 million, spent in full. Not renewable. If the investment doesn't trigger permanent institutional change within the time window, more money won't fix the problem.
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
 
-## How They Build Trust
+**The hardest boundary is institutional: Ford does not accept unsolicited proposals.** All grantmaking is by invitation or through established relationships and networks. If you're approaching cold, the institutional barrier is your primary obstacle — and it exists before any values assessment happens. The pathway in is through organizations Ford already funds (AI Now, EPIC, Data & Society, the PIT network) or through co-funders she works with repeatedly (Open Society Foundations, Craig Newmark Philanthropies, Omidyar, MacArthur, Hewlett).
 
-The trust mechanism is delegation. She builds advisory committees, steering committees, independent governance structures — and populates them with practitioners, not funders. The logic: if Ford controls grantee selection, Ford is a gatekeeper. If an advisory committee of affected communities controls selection, Ford is infrastructure.
+**The legal boundary matters for DTW specifically.** Ford is a 501(c)(3). It can fund policy advocacy, research, field-building, and organizational capacity. It cannot fund partisan electoral activity or lobbying beyond (c)(3) limits. If your work sits at the intersection of technology accountability and worker organizing, it may fall between Technology and Society and Future of Work(ers) — which could be an opportunity (cross-program funding) or a complication (neither program fully owns it).
 
-For the person entering a meeting: the trust test is whether you understand that power should flow through you to someone else, not accumulate with you. If your ask positions you as the expert Ford should back, you're speaking gatekeeper language. If your ask positions you as infrastructure that enables practitioners Ford can't reach directly, you're speaking her language.
+**Things that likely misalign with how she works:**
 
-## What Sets Them Off
+*Standalone project proposals without ecosystem context.* Her entire model is coalition architecture. A project that doesn't connect to the broader field she's built is asking her to work against her decision architecture.
 
-The exclusion of affected communities from technology decisions that affect them. "The support for them is not large — it's not even modest." The second clause is the tell — it carries frustration at the philanthropic sector's failure, not just a funding gap. She built the Disability x Tech Fund specifically because Ford's own civil-rights framing had excluded disability for years. She named the institutional failure publicly. That takes a specific kind of anger.
+*Expert-led organizations that serve affected communities without sharing power with them.* Community governance isn't an add-on in her portfolio — it's structural. The Disability x Tech Fund routes decisions through Borealis and affected communities. The Table gave grantees governance over strategy. If your organization does work for impacted communities rather than with them, expect that gap to surface.
 
-Technological solutionism without power analysis. When someone presents technology as a solution without naming whose power it serves and whose it threatens, they've failed her test. Single-organization impact stories fail for the same reason — she funds fields, not programs.
+*Approaches that treat Ford as a standalone funder.* She consistently creates multi-funder vehicles. If you position Ford as sole funder, it works against her preferred model. If you can position Ford as anchor funder in a broader collaborative — bringing in other funders she already works with — you're matching her pattern.
 
-Philanthropic siloing. The entire co-funding model she's built is designed to force foundations into shared strategy. Isolated foundation grantmaking is, in her view, a structural failure.
+**Recovery is structural, not interpersonal.** The disability precedent: she named the gap, broadened the critique to the sector, created a fund to fix it, moved forward. If an engagement goes poorly, the institutional pattern suggests a structural response — a new proposal, a different framing, an introduction to a different part of Ford's ecosystem — is more likely to succeed than a personal repair attempt.
 
-## Where They Draw Lines
+---
 
-Ford's institutional constraints are the hardest boundaries — the web of partnerships can't survive grants that contradict its own programmatic partners. These aren't her personal lines. They're non-negotiable.
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
 
-The personal line is harder to see but absolute: the community most affected leads the design. Not consulted. Not included. Leads. Propose something designed for a community rather than by it and you've confirmed that you don't understand how she works.
+**She is not a personal donor. She deploys Ford Foundation endowment resources within institutional constraints.** Meeting dynamics differ fundamentally from a donor meeting. She's evaluating fit with a published strategy and an existing portfolio, subject to internal approval processes, within a legal structure. The emotional dynamics of donor persuasion — personal values activation, identity-based giving, relationship-driven commitment — may be secondary to institutional fit analysis. Treat this as an institutional partnership exploration, not a fundraising ask.
 
-## How They Communicate
+**The pathway in is through the ecosystem, not through her personally.** If you're already connected to organizations Ford funds — AI Now, EPIC, the PIT network, Data & Society — you've passed the first filter. If Open Society Foundations, Omidyar, Newmark, or MacArthur are already interested, that's the strongest signal she'll receive. She builds multi-funder vehicles because she believes "Ford cannot bring about change on its own." If you can bring co-funders to the table — especially ones she already works with — you're doing half her job for her.
 
-She operates in two modes. The institutional one is precise, structural, power-literate, with no emotional valence. "Addressing the global spyware industry cannot be the work of any one company or funder or government; it requires an approach as interconnected as our world is today." Coalition language — it distributes agency, names the architecture, avoids positioning Ford as protagonist.
+**When she commits, it's large, long-term, and capacity-oriented.** BUILD grants are multi-year general operating support — she's buying organizational resilience, not deliverables. The Table ran for eight years. The PIT-UN is designed to shape a generation. She doesn't chase novelty or fund episodic projects. She invests in institutions that will endure. Show her that your organization has staying power, a trajectory, and a role in the ecosystem that isn't duplicated by existing grantees.
 
-The candid mode is rare. "We had this civil-rights framing, yet we were missing a very significant component of civil rights." These sentences admit institutional failure and imply personal responsibility. They appear in the Chronicle of Philanthropy — a trade publication read by peers, not the general public. She's candid with the sector, institutional with the public.
+**Her commitment pattern mirrors her career pattern: deep and long.** Two institutional commitments spanning her entire mature career. She adapted within Ford rather than leaving — broadening Internet Freedom into Technology and Society as the landscape shifted. She sticks with structures long enough for them to mature. If you're building something with a multi-year trajectory, she's a patient, long-term partner. If you're looking for quick, transactional engagement, there's a mismatch.
 
-[**Evidence ceiling:** Zero data on her verbal style in meetings, her listening patterns, or the tells embedded in shifts between modes. Both modes above are written, both in institutional contexts.]
+---
 
-## How They Commit
+### 7. THE DINNER PARTY TEST
 
-Over a decade at Ford in a single program area. The commitment is to the field, not the individual organization. Organizations receive Ford support, but the commitment is to the field the organization operates within. The Markup received $2.5 million not because Ford is loyal to The Markup but because investigative tech journalism is a field Ford is building. The distinction matters: if your organization drifts from the field's purpose, the commitment doesn't follow you.
+**What bores her:** Standalone pitches disconnected from the broader field. Expert organizations that talk about communities rather than governing with them. Polish without substance. Conventional wisdom repackaged. Anyone who treats Ford's money as the ask rather than Ford's ecosystem as the opportunity.
 
-## How They Think About Resources
+**What lights her up:** A structural gap no one else has named — especially one that reveals a blind spot in existing frameworks the way disability revealed a blind spot in civil rights. Contrarian perspectives grounded in evidence. Field-building proposals that create infrastructure other funders can invest in. Work that thinks five to ten years out. Someone who knows the ecosystem she's built and can show exactly where they fit — and where the ecosystem is incomplete.
 
-What's scarce is not Ford's money. What's scarce is philanthropic coordination. The resource conversation with her is never about Ford's capital in isolation — it's about whether your work is positioned to attract a co-funding coalition.
+**What she watches for:** Whether you've done the work to understand the field she's invested a decade in building. Whether affected communities govern your work or just receive it. Whether your proposal connects to existing ecosystem players or floats in isolation. Whether you name your own gaps honestly.
 
-## What They'll Risk
+**What you won't know until you're in the room:** Everything interpersonal. Her tempo, her warmth, whether she asks questions or makes statements, whether the institutional voice she maintains in public softens in private. The first meeting will be the first behavioral data anyone outside Ford has. Pay attention.
 
-She'll risk Ford's institutional brand by partnering with corporations whose practices in other domains conflict with Ford's values. She'll risk philanthropic capital on finite, spend-down initiatives where the entire investment fails if institutional adoption doesn't happen within the time window.
-
-She won't risk the coalition itself. That's the load-bearing structure — everything else she's built depends on it. A risk that threatens a single grantee is manageable. A risk that threatens the multi-foundation model threatens everything.
-
-She admitted Ford's civil-rights framing excluded disability — a public acknowledgment of institutional failure that most program directors would avoid. She risks institutional embarrassment when the naming serves institutional learning. Narrow risk appetite — she doesn't risk for visibility or contrarianism, only for field correction.
-
-## How They Build Relationships
-
-If you're working on the problem inside her architecture, the relationship exists. If you're not, no amount of personal rapport substitutes.
-
-## How They Think About Time
-
-Two time horizons. The short one: three to five years — finite bets designed to catalyze permanent change. The long one: decades. The PIT movement traces to NetGain in 2015 and continues through Current AI in 2025. Her tenure at Ford matches the longer timeline.
-
-The fundraiser should expect her to ask: what happens after our money runs out?
-
-## How They Read Status
-
-In over a decade at Ford running a $100 million-plus portfolio, her public footprint is remarkably thin — a handful of press release quotes, one blog post, a Bluesky bio, and governance committee listings. No podcasts. No op-eds. No conference appearances in her own name. The institutional voice speaks. She doesn't.
-
-The status she accepts is governance authority: board seats, steering committees, advisory roles. Power without profile. Influence without attribution. Don't praise her. Don't cite her accomplishments. Treat her as the person who built the architecture and talk about what the architecture makes possible.
-
-## How They Learn
-
-The career arc — Yiddish Book Center to Project on Death in America to science policy to media and internet policy to technology and society — suggests she learns by moving across domains and finding the structural pattern that connects them. The common thread: institutions that should serve the public interest but don't, because the people most affected aren't in the room where decisions are made.
-
-At Ford, she learns through structured evaluation — advisory committees, program evaluations, convenings. The 2018 Ford-Hewlett disinformation convening is the clearest example: 50-plus scholars, think tank leaders, funders, and platform representatives brainstorming research questions. The output was explicitly framed as "not a reflection of any plans or endorsements by the Ford or Hewlett foundations, or the participants themselves." She convenes the learning and lets the field own the conclusions.
-
-## What They Know
-
-Nobody in the technology-and-society philanthropy space has more structural knowledge of how foundations coordinate to build fields. She has built or co-built at least six major collaborative funding initiatives and sits on seven governance bodies. A decade building the connection between legacy civil rights organizations and the technology policy community gives her working command of that intersection.
-
-AI governance, spyware and surveillance, disinformation, net neutrality, antimonopoly, and public interest technology — working depth across all of them. Technical implementation is absent from the record. She knows who builds technology and how to fund them. Whether she knows the technical substrate is not evidenced.
-
-The career before Ford adds surprising range: end-of-life care policy, science policy, investigative journalism, documentary film, cultural preservation and radio production. She has worked across more institutional domains than almost anyone in her current field. Whether the cross-domain pattern is conscious strategy or accumulated instinct would be worth testing in conversation.
+---

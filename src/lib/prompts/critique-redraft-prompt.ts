@@ -123,11 +123,19 @@ Also check for close paraphrases of exemplar language. If a sentence in this pro
 
 ## Structural requirements (non-negotiable)
 
-- All 18 sections with exact headings, in order
-- Section 4 (Where to Start) names a usable contradiction
-- Section 5 (What Moves Them) flags the most important sentence
-- Section 6 (How They Decide) follows the three-stage structure: entry condition, permission logic, behavioral commitment
-- Evidence ceiling brackets where evidence is thin
+- All 7 sections with exact headings, in order:
+  1. The Operating System
+  2. The Contradiction
+  3. What Drives Them
+  4. How to Read Them in Real Time
+  5. What Shuts Them Down — And How to Recover
+  6. How They Move from Interested to Committed
+  7. The Dinner Party Test
+- Section 2 (The Contradiction) names at least one usable tension the reader can work with in the room. If this section doesn't give the reader something to use, the profile fails.
+- Section 3 (What Drives Them) contains a sentence explicitly flagged as the most important sentence in the profile — the single tactical insight the reader must hold above all others.
+- Section 4 (How to Read Them in Real Time) uses evidence ceiling brackets when meeting behavior is inferred from institutional patterns rather than observed directly.
+- Section 7 (The Dinner Party Test) covers: what bores them, what lights them up, how they move a room (or don't), and what they watch for in other people.
+- Evidence ceiling brackets wherever the evidence can't support the section's analytical ambition.
 
 ## Output
 
