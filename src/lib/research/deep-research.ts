@@ -190,7 +190,7 @@ async function executeDeepResearch(
     throw new Error('OPENAI_API_KEY environment variable is not set. Required for deep research.');
   }
 
-  const openai = new OpenAI({ apiKey: openaiApiKey });
+  const openai = new OpenAI({ apiKey: openaiApiKey, timeout: 3600 * 1000 });
 
   console.log(`[Stage 6] Developer message: ${developerMessage.length} chars`);
   console.log(`[Stage 6] User message: ${userMessage.length} chars`);
@@ -230,8 +230,11 @@ async function executeDeepResearch(
     throw new Error('unreachable');
   }
 
-  // Initial request with background: true (no retry — not idempotent)
-  const response = await openai.responses.create({
+  // Initial request with background: true AND stream: true for live visibility.
+  // background: true  — research runs async on OpenAI, survives connection drops.
+  // stream: true       — SSE events show every search query, reasoning step, final report.
+  // If the stream breaks, research keeps going and we fall back to polling.
+  const stream = await openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
     input: [
       {
@@ -246,112 +249,262 @@ async function executeDeepResearch(
     tools: [{ type: 'web_search_preview' }],
     reasoning: { summary: 'detailed', effort: 'medium' },
     background: true,
+    stream: true,
     max_output_tokens: 100000,
     max_tool_calls: 20,
     store: true,
   } as any);
 
-  // Poll every 10 seconds — abort-aware, max 45 minutes
-  const MAX_POLL_DURATION_MS = 45 * 60 * 1000;
-  let result: any = response;
-  let lastSearchCount = 0;
+  // ── Stream processing ──────────────────────────────────────────────
+  // Log intermediate steps as they happen, accumulate the final report,
+  // track the response ID so we can poll if the stream drops.
+  let responseId: string | null = null;
+  let result: any = null;
+  let searchQueries: string[] = [];
+  let reasoningSummaries: string[] = [];
+  let pageVisits = 0;
+  let codeExecutions = 0;
+  let totalOutputItems = 0;
+  let hasMessage = false;
+  let lastActivityUpdate = 0;
 
-  while (result.status !== 'completed' && result.status !== 'failed') {
-    const elapsedMs = Date.now() - startTime;
-    if (elapsedMs > MAX_POLL_DURATION_MS) {
-      console.error(`[Stage 6] Polling timed out after ${Math.round(elapsedMs / 60000)} minutes`);
-      throw new Error(`Deep research timed out after ${Math.round(elapsedMs / 60000)} minutes (status: ${result.status})`);
-    }
+  function buildActivity(): DeepResearchActivity {
+    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+    return {
+      openaiStatus: result?.status || 'in_progress',
+      totalOutputItems,
+      searches: searchQueries.length,
+      pageVisits,
+      reasoningSteps: reasoningSummaries.length,
+      codeExecutions,
+      recentSearchQueries: searchQueries.slice(-5),
+      reasoningSummary: reasoningSummaries.slice(-2),
+      hasMessage,
+      elapsedSeconds: elapsedSec,
+    };
+  }
 
-    if (abortSignal?.aborted) {
-      console.log(`[Stage 6] Abort detected, stopping polling`);
-      throw new Error('Pipeline aborted by client');
-    }
+  function emitActivity() {
+    const now = Date.now();
+    if (now - lastActivityUpdate < 3000) return; // throttle to every 3s
+    lastActivityUpdate = now;
 
-    // Abort-aware sleep
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 10000);
-      if (abortSignal) {
-        const onAbort = () => { clearTimeout(timer); resolve(); };
-        if (abortSignal.aborted) { clearTimeout(timer); resolve(); return; }
-        abortSignal.addEventListener('abort', onAbort, { once: true });
-      }
-    });
-
-    if (abortSignal?.aborted) {
-      throw new Error('Pipeline aborted by client');
-    }
-
-    result = await withRetry('responses.retrieve', () => openai.responses.retrieve(result.id));
-
-    // Status extraction
-    const outputItems = result.output || [];
-    const searchCalls = outputItems.filter((i: any) => i.type === 'web_search_call');
-    const reasoningItems = outputItems.filter((i: any) => i.type === 'reasoning');
-    const codeItems = outputItems.filter((i: any) => i.type === 'code_interpreter_call');
-    const messageItems = outputItems.filter((i: any) => i.type === 'message');
-
-    const searchQueries: string[] = searchCalls
-      .filter((s: any) => s.action?.type === 'search')
-      .map((s: any) => s.action.query)
-      .filter(Boolean);
-
-    const pageActions = searchCalls
-      .filter((s: any) => s.action?.type === 'open_page' || s.action?.type === 'find_in_page')
-      .length;
-
-    const reasoningSummaries: string[] = [];
-    for (const r of reasoningItems) {
-      if ((r as any).summary && Array.isArray((r as any).summary)) {
-        for (const s of (r as any).summary) {
-          if (s.text) reasoningSummaries.push(s.text);
-        }
-      }
+    const activity = buildActivity();
+    if (onActivity && responseId) {
+      onActivity(activity, responseId);
     }
 
     const elapsed = Date.now() - startTime;
-    const elapsedSec = Math.round(elapsed / 1000);
     const elapsedMin = Math.floor(elapsed / 60000);
-
-    const activity: DeepResearchActivity = {
-      openaiStatus: result.status,
-      totalOutputItems: outputItems.length,
-      searches: searchQueries.length,
-      pageVisits: pageActions,
-      reasoningSteps: reasoningItems.length,
-      codeExecutions: codeItems.length,
-      recentSearchQueries: searchQueries.slice(-5),
-      reasoningSummary: reasoningSummaries.slice(-2),
-      hasMessage: messageItems.length > 0,
-      elapsedSeconds: elapsedSec,
-    };
-
-    if (onActivity) {
-      onActivity(activity, result.id);
-    }
-
-    console.log(
-      `[Stage 6] Status: ${result.status} | ` +
-      `${activity.totalOutputItems} items | ` +
-      `${activity.searches} searches, ${activity.pageVisits} pages, ` +
-      `${activity.reasoningSteps} reasoning | ` +
-      `elapsed: ${elapsedSec}s`
-    );
-    if (searchQueries.length > 0 && searchQueries.length !== lastSearchCount) {
-      console.log(`[Stage 6] Recent queries: ${searchQueries.slice(-3).join(' | ')}`);
-    }
-    lastSearchCount = searchQueries.length;
-
+    const elapsedSec = Math.round(elapsed / 1000);
     const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
+
     let progressMsg: string;
-    if (result.status === 'queued') {
-      progressMsg = `Deep research queued — waiting for OpenAI to start (${timeLabel})`;
-    } else if (activity.searches === 0 && activity.pageVisits === 0) {
+    if (activity.searches === 0 && activity.pageVisits === 0) {
       progressMsg = `Deep research underway — processing pre-fetched sources (${timeLabel})`;
     } else {
       progressMsg = `Deep research underway — ${activity.searches} gap-fill searches, ${activity.pageVisits} pages analyzed (${timeLabel})`;
     }
     emit(progressMsg, 'research', 8, 38);
+  }
+
+  try {
+    for await (const event of (stream as unknown as AsyncIterable<any>)) {
+      if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+
+      switch (event.type) {
+        case 'response.created':
+          responseId = event.response?.id;
+          console.log(`[Deep Research] Response created: ${responseId} | Status: ${event.response?.status}`);
+          break;
+
+        case 'response.in_progress':
+          console.log(`[Deep Research] In progress...`);
+          break;
+
+        case 'response.output_item.added':
+          totalOutputItems++;
+          if (event.item?.type === 'web_search_call') {
+            const actionType = event.item.action?.type || 'search';
+            if (actionType === 'search') {
+              const query = event.item.action?.query || 'unknown';
+              console.log(`[Deep Research] Searching: "${query}"`);
+              searchQueries.push(query);
+            } else if (actionType === 'open_page' || actionType === 'find_in_page') {
+              pageVisits++;
+            }
+            emitActivity();
+          } else if (event.item?.type === 'reasoning') {
+            console.log(`[Deep Research] Reasoning block started`);
+          } else if (event.item?.type === 'code_interpreter_call') {
+            codeExecutions++;
+          }
+          break;
+
+        case 'response.output_item.done':
+          if (event.item?.type === 'web_search_call') {
+            const actionType = event.item.action?.type || 'search';
+            if (actionType === 'search') {
+              const query = event.item.action?.query || 'unknown';
+              console.log(`[Deep Research] Search done: "${query}" -> ${event.item.status}`);
+            } else if (actionType === 'open_page' || actionType === 'find_in_page') {
+              pageVisits++;
+            }
+            emitActivity();
+          } else if (event.item?.type === 'reasoning') {
+            for (const s of event.item.summary || []) {
+              if (s.text) {
+                console.log(`[Deep Research] Reasoning: ${s.text.slice(0, 200)}${s.text.length > 200 ? '...' : ''}`);
+                reasoningSummaries.push(s.text);
+              }
+            }
+            emitActivity();
+          } else if (event.item?.type === 'message') {
+            hasMessage = true;
+          }
+          break;
+
+        case 'response.output_text.done':
+          console.log(`[Deep Research] Report text complete`);
+          break;
+
+        case 'response.completed':
+          result = event.response;
+          console.log(`[Deep Research] Complete. ${searchQueries.length} searches, ${reasoningSummaries.length} reasoning blocks.`);
+          break;
+
+        case 'response.failed':
+          result = event.response;
+          console.error(`[Deep Research] Failed:`, JSON.stringify(event.response?.error || event));
+          break;
+
+        case 'response.incomplete':
+          result = event.response;
+          console.warn(`[Deep Research] Incomplete:`, JSON.stringify(event));
+          break;
+      }
+    }
+  } catch (streamError: any) {
+    // Stream broke — but background=true means research continues on OpenAI's side
+    console.warn(`[Deep Research] Stream interrupted: ${streamError.message}`);
+
+    if (streamError.message === 'Pipeline aborted by client') {
+      throw streamError;
+    }
+
+    if (responseId) {
+      console.log(`[Deep Research] Research continues in background (${responseId}). Falling back to polling...`);
+
+      result = await withRetry('responses.retrieve', () => openai.responses.retrieve(responseId!));
+      const MAX_POLL_DURATION_MS = 45 * 60 * 1000;
+
+      while (result.status !== 'completed' && result.status !== 'failed') {
+        const elapsedMs = Date.now() - startTime;
+        if (elapsedMs > MAX_POLL_DURATION_MS) {
+          console.error(`[Deep Research] Polling timed out after ${Math.round(elapsedMs / 60000)} minutes`);
+          throw new Error(`Deep research timed out after ${Math.round(elapsedMs / 60000)} minutes (status: ${result.status})`);
+        }
+
+        if (abortSignal?.aborted) {
+          throw new Error('Pipeline aborted by client');
+        }
+
+        // Abort-aware sleep (10s)
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 10000);
+          if (abortSignal) {
+            const onAbort = () => { clearTimeout(timer); resolve(); };
+            if (abortSignal.aborted) { clearTimeout(timer); resolve(); return; }
+            abortSignal.addEventListener('abort', onAbort, { once: true });
+          }
+        });
+
+        if (abortSignal?.aborted) {
+          throw new Error('Pipeline aborted by client');
+        }
+
+        result = await withRetry('responses.retrieve', () => openai.responses.retrieve(responseId!));
+
+        // Rebuild activity from the polled response
+        const pollOutput = result.output || [];
+        const pollSearches = pollOutput.filter((i: any) => i.type === 'web_search_call' && i.action?.type === 'search');
+        const pollPages = pollOutput.filter((i: any) => i.type === 'web_search_call' && (i.action?.type === 'open_page' || i.action?.type === 'find_in_page'));
+        const pollReasoning = pollOutput.filter((i: any) => i.type === 'reasoning');
+
+        searchQueries = pollSearches.map((s: any) => s.action.query).filter(Boolean);
+        pageVisits = pollPages.length;
+        reasoningSummaries = [];
+        for (const r of pollReasoning) {
+          for (const s of (r as any).summary || []) {
+            if (s.text) reasoningSummaries.push(s.text);
+          }
+        }
+        totalOutputItems = pollOutput.length;
+        hasMessage = pollOutput.some((i: any) => i.type === 'message');
+        codeExecutions = pollOutput.filter((i: any) => i.type === 'code_interpreter_call').length;
+
+        const activity = buildActivity();
+        if (onActivity && responseId) {
+          onActivity(activity, responseId);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const elapsedSec = Math.round(elapsed / 1000);
+        const elapsedMin = Math.floor(elapsed / 60000);
+        const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
+
+        console.log(
+          `[Deep Research] Polling: ${result.status} | ` +
+          `${totalOutputItems} items | ` +
+          `${searchQueries.length} searches, ${pageVisits} pages, ` +
+          `${reasoningSummaries.length} reasoning | ` +
+          `elapsed: ${elapsedSec}s`
+        );
+
+        let progressMsg: string;
+        if (result.status === 'queued') {
+          progressMsg = `Deep research queued — waiting for OpenAI to start (${timeLabel})`;
+        } else if (searchQueries.length === 0 && pageVisits === 0) {
+          progressMsg = `Deep research underway — processing pre-fetched sources (${timeLabel})`;
+        } else {
+          progressMsg = `Deep research underway — ${searchQueries.length} gap-fill searches, ${pageVisits} pages analyzed (${timeLabel})`;
+        }
+        emit(progressMsg, 'research', 8, 38);
+      }
+
+      // Log all recovered intermediate steps
+      if (result.status === 'completed') {
+        console.log(`[Deep Research] Recovered via polling after stream drop`);
+        for (const item of (result.output || [])) {
+          if (item.type === 'web_search_call' && item.action?.type === 'search') {
+            console.log(`[Deep Research] Search (recovered): "${item.action.query}" -> ${item.status}`);
+          } else if (item.type === 'reasoning') {
+            for (const s of item.summary || []) {
+              if (s.text) console.log(`[Deep Research] Reasoning (recovered): ${s.text.slice(0, 200)}${s.text.length > 200 ? '...' : ''}`);
+            }
+          }
+        }
+      }
+    } else {
+      throw new Error(`Deep research stream failed and no response ID was captured: ${streamError.message}`);
+    }
+  }
+
+  // Safety: if stream completed but we missed the response.completed event, retrieve it
+  if (!result && responseId) {
+    console.log(`[Deep Research] Retrieving final result for ${responseId}...`);
+    result = await withRetry('responses.retrieve', () => openai.responses.retrieve(responseId!));
+  }
+
+  if (!result) {
+    throw new Error('Deep research completed but no result was captured');
+  }
+
+  // Final activity update
+  if (onActivity && responseId) {
+    const finalActivity = buildActivity();
+    finalActivity.openaiStatus = result.status;
+    onActivity(finalActivity, responseId);
   }
 
   const durationMs = Date.now() - startTime;
