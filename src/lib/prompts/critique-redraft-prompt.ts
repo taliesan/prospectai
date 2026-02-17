@@ -123,10 +123,11 @@ Also check for close paraphrases of exemplar language. If a sentence in this pro
 
 ## Structural requirements (non-negotiable)
 
-- All 18 sections with exact headings, in order
-- Section 4 (Where to Start) names a usable contradiction
-- Section 5 (What Moves Them) flags the most important sentence
-- Section 6 (How They Decide) follows the three-stage structure: entry condition, permission logic, behavioral commitment
+- All 7 sections with exact headings, in order: 1. The Operating System, 2. The Contradiction, 3. What Drives Them, 4. How to Read Them in Real Time, 5. What Shuts Them Down — And How to Recover, 6. How They Move from Interested to Committed, 7. The Dinner Party Test
+- Sections separated by horizontal rules (---)
+- Section 2 (The Contradiction) names a usable tension the reader can use in the room
+- Section 3 (What Drives Them) flags the most important sentence in the profile
+- Section 7 (The Dinner Party Test) hits four beats: what bores them, what lights them up, how they move a room, what they watch for
 - Evidence ceiling brackets where evidence is thin
 
 ## Output
