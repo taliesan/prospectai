@@ -175,13 +175,15 @@ ${linkedinJson}`;
 
 // ── Execute Deep Research (OpenAI o3-deep-research) ─────────────────
 
-async function executeDeepResearch(
+export async function executeDeepResearch(
   donorName: string,
   developerMessage: string,
   userMessage: string,
   onProgress?: ProgressCallback,
   abortSignal?: AbortSignal,
   onActivity?: ActivityCallback,
+  /** Max web searches. 0 = disable web_search tool entirely. Default: 20. */
+  maxToolCalls?: number,
 ): Promise<{ dossier: string; citations: DeepResearchCitation[]; searchCount: number; tokenUsage: any; durationMs: number }> {
   const emit = onProgress || (() => {});
 
@@ -234,6 +236,9 @@ async function executeDeepResearch(
   // background: true  — research runs async on OpenAI, survives connection drops.
   // stream: true       — SSE events show every search query, reasoning step, final report.
   // If the stream breaks, research keeps going and we fall back to polling.
+  const effectiveMaxToolCalls = maxToolCalls ?? 20;
+  const tools = effectiveMaxToolCalls > 0 ? [{ type: 'web_search_preview' }] : [];
+
   const stream = await openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
     input: [
@@ -246,12 +251,12 @@ async function executeDeepResearch(
         content: [{ type: 'input_text', text: userMessage }],
       },
     ],
-    tools: [{ type: 'web_search_preview' }],
+    tools,
     reasoning: { summary: 'detailed', effort: 'medium' },
     background: true,
     stream: true,
     max_output_tokens: 100000,
-    max_tool_calls: 20,
+    max_tool_calls: effectiveMaxToolCalls > 0 ? effectiveMaxToolCalls : undefined,
     store: true,
   } as any);
 

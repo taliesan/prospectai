@@ -52,8 +52,11 @@ export const SCARCITY_CAP = 6.0;
 /** Mild nudge toward source-type diversity (index = sources of this tier already selected) */
 export const DIVERSITY_BONUSES = [1.3, 1.15, 1.05, 1.0]; // 0 selected, 1, 2, 3+
 
-/** Maximum chars of source content to send to Deep Research */
-export const CONTENT_BUDGET_CHARS = 100_000;
+/** Maximum chars of source content to send to Deep Research.
+ *  Set to Infinity — the batched DR system handles its own budgeting
+ *  via 30K-char batch packing. The selection algorithm now produces
+ *  a full ranking without a budget cap. */
+export const CONTENT_BUDGET_CHARS = Infinity;
 
 /** How many sources per Sonnet scoring batch */
 const SCORING_BATCH_SIZE = 18;
@@ -384,9 +387,6 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
     for (let i = 0; i < remaining.length; i++) {
       const src = remaining[i];
 
-      // Skip sources that don't fit in remaining budget
-      if (totalChars + src.char_count > CONTENT_BUDGET_CHARS) continue;
-
       // Calculate: Σ(depth × tier_weight × scarcity) × diversity_bonus / char_count × 1000
       let dimSum = 0;
       for (let d = 1; d <= 25; d++) {
@@ -415,8 +415,8 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
       }
     }
 
-    // No source fits — we're done
-    if (bestIdx === -1) break;
+    // No source with positive signal remaining — we're done
+    if (bestIdx === -1 || bestScore <= 0) break;
 
     // Select the best source
     const chosen = remaining.splice(bestIdx, 1)[0];
@@ -585,7 +585,7 @@ export async function runDimensionScoring(
   // Build notSelected reasons for logging
   const notSelected = selectionResult.not_selected.map(s => ({
     url: s.url,
-    reason: s.char_count > CONTENT_BUDGET_CHARS ? 'Exceeds budget alone' : 'Lower priority than selected sources',
+    reason: 'Zero behavioral signal (all dimension scores = 0)',
   }));
 
   return {
