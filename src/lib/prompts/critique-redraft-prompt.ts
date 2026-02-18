@@ -9,7 +9,8 @@ export function buildCritiqueRedraftPrompt(
   geoffreyBlock: string,
   exemplars: string,
   extractionOutput: string,
-  linkedinData?: LinkedInData | null
+  linkedinData?: LinkedInData | null,
+  factCheckBlock?: string,
 ): string {
   let prompt = '';
 
@@ -73,6 +74,11 @@ The following is the first draft of the Persuasion Profile for ${donorName}. You
 `;
   prompt += firstDraftProfile;
   prompt += '\n\n';
+
+  // Layer 5b: Fact-Check Results (if critical items found)
+  if (factCheckBlock) {
+    prompt += `---\n${factCheckBlock}\n\n`;
+  }
 
   // Layer 6: Editorial Instructions
   prompt += `---

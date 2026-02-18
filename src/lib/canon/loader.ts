@@ -74,3 +74,34 @@ export function loadMeetingGuideExemplars(donorName: string): string {
 export function loadDTWOrgLayer(): string {
   return dtwOrgLayerCache;
 }
+
+/**
+ * Returns the three exemplar profiles as separate strings for fact-checking.
+ * Each profile is extracted by splitting on the "# PERSUASION PROFILE —" heading.
+ */
+export function loadExemplarProfilesSeparate(): {
+  bahat: string;
+  newmark: string;
+  mcglinchey: string;
+} {
+  const full = exemplarsCache;
+  // Split on the profile headings, keeping the heading with its content
+  const profileStarts = [
+    { name: 'newmark' as const, marker: '# PERSUASION PROFILE — CRAIG NEWMARK' },
+    { name: 'bahat' as const, marker: '# PERSUASION PROFILE — ROY BAHAT' },
+    { name: 'mcglinchey' as const, marker: '# PERSUASION PROFILE — LORI McGLINCHEY' },
+  ];
+
+  const result: Record<string, string> = { bahat: '', newmark: '', mcglinchey: '' };
+
+  for (let i = 0; i < profileStarts.length; i++) {
+    const startIdx = full.indexOf(profileStarts[i].marker);
+    if (startIdx === -1) continue;
+    const nextStart = i + 1 < profileStarts.length
+      ? full.indexOf(profileStarts[i + 1].marker)
+      : full.length;
+    result[profileStarts[i].name] = full.slice(startIdx, nextStart !== -1 ? nextStart : full.length).trim();
+  }
+
+  return result as { bahat: string; newmark: string; mcglinchey: string };
+}
