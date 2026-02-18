@@ -452,6 +452,12 @@ export default function ProfilePage() {
           </summary>
           <div className="mt-4 flex flex-wrap gap-2">
             {[
+              { file: 'screening-audit', label: 'Screening Audit' },
+              { file: 'source-selection', label: 'Source Selection' },
+              { file: 'source-packet-manifest', label: 'Source Packet Manifest' },
+              { file: 'deep-research-developer-msg', label: 'Deep Research Dev Msg' },
+              { file: 'deep-research-user-msg', label: 'Deep Research User Msg' },
+              { file: 'fact-check', label: 'Fact Check' },
               { file: 'research-package', label: 'Research Package' },
               { file: 'research-conversation', label: 'Agent Conversation' },
               { file: 'prompt', label: 'Profile Prompt' },
@@ -462,16 +468,22 @@ export default function ProfilePage() {
               { file: 'meeting-guide', label: 'Meeting Guide (MD)' },
               { file: 'meeting-guide-html', label: 'Meeting Guide (HTML)' },
               { file: 'linkedin', label: 'LinkedIn Data' },
-            ].map(({ file, label }) => (
-              <a
-                key={file}
-                href={`/api/debug-dump?file=${file}`}
-                download={`DEBUG-${file}.${file === 'linkedin' ? 'json' : file === 'meeting-guide-html' ? 'html' : file === 'meeting-guide' ? 'md' : 'txt'}`}
-                className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
-              >
-                {label}
-              </a>
-            ))}
+            ].map(({ file, label }) => {
+              const ext = file === 'linkedin' || file === 'fact-check' ? 'json'
+                : file === 'meeting-guide-html' ? 'html'
+                : file === 'meeting-guide' ? 'md'
+                : 'txt';
+              return (
+                <a
+                  key={file}
+                  href={`/api/debug-dump?file=${file}`}
+                  download={`DEBUG-${file}.${ext}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
+                >
+                  {label}
+                </a>
+              );
+            })}
           </div>
         </details>
       </main>

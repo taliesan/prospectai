@@ -58,6 +58,13 @@ export async function GET(request: NextRequest) {
     'meeting-guide': '/tmp/prospectai-outputs/DEBUG-meeting-guide.md',
     'meeting-guide-html': '/tmp/prospectai-outputs/DEBUG-meeting-guide.html',
     linkedin: '/tmp/prospectai-outputs/DEBUG-linkedin-data.json',
+    // v5 pipeline diagnostics
+    'screening-audit': '/tmp/prospectai-outputs/DEBUG-screening-audit.txt',
+    'source-selection': '/tmp/prospectai-outputs/DEBUG-source-selection.txt',
+    'source-packet-manifest': '/tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt',
+    'deep-research-developer-msg': '/tmp/prospectai-outputs/DEBUG-deep-research-developer-msg.txt',
+    'deep-research-user-msg': '/tmp/prospectai-outputs/DEBUG-deep-research-user-msg.txt',
+    'fact-check': '/tmp/prospectai-outputs/DEBUG-fact-check.json',
     // Legacy
     extraction: '/tmp/prospectai-outputs/DEBUG-extraction.txt',
     'extraction-prompt': '/tmp/prospectai-outputs/DEBUG-extraction-prompt.txt',
@@ -82,7 +89,7 @@ export async function GET(request: NextRequest) {
   }
 
   const content = readFileSync(path, 'utf-8');
-  const jsonFiles = ['linkedin', 'research-conversation', 'phase1-conversation', 'phase2-conversation', 'phase3-conversation'];
+  const jsonFiles = ['linkedin', 'research-conversation', 'phase1-conversation', 'phase2-conversation', 'phase3-conversation', 'fact-check'];
   const contentType = jsonFiles.includes(file) ? 'application/json'
     : file === 'meeting-guide-html' ? 'text/html; charset=utf-8'
     : 'text/plain; charset=utf-8';
