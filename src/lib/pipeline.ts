@@ -19,8 +19,8 @@ import {
 import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt';
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
-import { buildMeetingGuidePrompt } from './prompts/meeting-guide';
-import { selectExemplars, loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlock, loadMeetingGuideExemplars, loadDTWOrgLayer } from './canon/loader';
+import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
+import { selectExemplars, loadExemplars, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, loadDTWOrgLayer } from './canon/loader';
 import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -1025,8 +1025,9 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
   emit('Writing tactical meeting guide', 'writing', 33, TOTAL_STEPS);
   console.log('[Pipeline] Step 4: Meeting guide (Sonnet)');
 
-  const meetingGuideBlock = loadMeetingGuideBlock();
-  const meetingGuideExemplars = loadMeetingGuideExemplars();
+  const meetingGuideBlock = loadMeetingGuideBlockV3();
+  const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
+  const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
   const dtwOrgLayer = loadDTWOrgLayer();
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
@@ -1035,6 +1036,7 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
     meetingGuideBlock,
     dtwOrgLayer,
     meetingGuideExemplars,
+    meetingGuideOutputTemplate,
   );
 
   try {
@@ -1046,7 +1048,7 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
   const meetingGuide = await conversationTurn(meetingGuideMessages, {
     maxTokens: 8000,
     abortSignal,
-    systemPrompt: 'You are a tactical meeting advisor translating a donor persuasion profile into an operational briefing for a fundraiser walking into a high-stakes meeting.',
+    systemPrompt: MEETING_GUIDE_SYSTEM_PROMPT,
   });
   console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
 

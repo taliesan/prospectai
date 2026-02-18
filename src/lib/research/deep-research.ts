@@ -266,6 +266,7 @@ async function executeDeepResearch(
   let codeExecutions = 0;
   let totalOutputItems = 0;
   let hasMessage = false;
+  let reportCharsReceived = 0;
   let lastActivityUpdate = 0;
 
   function buildActivity(): DeepResearchActivity {
@@ -364,8 +365,32 @@ async function executeDeepResearch(
           }
           break;
 
+        case 'response.output_text.delta':
+          reportCharsReceived += (event.delta || '').length;
+          hasMessage = true;
+          {
+            const now = Date.now();
+            if (now - lastActivityUpdate >= 3000) {
+              lastActivityUpdate = now;
+              const activity = buildActivity();
+              if (onActivity && responseId) {
+                onActivity(activity, responseId);
+              }
+              const elapsed = Date.now() - startTime;
+              const elapsedMin = Math.floor(elapsed / 60000);
+              const elapsedSec = Math.round(elapsed / 1000);
+              const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
+              const charsK = Math.round(reportCharsReceived / 1000);
+              console.log(`[Deep Research] Writing report — ${charsK}K chars received (${timeLabel})`);
+              emit(`Deep research writing report — ${charsK}K chars so far (${timeLabel})`, 'research', 10, 38);
+            }
+          }
+          break;
+
         case 'response.output_text.done':
-          console.log(`[Deep Research] Report text complete`);
+          hasMessage = true;
+          console.log(`[Deep Research] Report complete (${reportCharsReceived} chars)`);
+          emitActivity();
           break;
 
         case 'response.completed':
