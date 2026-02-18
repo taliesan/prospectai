@@ -39,12 +39,14 @@ import {
 } from './research/tiering';
 
 // Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
-import { runDeepResearchV5, DeepResearchResult, validateResearchPackage } from './research/deep-research';
+import { DeepResearchResult, validateResearchPackage } from './research/deep-research';
+import { runBatchedDeepResearch } from './research/batched-deep-research';
 import type { ActivityCallback } from './job-store';
 
 // v5 pipeline modules
 import { deduplicateSources } from './research/dedup';
-import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch } from './prompts/source-scoring';
+import { runRelevanceFilter } from './research/relevance-filter';
+import { runDimensionScoring, formatCoverageGapReport } from './prompts/source-scoring';
 import { parseQueryGenerationResponse, generateSupplementaryQueryPrompt, type CategorizedQuery } from './prompts/research';
 
 const anthropic = new Anthropic();
@@ -610,14 +612,15 @@ ${pdfText}`;
 
   if (researchProvider === 'openai') {
     // ═══════════════════════════════════════════════════════════════
-    // v5 HYBRID PIPELINE: Stages 1→2→3→4→5→6
+    // v5 HYBRID PIPELINE: Stages 1→2→3→4→4.5→5→6
     //
     // Stage 1: Query Generation (Sonnet)
     // Stage 2: Search Execution (Tavily)
     // Stage 3: Screening & Attribution (Sonnet)
     // Stage 4: Content Fetch + Dedup (Tavily Extract)
-    // Stage 5: Dimension Scoring & Selection (Sonnet)
-    // Stage 6: Research Synthesis (o3-deep-research)
+    // Stage 4.5: Relevance Filter (Sonnet) — defense in depth
+    // Stage 5: Dimension Scoring & Selection (Sonnet) — unbounded ranking
+    // Stage 6: Batched Research Synthesis (o3-deep-research × 2-4 calls)
     // ═══════════════════════════════════════════════════════════════
     emit('', 'research');
 
@@ -840,15 +843,58 @@ ${pdfText}`;
     console.log(`[Stage 4] After dedup: ${dedupedSources.length} sources`);
     emit(`${dedupedSources.length} unique sources after dedup`, 'research', 13, TOTAL_STEPS);
 
+    // ── Stage 4.5: Relevance Filter ─────────────────────────────
+    // Defense in depth behind screening. Checks each source against
+    // the target's career timeline and seed URL context.
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    emit(`Relevance-checking ${dedupedSources.length} sources against career timeline`, 'research', 14, TOTAL_STEPS);
+    console.log('[Stage 4.5] Running relevance filter');
+
+    const relevanceResult = await runRelevanceFilter(
+      dedupedSources,
+      donorName,
+      seedUrlContent || '',
+      linkedinData,
+      identity,
+    );
+    const relevantSources = relevanceResult.passed;
+
+    console.log(`[Stage 4.5] ${relevantSources.length} passed relevance filter (${relevanceResult.failed.length} dropped, ${relevanceResult.stats.failOpenCount} fail-open)`);
+    emit(`${relevantSources.length} sources passed relevance filter`, 'research', 14, TOTAL_STEPS);
+
+    // Debug save relevance filter results
+    try {
+      const relLines: string[] = [
+        `RELEVANCE FILTER REPORT — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Input: ${dedupedSources.length} | Passed: ${relevantSources.length} | Failed: ${relevanceResult.failed.length} | Fail-open: ${relevanceResult.stats.failOpenCount}`,
+        '',
+        '=== FAILED SOURCES ===',
+      ];
+      for (const f of relevanceResult.failed) {
+        relLines.push(`  DROPPED: ${f.url}`);
+        relLines.push(`    Title: ${f.title}`);
+        relLines.push(`    Reason: ${f.reason}`);
+        relLines.push('');
+      }
+      relLines.push('', '=== PASSED SOURCES ===');
+      for (const s of relevantSources) {
+        relLines.push(`  KEPT: ${s.url}`);
+        relLines.push(`    Attribution: ${s.attribution || 'none'} | Screened: ${s.screened} | Bypass: ${s.bypassScreening || false}`);
+        relLines.push('');
+      }
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-relevance-filter.txt', relLines.join('\n'));
+      console.log('[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-relevance-filter.txt');
+    } catch (e) { /* ignore */ }
+
     // ── Stage 5: Dimension Scoring & Selection ───────────────────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-    emit(`Scoring ${dedupedSources.length} sources against 25 dimensions`, 'research', 14, TOTAL_STEPS);
+    emit(`Scoring ${relevantSources.length} sources against 25 dimensions`, 'research', 15, TOTAL_STEPS);
     console.log('[Stage 5] Dimension scoring & selection');
 
-    const stage5Result = await runDimensionScoring(dedupedSources, donorName, identity, linkedinData);
+    const stage5Result = await runDimensionScoring(relevantSources, donorName, identity, linkedinData);
     const selectedSources = stage5Result.selectedSources;
     const coverageGapReport = formatCoverageGapReport(stage5Result.coverageGaps);
-    const sourcesFormatted = formatSourcesForDeepResearch(selectedSources);
 
     console.log(`[Stage 5] Selected ${selectedSources.length} sources (~${stage5Result.stats.estimatedContentChars} chars)`);
     emit(`${selectedSources.length} sources selected for synthesis (~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars)`, 'research', 15, TOTAL_STEPS);
@@ -936,22 +982,21 @@ ${pdfText}`;
       }
     } catch (e) { /* ignore */ }
 
-    // ── Stage 6: Research Synthesis (Deep Research) ──────────────
+    // ── Stage 6: Research Synthesis (Batched Deep Research) ──────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-    emit('Launching bounded synthesis with pre-fetched sources', 'research', 16, TOTAL_STEPS);
-    console.log('[Stage 6] Running Deep Research (bounded synthesis)');
+    emit('Launching batched synthesis with ranked sources', 'research', 16, TOTAL_STEPS);
+    console.log('[Stage 6] Running Batched Deep Research');
 
     // ── DEBUG: Source Packet Manifest ─────────────────────────────
-    // Exact contents of the user message sent to Deep Research.
     try {
       const manifestLines: string[] = [
         `SOURCE PACKET MANIFEST — ${donorName}`,
         `Generated: ${new Date().toISOString()}`,
-        `Sources in packet: ${selectedSources.length}`,
-        `Packet size: ${sourcesFormatted.length} chars`,
+        `Ranked sources: ${selectedSources.length}`,
+        `Total content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
         '',
-        'Each entry below shows what Deep Research sees for this source.',
-        '(Content is truncated to first 300 chars in this manifest.)',
+        'Sources ranked by scarcity-weighted scoring. Batched DR will pack',
+        'these into 30K-char batches (max 3) in rank order.',
         '',
       ];
       const nameLower = donorName.toLowerCase();
@@ -978,12 +1023,11 @@ ${pdfText}`;
       console.log('[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt');
     } catch (e) { /* ignore */ }
 
-    deepResearchResult = await runDeepResearchV5(
+    deepResearchResult = await runBatchedDeepResearch(
       donorName,
       linkedinData,
       selectedSources,
-      sourcesFormatted,
-      coverageGapReport,
+      stage5Result.coverageGaps,
       emit,
       abortSignal,
       onActivity,
@@ -1010,7 +1054,7 @@ ${pdfText}`;
         title: c.title,
         snippet: '',
       })),
-      rawMarkdown: `# v5 RESEARCH DOSSIER: ${donorName}\n\nPipeline: v5 hybrid (Tavily breadth + bounded synthesis)\nQueries: ${categorizedQueries.length}\nScreened: ${screenedSources.length}/${allSources.length}\nSelected: ${selectedSources.length}\nGap-fill searches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\n\n${researchPackage}`,
+      rawMarkdown: `# v5 RESEARCH DOSSIER: ${donorName}\n\nPipeline: v5 batched synthesis (Tavily breadth + batched DR)\nQueries: ${categorizedQueries.length}\nScreened: ${screenedSources.length}/${allSources.length}\nRelevance-filtered: ${relevantSources.length}/${dedupedSources.length}\nSelected: ${selectedSources.length}\nGap-fill searches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\nStrategy: ${deepResearchResult.researchStrategy}\n\n${researchPackage}`,
     };
 
     console.log(`\n[Pipeline] v5 research complete: ${deepResearchResult.searchCount} gap-fill searches, ${researchPackage.length} chars\n`);
