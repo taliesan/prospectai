@@ -371,7 +371,7 @@ async function runBatchWithRetry(
         onProgress,
         abortSignal,
         onActivity,
-        enableWebSearch ? 20 : 0,
+        enableWebSearch ? 20 : 1,
       );
 
       const evidence = parseCumulativeEvidenceFromOutput(result.dossier);

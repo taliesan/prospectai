@@ -236,8 +236,10 @@ export async function executeDeepResearch(
   // background: true  — research runs async on OpenAI, survives connection drops.
   // stream: true       — SSE events show every search query, reasoning step, final report.
   // If the stream breaks, research keeps going and we fall back to polling.
+  // DR requires at least one tool in the tools array — tools: [] returns a 400.
+  // Always include web_search_preview; use max_tool_calls to constrain instead.
   const effectiveMaxToolCalls = maxToolCalls ?? 20;
-  const tools = effectiveMaxToolCalls > 0 ? [{ type: 'web_search_preview' }] : [];
+  const tools = [{ type: 'web_search_preview' }];
 
   const stream = await openai.responses.create({
     model: 'o3-deep-research-2025-06-26',
@@ -256,7 +258,7 @@ export async function executeDeepResearch(
     background: true,
     stream: true,
     max_output_tokens: 100000,
-    max_tool_calls: effectiveMaxToolCalls > 0 ? effectiveMaxToolCalls : undefined,
+    max_tool_calls: effectiveMaxToolCalls,
     store: true,
   } as any);
 
