@@ -1,281 +1,423 @@
-// Meeting Guide HTML Formatter
-// Converts intermediate markdown format to styled HTML
-// Added 2026-02-10
+// Meeting Guide HTML Formatter — v3
+// Converts intermediate markdown format (Setup/Arc/Tripwires/One Line)
+// to styled HTML matching meeting-guide-newmark.html reference
+
+interface SetupGroup {
+  heading: string;
+  bullets: string[];
+}
+
+interface Beat {
+  number: number;
+  title: string;
+  goal: string;
+  start: string;
+  stayParagraphs: string[];
+  stayScenarios: Array<{ label: string; text: string }>;
+  stallingText: string;
+  continue: string;
+}
+
+interface Tripwire {
+  name: string;
+  tell: string;
+  recovery: string;
+}
 
 interface ParsedGuide {
   donorName: string;
-  subtitle: string;
-  posture: string;
-  lightsUp: Array<{ boldPhrase: string; body: string }>;
-  shutsDown: Array<{ boldPhrase: string; body: string }>;
-  walkInExpecting: string;
-  walkInExpectingHeader: string;
-  innerTruth: string[];
-  primaryTerritory: string;
-  secondaryTerritories: Array<{ label: string; body: string }>;
-  setting: string;
-  energy: string;
-  beats: Array<{
-    number: number;
-    title: string;
-    moveParagraphs: string[];
-    signals: Array<{ type: 'advance' | 'hold' | 'adjust'; see: string; do: string }>;
-  }>;
-  working: string[];
-  stalling: string[];
-  resetMoves: Array<{ condition: string; move: string; why: string }>;
+  setupGroups: SetupGroup[];
+  beats: Beat[];
+  tripwires: Tripwire[];
+  oneLine: string;
 }
 
-/**
- * Parse the intermediate markdown format into structured data
- */
+// ── PARSER ──────────────────────────────────────────────────────────
+
 function parseMarkdown(markdown: string): ParsedGuide {
   const lines = markdown.split('\n');
 
   const guide: ParsedGuide = {
     donorName: '',
-    subtitle: '',
-    posture: '',
-    lightsUp: [],
-    shutsDown: [],
-    walkInExpecting: '',
-    walkInExpectingHeader: "THEY'LL WALK IN EXPECTING",
-    innerTruth: [],
-    primaryTerritory: '',
-    secondaryTerritories: [],
-    setting: '',
-    energy: '',
+    setupGroups: [],
     beats: [],
-    working: [],
-    stalling: [],
-    resetMoves: []
+    tripwires: [],
+    oneLine: '',
   };
 
-  let currentSection = '';
-  let currentBeat: ParsedGuide['beats'][0] | null = null;
-  let collectingMove = false;
-  let collectingSignals = false;
-  let buffer: string[] = [];
+  let i = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
+  // Helper: advance past blank lines
+  function skipBlanks(): void {
+    while (i < lines.length && lines[i].trim() === '') i++;
+  }
 
-    // Document header
-    if (trimmed.startsWith('# MEETING GUIDE') && trimmed.includes('—')) {
-      guide.donorName = trimmed.replace(/^#\s*MEETING GUIDE\s*—\s*/, '').trim();
-      continue;
+  // Helper: read lines until next section marker or EOF
+  function collectUntil(stopPattern: RegExp): string[] {
+    const collected: string[] = [];
+    while (i < lines.length && !stopPattern.test(lines[i].trim())) {
+      collected.push(lines[i]);
+      i++;
     }
+    return collected;
+  }
 
-    // Subtitle (italic line like *Democracy Takes Work · ...*)
-    if (/^\*[^*]+\*$/.test(trimmed) && guide.subtitle === '' && guide.donorName !== '') {
-      guide.subtitle = trimmed.slice(1, -1);
-      continue;
-    }
-
-    // Horizontal rule
-    if (trimmed === '---') {
-      continue;
-    }
-
-    // Major section headers (##)
-    if (trimmed.startsWith('## ') && !trimmed.startsWith('### ')) {
-      // Flush
-      if (buffer.length > 0) {
-        flushBuffer(guide, currentSection, buffer);
-        buffer = [];
-      }
-      if (currentBeat) {
-        guide.beats.push(currentBeat);
-        currentBeat = null;
-        collectingMove = false;
-        collectingSignals = false;
-      }
-      currentSection = trimmed.replace('## ', '').toUpperCase().trim();
-      continue;
-    }
-
-    // Subsection headers (###)
-    if (trimmed.startsWith('### ')) {
-      // Flush buffer for previous subsection
-      if (buffer.length > 0) {
-        flushBuffer(guide, currentSection, buffer);
-        buffer = [];
-      }
-
-      const subsection = trimmed.replace('### ', '').trim();
-
-      // Check for beat header
-      const beatMatch = subsection.match(/^BEAT\s+(\d+)\s*·\s*(.+)$/i);
-      if (beatMatch) {
-        if (currentBeat) {
-          guide.beats.push(currentBeat);
-        }
-        currentBeat = {
-          number: parseInt(beatMatch[1]),
-          title: beatMatch[2].trim(),
-          moveParagraphs: [],
-          signals: []
-        };
-        collectingMove = false;
-        collectingSignals = false;
-        continue;
-      }
-
-      // Detect WALK IN EXPECTING with pronoun variants
-      const walkMatch = subsection.match(/^((?:THEY|SHE|HE)'LL WALK IN EXPECTING)$/i);
-      if (walkMatch) {
-        currentSection = 'WALK IN EXPECTING';
-        guide.walkInExpectingHeader = walkMatch[1].toUpperCase();
-        continue;
-      }
-
-      currentSection = subsection.toUpperCase().trim();
-      continue;
-    }
-
-    // Inside a beat
-    if (currentBeat) {
-      if (trimmed === '**MOVE:**') {
-        collectingMove = true;
-        collectingSignals = false;
-        continue;
-      }
-      if (trimmed === '**SIGNALS:**') {
-        collectingMove = false;
-        collectingSignals = true;
-        continue;
-      }
-
-      if (collectingMove && trimmed) {
-        currentBeat.moveParagraphs.push(trimmed);
-      }
-
-      if (collectingSignals) {
-        const signalMatch = trimmed.match(/^\[(ADVANCE|HOLD|ADJUST)\]\s*(.+?)\s*\|\s*(.+)$/);
-        if (signalMatch) {
-          currentBeat.signals.push({
-            type: signalMatch[1].toLowerCase() as 'advance' | 'hold' | 'adjust',
-            see: signalMatch[2].trim(),
-            do: signalMatch[3].trim()
-          });
-        }
-      }
-      continue;
-    }
-
-    // Reading the Room
-    if (trimmed.startsWith('**WORKING:**')) {
-      const items = trimmed.replace('**WORKING:**', '').trim();
-      guide.working = items.split(' · ').map(s => s.trim()).filter(Boolean);
-      continue;
-    }
-    if (trimmed.startsWith('**STALLING:**')) {
-      const items = trimmed.replace('**STALLING:**', '').trim();
-      guide.stalling = items.split(' · ').map(s => s.trim()).filter(Boolean);
-      continue;
-    }
-
-    // Reset moves — bold condition lines (but not WORKING/STALLING/MOVE/SIGNALS)
-    if (currentSection === 'RESET MOVES' || currentSection === 'RESET MOVES — WHEN THE FLOW STALLS') {
-      const conditionMatch = trimmed.match(/^\*\*(.+?)\*\*$/);
-      if (conditionMatch) {
-        const moveLines: string[] = [];
-        let whyText = '';
-        let j = i + 1;
-        while (j < lines.length) {
-          const nextLine = lines[j].trim();
-          if (nextLine === '---' || nextLine.startsWith('## ') || nextLine.startsWith('### ')) break;
-          if (/^\*\*.+\*\*$/.test(nextLine) && !nextLine.startsWith('**WORKING') && !nextLine.startsWith('**STALLING')) {
-            // Next reset move condition
-            break;
-          }
-          if (nextLine.startsWith('WHY:')) {
-            whyText = nextLine.replace('WHY:', '').trim();
-            j++;
-            while (j < lines.length) {
-              const whyLine = lines[j].trim();
-              if (!whyLine || whyLine.startsWith('**') || whyLine === '---' || whyLine.startsWith('## ')) break;
-              whyText += ' ' + whyLine;
-              j++;
-            }
-            break;
-          }
-          if (nextLine) {
-            moveLines.push(nextLine);
-          }
-          j++;
-        }
-        if (moveLines.length > 0 || whyText) {
-          guide.resetMoves.push({
-            condition: conditionMatch[1],
-            move: moveLines.join(' '),
-            why: whyText
-          });
-        }
-        i = j - 1;
-        continue;
-      }
-    }
-
-    // Lights Up / Shuts Down bullets
-    if (trimmed.startsWith('- **')) {
-      const bulletMatch = trimmed.match(/^- \*\*(.+?)\*\*\s*(.*)$/);
-      if (bulletMatch) {
-        const bullet = { boldPhrase: bulletMatch[1], body: bulletMatch[2] };
-        if (currentSection.includes('LIGHTS') || currentSection.includes('LIGHT')) {
-          guide.lightsUp.push(bullet);
-        } else if (currentSection.includes('SHUTS') || currentSection.includes('SHUT')) {
-          guide.shutsDown.push(bullet);
-        }
-      }
-      continue;
-    }
-
-    // Collect regular content into buffer
-    if (trimmed) {
-      buffer.push(trimmed);
-    } else if (buffer.length > 0) {
-      buffer.push('');
+  // ── Extract donor name from header ──
+  for (; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    const headerMatch = trimmed.match(/^##\s+MEETING GUIDE\s*[—–-]\s*(.+)$/i);
+    if (headerMatch) {
+      guide.donorName = headerMatch[1].trim();
+      i++;
+      break;
     }
   }
 
-  // Flush final buffer
-  if (buffer.length > 0) {
-    flushBuffer(guide, currentSection, buffer);
+  // ── Parse SETUP ──
+  // Find ### SETUP
+  for (; i < lines.length; i++) {
+    if (lines[i].trim().match(/^###\s+SETUP$/i)) {
+      i++;
+      break;
+    }
   }
 
-  // Push final beat if exists
-  if (currentBeat) {
-    guide.beats.push(currentBeat);
+  // Parse setup groups: **Heading.** followed by - bullets
+  while (i < lines.length) {
+    skipBlanks();
+    if (i >= lines.length) break;
+    const trimmed = lines[i].trim();
+
+    // Stop at next ### section
+    if (trimmed.startsWith('### ')) break;
+    // Skip horizontal rules
+    if (trimmed === '---') { i++; continue; }
+
+    // Look for **Heading.**
+    const headingMatch = trimmed.match(/^\*\*(.+?)\.\*\*$/);
+    if (headingMatch) {
+      const heading = headingMatch[1];
+      i++;
+      const bullets: string[] = [];
+
+      // Collect bullets
+      while (i < lines.length) {
+        const bLine = lines[i].trim();
+        if (bLine.startsWith('- ')) {
+          bullets.push(bLine.slice(2));
+          i++;
+        } else if (bLine === '') {
+          i++;
+          // Check if next non-blank line is still a bullet
+          skipBlanks();
+          if (i < lines.length && lines[i].trim().startsWith('- ')) {
+            continue;
+          }
+          break;
+        } else {
+          break;
+        }
+      }
+
+      guide.setupGroups.push({ heading, bullets });
+      continue;
+    }
+
+    i++;
+  }
+
+  // ── Parse THE ARC ──
+  // Find ### THE ARC
+  for (; i < lines.length; i++) {
+    if (lines[i].trim().match(/^###\s+THE ARC$/i)) {
+      i++;
+      break;
+    }
+  }
+
+  // Parse beats: **Beat N: Title** or **Beat N · Title**
+  while (i < lines.length) {
+    skipBlanks();
+    if (i >= lines.length) break;
+    const trimmed = lines[i].trim();
+
+    // Stop at next ### section
+    if (trimmed.startsWith('### ') && !trimmed.match(/^###\s+THE ARC/i)) break;
+    if (trimmed === '---') { i++; continue; }
+
+    // Beat header
+    const beatMatch = trimmed.match(/^\*\*Beat\s+(\d+)[:\s·–-]+\s*(.+?)\*\*$/i);
+    if (beatMatch) {
+      const beat: Beat = {
+        number: parseInt(beatMatch[1]),
+        title: beatMatch[2].trim(),
+        goal: '',
+        start: '',
+        stayParagraphs: [],
+        stayScenarios: [],
+        stallingText: '',
+        continue: '',
+      };
+      i++;
+      skipBlanks();
+
+      // Goal line (italic)
+      if (i < lines.length) {
+        const goalLine = lines[i].trim();
+        const goalMatch = goalLine.match(/^\*(.+)\*$/);
+        if (goalMatch) {
+          beat.goal = goalMatch[1];
+          i++;
+        }
+      }
+
+      // Parse START, STAY, CONTINUE phases
+      while (i < lines.length) {
+        skipBlanks();
+        if (i >= lines.length) break;
+        const pLine = lines[i].trim();
+
+        // Next beat or section
+        if (pLine.match(/^\*\*Beat\s+\d+/i) || pLine.startsWith('### ') || pLine === '---') break;
+
+        // START
+        if (pLine.startsWith('**START.**')) {
+          const startText = pLine.replace('**START.**', '').trim();
+          const startLines = [startText];
+          i++;
+          while (i < lines.length) {
+            const sLine = lines[i].trim();
+            if (sLine.startsWith('**STAY.**') || sLine.startsWith('**CONTINUE.**') ||
+                sLine.match(/^\*\*Beat\s+\d+/i) || sLine.startsWith('### ') || sLine === '---') break;
+            if (sLine) startLines.push(sLine);
+            i++;
+          }
+          beat.start = startLines.filter(Boolean).join(' ');
+          continue;
+        }
+
+        // STAY
+        if (pLine.startsWith('**STAY.**')) {
+          const stayFirstLine = pLine.replace('**STAY.**', '').trim();
+          i++;
+
+          const stayContent: string[] = [];
+          if (stayFirstLine) stayContent.push(stayFirstLine);
+
+          while (i < lines.length) {
+            const sLine = lines[i].trim();
+            if (sLine.startsWith('**CONTINUE.**') || sLine.match(/^\*\*Beat\s+\d+/i) ||
+                sLine.startsWith('### ') || sLine === '---') break;
+            stayContent.push(lines[i]);
+            i++;
+          }
+
+          // Process STAY content: separate paragraphs, scenarios, and stalling
+          parseStayContent(stayContent, beat);
+          continue;
+        }
+
+        // CONTINUE
+        if (pLine.startsWith('**CONTINUE.**')) {
+          const contText = pLine.replace('**CONTINUE.**', '').trim();
+          const contLines = [contText];
+          i++;
+          while (i < lines.length) {
+            const cLine = lines[i].trim();
+            if (cLine.match(/^\*\*Beat\s+\d+/i) || cLine.startsWith('### ') ||
+                cLine === '---' || cLine.startsWith('**START.**') || cLine.startsWith('**STAY.**')) break;
+            if (cLine) contLines.push(cLine);
+            i++;
+          }
+          beat.continue = contLines.filter(Boolean).join(' ');
+          continue;
+        }
+
+        i++;
+      }
+
+      guide.beats.push(beat);
+      continue;
+    }
+
+    i++;
+  }
+
+  // ── Parse TRIPWIRES ──
+  for (; i < lines.length; i++) {
+    if (lines[i].trim().match(/^###\s+TRIPWIRES$/i)) {
+      i++;
+      break;
+    }
+  }
+
+  while (i < lines.length) {
+    skipBlanks();
+    if (i >= lines.length) break;
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('### ') || trimmed === '---') {
+      if (trimmed === '---') { i++; continue; }
+      break;
+    }
+
+    // Tripwire: **Label.** *Tell:* ... *Recovery:* ...
+    const tripMatch = trimmed.match(/^\*\*(.+?)\.\*\*\s*\*Tell:\*\s*(.+?)\s*\*Recovery:\*\s*(.+)$/);
+    if (tripMatch) {
+      guide.tripwires.push({
+        name: tripMatch[1].trim(),
+        tell: tripMatch[2].trim(),
+        recovery: tripMatch[3].trim(),
+      });
+      i++;
+      continue;
+    }
+
+    // Multi-line tripwire: **Label.** on one line, Tell/Recovery on next lines
+    const nameMatch = trimmed.match(/^\*\*(.+?)\.\*\*$/);
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      let tell = '';
+      let recovery = '';
+      i++;
+
+      // Look for Tell and Recovery
+      while (i < lines.length) {
+        const tLine = lines[i].trim();
+        if (tLine === '' || tLine.startsWith('**') || tLine.startsWith('### ') || tLine === '---') break;
+        const tellMatch = tLine.match(/^\*Tell:\*\s*(.+)$/);
+        if (tellMatch) {
+          tell = tellMatch[1].trim();
+          i++;
+          continue;
+        }
+        const recMatch = tLine.match(/^\*Recovery:\*\s*(.+)$/);
+        if (recMatch) {
+          recovery = recMatch[1].trim();
+          i++;
+          continue;
+        }
+        i++;
+      }
+
+      if (tell || recovery) {
+        guide.tripwires.push({ name, tell, recovery });
+      }
+      continue;
+    }
+
+    i++;
+  }
+
+  // ── Parse ONE LINE ──
+  for (; i < lines.length; i++) {
+    if (lines[i].trim().match(/^###\s+ONE LINE$/i)) {
+      i++;
+      break;
+    }
+  }
+
+  skipBlanks();
+  if (i < lines.length) {
+    guide.oneLine = lines[i].trim();
   }
 
   return guide;
 }
 
-function flushBuffer(guide: ParsedGuide, section: string, buffer: string[]): void {
-  const text = buffer.filter(Boolean).join('\n\n');
-  if (!text) return;
+/**
+ * Parse the content within a STAY section into paragraphs, scenarios, and stalling indicator.
+ */
+function parseStayContent(contentLines: string[], beat: Beat): void {
+  // Join into text blocks separated by blank lines
+  const blocks: string[][] = [];
+  let currentBlock: string[] = [];
 
-  if (section === 'POSTURE') {
-    guide.posture = text;
-  } else if (section === 'WALK IN EXPECTING') {
-    guide.walkInExpecting = text;
-  } else if (section === 'THEIR INNER TRUTH') {
-    guide.innerTruth = text.split('\n\n').filter(Boolean);
-  } else if (section === 'PRIMARY TERRITORY') {
-    guide.primaryTerritory = text;
-  } else if (section.startsWith('SECONDARY TERRITORY')) {
-    const num = section.match(/\d+/)?.[0] || String(guide.secondaryTerritories.length + 1);
-    guide.secondaryTerritories.push({ label: `Secondary Territory ${num}`, body: text });
-  } else if (section === 'SETTING') {
-    guide.setting = text;
-  } else if (section === 'ENERGY') {
-    guide.energy = text;
+  for (const line of contentLines) {
+    if (line.trim() === '') {
+      if (currentBlock.length > 0) {
+        blocks.push(currentBlock);
+        currentBlock = [];
+      }
+    } else {
+      currentBlock.push(line.trim());
+    }
+  }
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock);
+  }
+
+  // Process each block
+  for (let b = 0; b < blocks.length; b++) {
+    const block = blocks[b];
+    const firstLine = block[0];
+
+    // Check for stalling indicator patterns
+    const isStalling = isLastContentBlock(blocks, b) && looksLikeStalling(block);
+
+    if (isStalling) {
+      beat.stallingText = block.join(' ');
+      continue;
+    }
+
+    // Check for scenario bullets: lines starting with - **
+    const scenarioLines = block.filter(l => l.startsWith('- **'));
+    const nonScenarioLines = block.filter(l => !l.startsWith('- **'));
+
+    if (scenarioLines.length > 0) {
+      // Add any prose before the scenarios
+      if (nonScenarioLines.length > 0) {
+        beat.stayParagraphs.push(nonScenarioLines.join(' '));
+      }
+
+      // Parse scenario bullets
+      for (const sLine of scenarioLines) {
+        const sMatch = sLine.match(/^- \*\*(.+?)\*\*\s*[—–-]?\s*(.*)$/);
+        if (sMatch) {
+          beat.stayScenarios.push({ label: sMatch[1], text: sMatch[2] });
+        }
+      }
+    } else {
+      // Plain prose paragraph
+      beat.stayParagraphs.push(block.join(' '));
+    }
   }
 }
 
-/** Escape HTML and convert markdown bold to <strong> */
+/** Check if this is the last non-empty block */
+function isLastContentBlock(blocks: string[][], index: number): boolean {
+  for (let j = index + 1; j < blocks.length; j++) {
+    if (blocks[j].some(l => l.trim())) return false;
+  }
+  return true;
+}
+
+/** Heuristic: does this block look like a stalling indicator? */
+function looksLikeStalling(block: string[]): boolean {
+  const text = block.join(' ').toLowerCase();
+  return (
+    text.startsWith('when it\'s stalling') ||
+    text.startsWith('when it\'s stalling') ||
+    text.startsWith('if he\'s ') ||
+    text.startsWith('if she\'s ') ||
+    text.startsWith('if he treats') ||
+    text.startsWith('if she treats') ||
+    text.startsWith('if he stays') ||
+    text.startsWith('if she stays') ||
+    text.startsWith('if he doesn\'t') ||
+    text.startsWith('if she doesn\'t') ||
+    text.startsWith('if he retreats') ||
+    text.startsWith('if she retreats') ||
+    text.includes('stalling:') ||
+    text.includes('hasn\'t asked a single') ||
+    text.includes('pleasant but') ||
+    text.includes('energy is fading') ||
+    text.includes('she\'s evaluating your organization')
+  );
+}
+
+// ── HTML RENDERING ──────────────────────────────────────────────────
+
+/** Escape HTML entities and convert markdown bold to <strong> */
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -285,756 +427,552 @@ function escapeHtml(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
-/** Raw CSS for the meeting guide */
 function getCSS(): string {
   return `:root {
-  --advance: #1a7a3a;
-  --advance-bg: #edf7f0;
-  --adjust: #b45309;
-  --adjust-bg: #fef3e2;
-  --hold: #1e5a8a;
-  --hold-bg: #edf4fa;
-  --warning: #7c2d36;
-  --warning-bg: #fdf2f2;
-  --warning-border: #e8cfd1;
-  --bg: #fafaf8;
+  --ink: #1c1917;
+  --ink-secondary: #78716c;
+  --ink-tertiary: #a8a29e;
+  --paper: #fafaf9;
   --surface: #ffffff;
-  --text: #1a1a18;
-  --text-secondary: #5a5a56;
-  --border: #e0dfd8;
-  --border-strong: #c8c7c0;
-  --beat-line: #d4d3cc;
+  --rule: #e7e5e4;
+  --rule-strong: #d6d3d1;
+  --accent: #b45309;
+  --accent-light: #fef3c7;
+  --beat-bg: #f5f5f4;
+  --start-color: #0f766e;
+  --start-bg: #f0fdfa;
+  --stay-color: #1e40af;
+  --stay-bg: #eff6ff;
+  --continue-color: #7e22ce;
+  --continue-bg: #faf5ff;
+  --trip-color: #991b1b;
+  --trip-bg: #fef2f2;
+  --trip-border: #fecaca;
 }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.55;
+  font-family: 'Instrument Sans', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.6;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
+
 .page {
-  max-width: 1100px;
+  max-width: 820px;
   margin: 0 auto;
-  padding: 40px 32px;
+  padding: 48px 40px 80px;
 }
 
 /* HEADER */
 .header {
-  margin-bottom: 40px;
-  padding-bottom: 24px;
-  border-bottom: 2px solid var(--text);
+  margin-bottom: 48px;
+  position: relative;
+}
+.header::after {
+  content: '';
+  display: block;
+  margin-top: 20px;
+  height: 2px;
+  background: var(--ink);
+}
+.header-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  margin-bottom: 6px;
 }
 .header h1 {
-  font-size: 22px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.header .subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
-/* SECTION HEADERS */
-.section-header {
-  font-size: 13px;
-  font-weight: 700;
+/* SECTION LABELS */
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
+  color: var(--ink-secondary);
+  margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--rule-strong);
 }
 
-/* DONOR READ */
-.donor-read { margin-bottom: 40px; }
-.posture {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--text);
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  line-height: 1.65;
-  font-size: 13.5px;
+/* SETUP */
+.setup {
+  margin-bottom: 56px;
 }
-.card-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  display: block;
-  margin-bottom: 8px;
-  color: var(--text-secondary);
+.setup-group {
+  margin-bottom: 28px;
+}
+.setup-group:last-child {
+  margin-bottom: 0;
+}
+.setup-heading {
+  font-size: 13px;
   font-weight: 700;
-}
-
-/* LIGHTS / SHUTS */
-.lights-shuts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-.lights-col, .shuts-col {
-  border-radius: 6px;
-  padding: 16px 18px;
-}
-.lights-col { background: var(--advance-bg); border: 1px solid #c8e0cf; }
-.shuts-col { background: var(--adjust-bg); border: 1px solid #e8d9c0; }
-.lights-col h3, .shuts-col h3 {
-  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 12px;
-  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin-bottom: 10px;
 }
-.lights-col h3 { color: var(--advance); }
-.shuts-col h3 { color: var(--adjust); }
-.lights-col ul, .shuts-col ul {
+.setup-bullets {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.lights-col li, .shuts-col li {
-  font-size: 13px;
-  line-height: 1.6;
-  padding-left: 14px;
+.setup-bullets li {
+  font-size: 13.5px;
+  line-height: 1.65;
+  padding-left: 16px;
   position: relative;
 }
-.lights-col li::before, .shuts-col li::before {
-  content: '';
+.setup-bullets li::before {
+  content: '\\2014';
   position: absolute;
   left: 0;
-  top: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  color: var(--ink-tertiary);
+  font-weight: 500;
 }
-.lights-col li::before { background: var(--advance); }
-.shuts-col li::before { background: var(--adjust); }
-
-/* PREP CARDS */
-.prep-row {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.prep-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px 18px;
-}
-.prep-card h3 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-weight: 700;
-}
-.prep-card p {
-  font-size: 13px;
-  line-height: 1.65;
-  margin-bottom: 10px;
-}
-.prep-card p:last-child { margin-bottom: 0; }
-.prep-card.warning-card {
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
-}
-.prep-card.warning-card h3 { color: var(--warning); }
-
-/* ALIGNMENT MAP */
-.alignment-map { margin-bottom: 40px; }
-.primary-territory {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--text);
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  line-height: 1.65;
-  font-size: 13.5px;
-}
-.secondary-territories {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.secondary-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px 18px;
-}
-.secondary-item .sec-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-.secondary-item .sec-body {
-  font-size: 13px;
-  line-height: 1.6;
+.setup-bullets li strong {
+  font-weight: 600;
 }
 
-/* LEGEND */
-.legend {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  flex-wrap: wrap;
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.legend-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-}
-.legend-icon.advance { background: var(--advance); }
-.legend-icon.hold { background: var(--hold); }
-.legend-icon.adjust { background: var(--adjust); }
-
-/* ARC PREP ROW */
-.arc-prep-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 28px;
-}
-.arc-prep-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px 18px;
-}
-.arc-prep-card h3 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-weight: 700;
-}
-.arc-prep-card p {
-  font-size: 13px;
-  line-height: 1.65;
+/* THE ARC */
+.arc {
+  margin-bottom: 56px;
 }
 
-/* BEATS */
-.flow { position: relative; }
 .beat {
+  margin-bottom: 4px;
   position: relative;
-  margin-bottom: 8px;
 }
-.beat-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.beat-number {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--text);
-  color: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.beat-title {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.beat-move {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--text);
-  padding: 18px 20px;
-  margin-bottom: 10px;
-  margin-left: 48px;
-  line-height: 1.7;
-  font-size: 13.5px;
-}
-.beat-move p {
-  margin-bottom: 12px;
-}
-.beat-move p:last-child {
+.beat:last-child {
   margin-bottom: 0;
 }
 
-/* SIGNAL ROWS */
-.beat-signals {
-  margin-left: 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.signal {
-  display: flex;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  background: var(--surface);
-  min-height: 40px;
-}
-.signal-tag {
-  width: 6px;
-  flex-shrink: 0;
-}
-.signal-tag.advance { background: var(--advance); }
-.signal-tag.hold { background: var(--hold); }
-.signal-tag.adjust { background: var(--adjust); }
-.signal-content {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-}
-.signal-see {
-  flex: 1;
-  padding: 8px 14px;
-  font-size: 13px;
-  border-right: 1px solid var(--border);
+.beat-header {
   display: flex;
   align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+  padding: 16px 0;
 }
-.signal-do {
-  flex: 1;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-}
-.signal.advance .signal-do { color: var(--advance); }
-.signal.hold .signal-do { color: var(--hold); }
-.signal.adjust .signal-do { color: var(--adjust); }
-
-/* CONNECTOR */
-.connector {
-  margin-left: 17px;
-  width: 2px;
-  height: 24px;
-  background: var(--beat-line);
-  position: relative;
-}
-.connector::after {
-  content: '';
-  position: absolute;
-  bottom: -3px;
-  left: -3px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--beat-line);
-  border-top: none;
-  border-left: none;
-  transform: rotate(45deg);
-}
-
-/* READING THE ROOM */
-.room-legend {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-strong);
-}
-.room-legend h2 {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 14px;
-}
-.room-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-.room-col {
-  padding: 14px 18px;
-  font-size: 13px;
-  line-height: 1.65;
-}
-.room-col:first-child {
-  background: var(--advance-bg);
-  border: 1px solid #c8e0cf;
-  border-right: none;
-  border-radius: 6px 0 0 6px;
-}
-.room-col:last-child {
-  background: var(--adjust-bg);
-  border: 1px solid #e8d9c0;
-  border-radius: 0 6px 6px 0;
-}
-.room-col h3 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-.room-col:first-child h3 { color: var(--advance); }
-.room-col:last-child h3 { color: var(--adjust); }
-.room-col ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.room-col li {
-  padding-left: 14px;
-  position: relative;
-  font-size: 12.5px;
-}
-.room-col li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 7px;
-  width: 6px;
-  height: 6px;
+.beat-number {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-}
-.room-col:first-child li::before { background: var(--advance); }
-.room-col:last-child li::before { background: var(--adjust); }
-
-/* RESET MOVES */
-.reset-section {
-  margin-top: 32px;
-  padding-top: 28px;
-  border-top: 2px solid var(--warning);
-}
-.reset-section h2 {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--warning);
-  margin-bottom: 16px;
+  background: var(--ink);
+  color: var(--paper);
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.reset-icon {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  background: var(--warning);
-  color: white;
-  border-radius: 3px;
-  font-size: 12px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 22px;
   font-weight: 700;
+  flex-shrink: 0;
 }
-.reset-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+.beat-title-block {
+  flex: 1;
 }
-.reset-card {
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
-  border-radius: 6px;
-  padding: 14px 16px;
+.beat-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
 }
-.reset-condition {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--warning);
+.beat-goal {
+  font-size: 13px;
+  color: var(--ink-secondary);
+  font-style: italic;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.beat-connector {
+  width: 2px;
+  height: 20px;
+  background: var(--rule-strong);
+  margin-left: 23px;
+}
+
+.beat-body {
+  margin-left: 64px;
   margin-bottom: 8px;
 }
-.reset-move {
+
+.phase {
+  margin-bottom: 16px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.phase:last-child {
+  margin-bottom: 0;
+}
+
+.phase-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  display: inline-block;
+}
+.phase-content {
+  padding: 14px 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  border: 1px solid;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+}
+
+/* START */
+.phase.start .phase-label {
+  background: var(--start-color);
+  color: white;
+  border-radius: 6px 6px 0 0;
+}
+.phase.start .phase-content {
+  background: var(--start-bg);
+  border-color: #99f6e4;
+}
+
+/* STAY */
+.phase.stay .phase-label {
+  background: var(--stay-color);
+  color: white;
+  border-radius: 6px 6px 0 0;
+}
+.phase.stay .phase-content {
+  background: var(--stay-bg);
+  border-color: #bfdbfe;
+}
+.phase.stay .phase-content p {
+  margin-bottom: 12px;
+}
+.phase.stay .phase-content p:last-child {
+  margin-bottom: 0;
+}
+
+.stay-scenarios {
+  list-style: none;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stay-scenarios li {
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.65;
+}
+.stay-scenarios li::before {
+  content: '\\25B8';
+  position: absolute;
+  left: 0;
+  color: var(--stay-color);
+  font-size: 12px;
+  top: 2px;
+}
+.stay-scenarios li strong {
+  font-weight: 600;
+  color: var(--stay-color);
+}
+
+.stalling {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #93c5fd;
   font-size: 13px;
-  line-height: 1.55;
+  color: var(--ink);
 }
-.reset-why {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-  margin-top: 8px;
+.stalling-label {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* CONTINUE */
+.phase.continue .phase-label {
+  background: var(--continue-color);
+  color: white;
+  border-radius: 6px 6px 0 0;
+}
+.phase.continue .phase-content {
+  background: var(--continue-bg);
+  border-color: #d8b4fe;
+}
+
+/* TRIPWIRES */
+.tripwires {
+  margin-bottom: 56px;
+}
+.tripwire-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tripwire {
+  background: var(--trip-bg);
+  border: 1px solid var(--trip-border);
+  border-left: 4px solid var(--trip-color);
+  border-radius: 0 6px 6px 0;
+  padding: 16px 20px;
+}
+.tripwire-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--trip-color);
+  margin-bottom: 6px;
+}
+.tripwire-row {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+.tripwire-row:last-child {
+  margin-bottom: 0;
+}
+.tripwire-row em {
+  font-style: italic;
+  color: var(--ink-secondary);
+}
+.tripwire-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--trip-color);
+  margin-right: 4px;
+}
+
+/* ONE LINE */
+.one-line {
+  margin-bottom: 0;
+}
+.one-line-box {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 28px 32px;
+  border-radius: 8px;
+  text-align: center;
+}
+.one-line-box p {
+  font-family: 'Source Serif 4', serif;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.5;
+  font-style: italic;
+  letter-spacing: -0.005em;
 }
 
-/* PRINT + RESPONSIVE */
+/* PRINT */
 @media print {
-  body {
-    font-size: 11px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    color-adjust: exact;
-  }
-  .page { padding: 20px; max-width: 100%; }
-  /* Allow beats and reset cards to break across pages — avoids empty pages */
-  .beat { break-inside: auto; }
-  .reset-card { break-inside: auto; }
-  /* Keep small elements together when possible */
-  .beat-header { break-inside: avoid; break-after: avoid; }
-  .signal { break-inside: avoid; }
-  .posture { break-inside: avoid; }
-  .prep-card { break-inside: avoid; }
-  .primary-territory { break-inside: avoid; }
-  .secondary-item { break-inside: avoid; }
-  .header { break-after: avoid; }
-  .section-header { break-after: avoid; }
-  /* Prevent orphaned section headers at bottom of page */
-  .room-legend { break-before: auto; }
-  .reset-section { break-before: auto; }
-  /* Keep connector with surrounding beats */
-  .connector { break-inside: avoid; break-before: avoid; break-after: avoid; }
-}
-@media (max-width: 768px) {
-  .lights-shuts { grid-template-columns: 1fr; }
-
-  .arc-prep-row { grid-template-columns: 1fr; }
-  .reset-grid { grid-template-columns: 1fr; }
-  .room-grid { grid-template-columns: 1fr; }
-  .room-col:first-child {
-    border-right: 1px solid #c8e0cf;
-    border-radius: 6px 6px 0 0;
-  }
-  .room-col:last-child {
-    border-radius: 0 0 6px 6px;
-  }
-  .signal-content { flex-direction: column; }
-  .signal-see {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
+  body { background: white; font-size: 12px; }
+  .page { padding: 24px; max-width: none; }
+  .beat-number { width: 40px; height: 40px; font-size: 18px; }
+  .phase { break-inside: avoid; }
+  .tripwire { break-inside: avoid; }
+  .one-line-box { background: var(--ink) !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }`;
 }
 
-/** Scope CSS by prefixing every selector with `.mg-root` */
+/** Scope CSS by prefixing selectors with `.mg-root` */
 function scopeCSS(css: string): string {
   return css
-    // Prefix class selectors at start of line FIRST (before other replacements create .mg-root lines)
     .replace(/^(\.[a-z])/gm, '.mg-root $1')
-    // Prefix @media inner class selectors
     .replace(/^(\s+)(\.[a-z])/gm, '$1.mg-root $2')
-    // Now replace :root, body, * — these won't be double-prefixed since they don't start with .
     .replace(/:root/g, '.mg-root')
     .replace(/^body\s*\{/gm, '.mg-root {')
     .replace(/^\*\s*\{/gm, '.mg-root * {')
-    // @media inner body references
     .replace(/^(\s+)body\s*\{/gm, '$1.mg-root {');
 }
 
-/** Generate the body content HTML (no document wrapper) */
-function renderBodyContent(guide: ParsedGuide): string {
-  return `<div class="header">
-  <h1>Meeting Guide &mdash; ${escapeHtml(guide.donorName)}</h1>
-  <div class="subtitle">${escapeHtml(guide.subtitle)}</div>
-</div>
+// ── BODY RENDERING ──────────────────────────────────────────────────
 
-<div class="donor-read">
-  <div class="section-header">The Donor Read</div>
+function renderBeat(beat: Beat, isLast: boolean): string {
+  // START phase
+  const startHtml = `      <div class="phase start">
+        <div class="phase-label">Start</div>
+        <div class="phase-content">
+          ${escapeHtml(beat.start)}
+        </div>
+      </div>`;
 
-  <div class="posture">
-    <span class="card-label">Posture</span>
-    ${escapeHtml(guide.posture).split('\n\n').map(p => `<p>${p}</p>`).join('\n    ')}
-  </div>
+  // STAY phase
+  let stayInner = '';
 
-  <div class="lights-shuts">
-    <div class="lights-col">
-      <h3>What Lights Them Up</h3>
-      <ul>
-        ${guide.lightsUp.map(item => `<li><strong>${escapeHtml(item.boldPhrase)}</strong> ${escapeHtml(item.body)}</li>`).join('\n        ')}
-      </ul>
-    </div>
-    <div class="shuts-col">
-      <h3>What Shuts Them Down</h3>
-      <ul>
-        ${guide.shutsDown.map(item => `<li><strong>${escapeHtml(item.boldPhrase)}</strong> ${escapeHtml(item.body)}</li>`).join('\n        ')}
-      </ul>
-    </div>
-  </div>
+  // Prose paragraphs
+  for (const p of beat.stayParagraphs) {
+    stayInner += `          <p>${escapeHtml(p)}</p>\n`;
+  }
 
-  <div class="prep-row">
-    <div class="prep-card warning-card">
-      <h3>${escapeHtml(guide.walkInExpectingHeader)}</h3>
-      <p>${escapeHtml(guide.walkInExpecting)}</p>
-    </div>
-    <div class="prep-card">
-      <h3>Their Inner Truth</h3>
-      ${guide.innerTruth.map(p => `<p>${escapeHtml(p)}</p>`).join('\n      ')}
-    </div>
-  </div>
-</div>
+  // Scenario bullets
+  if (beat.stayScenarios.length > 0) {
+    stayInner += `          <ul class="stay-scenarios">\n`;
+    for (const s of beat.stayScenarios) {
+      stayInner += `            <li><strong>${escapeHtml(s.label)}</strong> — ${escapeHtml(s.text)}</li>\n`;
+    }
+    stayInner += `          </ul>\n`;
+  }
 
-<div class="alignment-map">
-  <div class="section-header">The Alignment Map</div>
+  // Stalling indicator
+  if (beat.stallingText) {
+    stayInner += `          <div class="stalling">
+            <span class="stalling-label">Stalling:</span> ${escapeHtml(beat.stallingText)}
+          </div>\n`;
+  }
 
-  <div class="primary-territory">
-    <span class="card-label">Primary Territory</span>
-    ${escapeHtml(guide.primaryTerritory).split('\n\n').map(p => `<p>${p}</p>`).join('\n    ')}
-  </div>
+  const stayHtml = `      <div class="phase stay">
+        <div class="phase-label">Stay</div>
+        <div class="phase-content">
+${stayInner}        </div>
+      </div>`;
 
-  <div class="secondary-territories">
-    ${guide.secondaryTerritories.map(t => `<div class="secondary-item">
-      <div class="sec-label">${escapeHtml(t.label)}</div>
-      <div class="sec-body">${escapeHtml(t.body)}</div>
-    </div>`).join('\n    ')}
-  </div>
-</div>
+  // CONTINUE phase
+  const continueHtml = `      <div class="phase continue">
+        <div class="phase-label">Continue</div>
+        <div class="phase-content">
+          ${escapeHtml(beat.continue)}
+        </div>
+      </div>`;
 
-<div class="section-header">The Meeting Arc</div>
+  const connector = isLast ? '' : '\n\n  <div class="beat-connector"></div>';
 
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-icon advance">&rarr;</div>
-    <span>ADVANCE &mdash; beat worked, move forward</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-icon hold">&#9642;</div>
-    <span>HOLD &mdash; protect what's happening</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-icon adjust">&#8635;</div>
-    <span>ADJUST &mdash; still in this beat, shift approach</span>
-  </div>
-</div>
-
-<div class="arc-prep-row">
-  <div class="arc-prep-card">
-    <h3>Setting</h3>
-    <p>${escapeHtml(guide.setting)}</p>
-  </div>
-  <div class="arc-prep-card">
-    <h3>Energy</h3>
-    <p>${escapeHtml(guide.energy)}</p>
-  </div>
-</div>
-
-<div class="flow">
-${guide.beats.map((beat, idx) => `  <div class="beat">
+  return `  <div class="beat">
     <div class="beat-header">
       <div class="beat-number">${beat.number}</div>
-      <div class="beat-title">${escapeHtml(beat.title)}</div>
+      <div class="beat-title-block">
+        <div class="beat-title">${escapeHtml(beat.title)}</div>
+        <div class="beat-goal">${escapeHtml(beat.goal)}</div>
+      </div>
     </div>
-    <div class="beat-move">
-      ${beat.moveParagraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('\n      ')}
+    <div class="beat-body">
+${startHtml}
+${stayHtml}
+${continueHtml}
     </div>
-    <div class="beat-signals">
-      ${beat.signals.map(sig => `<div class="signal ${sig.type}">
-        <div class="signal-tag ${sig.type}"></div>
-        <div class="signal-content">
-          <div class="signal-see">${escapeHtml(sig.see)}</div>
-          <div class="signal-do">${escapeHtml(sig.do)}</div>
-        </div>
-      </div>`).join('\n      ')}
-    </div>
-  </div>
-  ${idx < guide.beats.length - 1 ? '<div class="connector"></div>' : ''}`).join('\n')}
-</div>
-
-<div class="room-legend">
-  <h2>Reading the Room</h2>
-  <div class="room-grid">
-    <div class="room-col">
-      <h3>Working</h3>
-      <ul>
-        ${guide.working.map(item => `<li>${escapeHtml(item)}</li>`).join('\n        ')}
-      </ul>
-    </div>
-    <div class="room-col">
-      <h3>Stalling</h3>
-      <ul>
-        ${guide.stalling.map(item => `<li>${escapeHtml(item)}</li>`).join('\n        ')}
-      </ul>
-    </div>
-  </div>
-</div>
-
-<div class="reset-section">
-  <h2>
-    <span class="reset-icon">!</span>
-    Reset Moves &mdash; When the Flow Stalls
-  </h2>
-  <div class="reset-grid">
-    ${guide.resetMoves.map(rm => `<div class="reset-card">
-      <div class="reset-condition">${escapeHtml(rm.condition)}</div>
-      <div class="reset-move">${escapeHtml(rm.move)}</div>
-      <div class="reset-why">${escapeHtml(rm.why)}</div>
-    </div>`).join('\n    ')}
-  </div>
-</div>
-
-</div>`;
+  </div>${connector}`;
 }
 
+function renderBodyContent(guide: ParsedGuide): string {
+  // Header
+  let html = `<div class="header">
+  <div class="header-label">Meeting Guide</div>
+  <h1>${escapeHtml(guide.donorName)}</h1>
+</div>
+
+`;
+
+  // Setup
+  html += `<div class="setup">
+  <div class="section-label">Setup</div>
+
+`;
+  for (let g = 0; g < guide.setupGroups.length; g++) {
+    const group = guide.setupGroups[g];
+    html += `  <div class="setup-group">
+    <div class="setup-heading">${escapeHtml(group.heading)}</div>
+    <ul class="setup-bullets">
+`;
+    for (const bullet of group.bullets) {
+      html += `      <li>${escapeHtml(bullet)}</li>\n`;
+    }
+    html += `    </ul>
+  </div>\n`;
+    if (g < guide.setupGroups.length - 1) html += '\n';
+  }
+  html += `</div>
+
+`;
+
+  // The Arc
+  html += `<div class="arc">
+  <div class="section-label">The Arc</div>
+
+`;
+  for (let b = 0; b < guide.beats.length; b++) {
+    html += renderBeat(guide.beats[b], b === guide.beats.length - 1);
+    html += '\n';
+  }
+  html += `</div>
+
+`;
+
+  // Tripwires
+  html += `<div class="tripwires">
+  <div class="section-label">Tripwires</div>
+  <div class="tripwire-list">
+`;
+  for (const tw of guide.tripwires) {
+    html += `    <div class="tripwire">
+      <div class="tripwire-name">${escapeHtml(tw.name)}.</div>
+      <div class="tripwire-row"><span class="tripwire-tag">Tell:</span> <em>${escapeHtml(tw.tell)}</em></div>
+      <div class="tripwire-row"><span class="tripwire-tag">Recovery:</span> ${escapeHtml(tw.recovery)}</div>
+    </div>\n`;
+  }
+  html += `  </div>
+</div>
+
+`;
+
+  // One Line
+  html += `<div class="one-line">
+  <div class="section-label">One Line</div>
+  <div class="one-line-box">
+    <p>${escapeHtml(guide.oneLine)}</p>
+  </div>
+</div>`;
+
+  return html;
+}
+
+// ── PUBLIC API ───────────────────────────────────────────────────────
+
 /**
- * Convert parsed guide to self-contained HTML document (for file download)
+ * Convert meeting guide markdown to self-contained HTML document
  */
-function renderHTML(guide: ParsedGuide): string {
+export function formatMeetingGuide(markdown: string): string {
+  const parsed = parseMarkdown(markdown);
   const css = getCSS();
-  const body = renderBodyContent(guide);
+  const body = renderBodyContent(parsed);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meeting Guide — ${escapeHtml(guide.donorName)}</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Meeting Guide &mdash; ${escapeHtml(parsed.donorName)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 ${css}
 </style>
 </head>
 <body>
 <div class="page">
+
 ${body}
+
 </div>
 </body>
 </html>`;
-}
-
-/**
- * Render embeddable HTML fragment with scoped CSS (no document wrapper)
- */
-function renderEmbeddable(guide: ParsedGuide): string {
-  const css = scopeCSS(getCSS());
-  const body = renderBodyContent(guide);
-  return `<style>${css}</style>
-<div class="mg-root">
-<div class="page">
-${body}
-</div>
-</div>`;
-}
-
-/**
- * Main export: convert meeting guide markdown to styled, self-contained HTML document
- */
-export function formatMeetingGuide(markdown: string): string {
-  const parsed = parseMarkdown(markdown);
-  return renderHTML(parsed);
 }
 
 /**
@@ -1043,7 +981,15 @@ export function formatMeetingGuide(markdown: string): string {
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
-  return renderEmbeddable(parsed);
+  const css = scopeCSS(getCSS());
+  const body = renderBodyContent(parsed);
+
+  return `<style>${css}</style>
+<div class="mg-root">
+<div class="page">
+${body}
+</div>
+</div>`;
 }
 
 /**
