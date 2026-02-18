@@ -760,6 +760,42 @@ ${pdfText}`;
     console.log(`[Stage 3] ${screenedSources.length} survived screening (${screeningResult.killedUrls.length} killed)`);
     emit(`${screenedSources.length} sources passed screening`, 'research', 10, TOTAL_STEPS);
 
+    // ── DEBUG: Screening Audit Report ─────────────────────────────
+    try {
+      const screeningAudit: string[] = [
+        `SCREENING AUDIT — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Total input: ${allSources.length}`,
+        `Surviving: ${screenedSources.length}`,
+        `Killed: ${screeningResult.killedUrls.length}`,
+        '',
+        '=== SURVIVING SOURCES ===',
+      ];
+      for (const s of screenedSources) {
+        const nameInSnippet = s.snippet?.toLowerCase().includes(donorName.toLowerCase()) ? 'YES' : 'NO';
+        const nameInTitle = s.title?.toLowerCase().includes(donorName.toLowerCase()) ? 'YES' : 'NO';
+        screeningAudit.push(
+          `\n  URL: ${s.url}`,
+          `  Title: ${s.title}`,
+          `  Source: ${s.source || 'tavily'}`,
+          `  Attribution: ${s.attribution || 'none'}`,
+          `  Screened by LLM: ${s.screened === true ? 'YES' : s.screened === false ? 'NO (fail-open)' : 'unknown'}`,
+          `  Bypass screening: ${s.bypassScreening ? 'YES' : 'no'}`,
+          `  Query category: ${s.queryCategory || 'n/a'}`,
+          `  Query: ${s.query || 'n/a'}`,
+          `  Name in snippet: ${nameInSnippet}`,
+          `  Name in title: ${nameInTitle}`,
+          `  Snippet: ${(s.snippet || '').slice(0, 200)}`,
+        );
+      }
+      screeningAudit.push('', '=== KILLED SOURCES ===');
+      for (const k of screeningResult.killedUrls) {
+        screeningAudit.push(`  ${k.url}  —  Pass ${k.pass}: ${k.killReason}`);
+      }
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-screening-audit.txt', screeningAudit.join('\n'));
+      console.log('[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-screening-audit.txt');
+    } catch (e) { /* ignore */ }
+
     // ── Stage 4: Content Fetch + Dedup ───────────────────────────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
     emit(`Fetching full content for ${screenedSources.length} sources`, 'research', 11, TOTAL_STEPS);
@@ -817,10 +853,130 @@ ${pdfText}`;
     console.log(`[Stage 5] Selected ${selectedSources.length} sources (~${stage5Result.stats.estimatedContentChars} chars)`);
     emit(`${selectedSources.length} sources selected for synthesis (~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars)`, 'research', 15, TOTAL_STEPS);
 
+    // ── DEBUG: Source Selection Provenance Report ──────────────────
+    // Shows every source that will reach Deep Research, with a
+    // name-in-content check to flag potential off-target leaks.
+    try {
+      const nameLower = donorName.toLowerCase();
+      const nameParts = donorName.trim().split(/\s+/);
+      const lastName = nameParts[nameParts.length - 1]?.toLowerCase() || '';
+
+      const provLines: string[] = [
+        `SOURCE SELECTION PROVENANCE — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Selected: ${selectedSources.length} of ${stage5Result.stats.totalScored} scored`,
+        `Total content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
+        `Budget: ${100_000} chars`,
+        '',
+      ];
+
+      let suspectCount = 0;
+      for (let i = 0; i < selectedSources.length; i++) {
+        const s = selectedSources[i];
+        const content = (s.content || '').toLowerCase();
+        const nameInContent = content.includes(nameLower);
+        const lastNameInContent = lastName ? content.includes(lastName) : false;
+
+        // Flag as suspect if neither full name nor last name appears in content
+        const suspect = !nameInContent && !lastNameInContent;
+        if (suspect) suspectCount++;
+
+        // Dimension coverage summary
+        const dimEntries = Object.entries(s.depth_scores)
+          .filter(([, score]) => score > 0)
+          .sort(([, a], [, b]) => b - a);
+        const dimSummary = dimEntries.length > 0
+          ? dimEntries.map(([d, score]) => `${d}:${score}`).join(' ')
+          : 'ALL ZEROS';
+        const totalDepth = dimEntries.reduce((sum, [, score]) => sum + score, 0);
+
+        // Find original source metadata from screenedSources
+        const origSource = screenedSources.find(sc => sc.url === s.url);
+
+        provLines.push(
+          `${suspect ? '*** SUSPECT ***' : ''} SOURCE ${i + 1}/${selectedSources.length}`,
+          `  URL: ${s.url}`,
+          `  Title: ${s.title}`,
+          `  Tier: ${s.sourceTier}`,
+          `  Attribution: ${s.attribution || 'none'}`,
+          `  Content length: ${(s.content || '').length} chars`,
+          `  Name in content: ${nameInContent ? 'YES (full)' : lastNameInContent ? 'YES (last name only)' : '*** NO ***'}`,
+          `  Provenance: ${origSource?.source || 'unknown'}`,
+          `  Screened: ${origSource?.screened === true ? 'YES' : origSource?.screened === false ? 'FAIL-OPEN' : 'unknown'}`,
+          `  Bypass screening: ${origSource?.bypassScreening ? 'YES' : 'no'}`,
+          `  Query: ${origSource?.query || 'n/a'}`,
+          `  Query category: ${origSource?.queryCategory || 'n/a'}`,
+          `  Depth scores (${dimEntries.length} dims, total=${totalDepth}): ${dimSummary}`,
+          '',
+        );
+      }
+
+      // Summary header
+      provLines.splice(5, 0,
+        `SUSPECT SOURCES (name not in content): ${suspectCount}`,
+        suspectCount > 0 ? '^^^ These sources likely have nothing to do with the target donor ^^^' : '',
+      );
+
+      // Not-selected sources summary
+      provLines.push('', '=== NOT SELECTED ===');
+      for (const ns of stage5Result.notSelected.slice(0, 30)) {
+        provLines.push(`  ${ns.url}  —  ${ns.reason}`);
+      }
+      if (stage5Result.notSelected.length > 30) {
+        provLines.push(`  ... and ${stage5Result.notSelected.length - 30} more`);
+      }
+
+      // Coverage gap summary
+      provLines.push('', '=== COVERAGE GAP REPORT ===', coverageGapReport);
+
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-source-selection.txt', provLines.join('\n'));
+      console.log(`[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-source-selection.txt (${suspectCount} suspect sources)`);
+      if (suspectCount > 0) {
+        console.warn(`[Stage 5] *** ${suspectCount} selected sources do NOT mention "${donorName}" in content ***`);
+      }
+    } catch (e) { /* ignore */ }
+
     // ── Stage 6: Research Synthesis (Deep Research) ──────────────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
     emit('Launching bounded synthesis with pre-fetched sources', 'research', 16, TOTAL_STEPS);
     console.log('[Stage 6] Running Deep Research (bounded synthesis)');
+
+    // ── DEBUG: Source Packet Manifest ─────────────────────────────
+    // Exact contents of the user message sent to Deep Research.
+    try {
+      const manifestLines: string[] = [
+        `SOURCE PACKET MANIFEST — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Sources in packet: ${selectedSources.length}`,
+        `Packet size: ${sourcesFormatted.length} chars`,
+        '',
+        'Each entry below shows what Deep Research sees for this source.',
+        '(Content is truncated to first 300 chars in this manifest.)',
+        '',
+      ];
+      const nameLower = donorName.toLowerCase();
+      const lastNameLower = donorName.trim().split(/\s+/).pop()?.toLowerCase() || '';
+      for (let i = 0; i < selectedSources.length; i++) {
+        const s = selectedSources[i];
+        const content = s.content || '';
+        const nameHit = content.toLowerCase().includes(nameLower)
+          ? 'FULL NAME'
+          : content.toLowerCase().includes(lastNameLower)
+            ? 'LAST NAME ONLY'
+            : '*** ABSENT ***';
+        manifestLines.push(
+          `--- SOURCE ${i + 1} ---`,
+          `URL: ${s.url}`,
+          `Title: ${s.title}`,
+          `Tier: ${s.sourceTier}  |  Attribution: ${s.attribution || 'none'}`,
+          `Content length: ${content.length} chars  |  Name check: ${nameHit}`,
+          `Content preview: ${content.slice(0, 300).replace(/\n/g, ' ')}`,
+          '',
+        );
+      }
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt', manifestLines.join('\n'));
+      console.log('[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt');
+    } catch (e) { /* ignore */ }
 
     deepResearchResult = await runDeepResearchV5(
       donorName,
