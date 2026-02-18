@@ -1,18 +1,18 @@
-// Stage 6 — Batched Deep Research (v5 Pipeline, replaces monolithic DR call)
+// Stage 6 — Batched Evidence Extraction + Gap-Fill (v5 Pipeline)
 //
-// Splits ranked sources into 30K-char batches and runs sequential DR calls.
-// Each batch outputs structured JSON (CumulativeEvidence). Evidence accumulates
-// across batches, so later batches know what's already established and focus on
-// gaps, contradictions, and extensions.
+// Source batches (1-3) run on Sonnet — structured extraction from pre-fetched text.
+// Gap-fill runs on DR (Deep Research) — the only batch that actually needs web search.
 //
-// Batch 1: Richest sources + empty scaffold + extraction instructions + gap report
-// Batch 2: Next sources + accumulated evidence + updated coverage map
-// Batch 3: Next sources + accumulated evidence + updated coverage map
-// Gap-fill: No sources. Full accumulated evidence. Web search for thin dimensions.
+// Batch 1: Richest sources + empty scaffold + extraction instructions + gap report  → Sonnet
+// Batch 2: Next sources + accumulated evidence + updated coverage map               → Sonnet
+// Batch 3: Next sources + accumulated evidence + updated coverage map               → Sonnet
+// Gap-fill: No sources. Full accumulated evidence. Web search for thin dimensions.  → DR
 //
-// Each batch is independently retriable. If writing stalls for 10 min, kill+retry once.
+// Source batches: ~20-40s each via Sonnet. Standard API retry (2 attempts).
+// Gap-fill: 5-10 min via DR with stall detection + retry.
 
 import { writeFileSync, mkdirSync } from 'fs';
+import Anthropic from '@anthropic-ai/sdk';
 import { formatDimensionsForPrompt } from '../dimensions';
 import type { LinkedInData } from '../prompts/extraction-prompt';
 import type { ScoredSource, CoverageGap } from '../prompts/source-scoring';
@@ -44,9 +44,9 @@ const BATCH_CHAR_CEILING = 30_000;
 /** Maximum number of source batches (not counting gap-fill) */
 const MAX_SOURCE_BATCHES = 3;
 
-// WRITING_STALL_TIMEOUT_MS: 10 min stall detection is handled by the
-// executeDeepResearch stream/polling layer. Batched retries happen at
-// the runBatchWithRetry level (2 attempts per batch).
+// Source batches (Sonnet): standard API retry, 2 attempts. No stall detection needed.
+// Gap-fill batch (DR): 10 min stall detection handled by executeDeepResearch
+// stream/polling layer, with runBatchWithRetry providing 2 attempts.
 
 type ProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
@@ -346,7 +346,95 @@ function validateAndNormalize(raw: any): CumulativeEvidence {
   return scaffold;
 }
 
-// ── Run a single batch with timeout/retry ─────────────────────────
+// ── Run a source batch via Sonnet ──────────────────────────────────
+
+const sonnet = new Anthropic();
+const SONNET_MODEL = 'claude-sonnet-4-5-20250929';
+
+async function executeSourceBatchWithSonnet(
+  label: string,
+  developerMessage: string,
+  userMessage: string,
+  onProgress?: ProgressCallback,
+  abortSignal?: AbortSignal,
+  onActivity?: ActivityCallback,
+): Promise<{ evidence: CumulativeEvidence | null; durationMs: number; tokenUsage: any }> {
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+
+    console.log(`[Batched Sonnet] ${label} attempt ${attempt}`);
+    const t0 = Date.now();
+
+    try {
+      onActivity?.({
+        openaiStatus: 'in_progress',
+        totalOutputItems: 0,
+        searches: 0,
+        pageVisits: 0,
+        reasoningSteps: 0,
+        codeExecutions: 0,
+        recentSearchQueries: [],
+        reasoningSummary: [`[Sonnet] ${label}${attempt > 1 ? ` (retry ${attempt})` : ''}`],
+        hasMessage: false,
+        elapsedSeconds: 0,
+      }, `sonnet-${label}`);
+
+      const response = await sonnet.messages.create({
+        model: SONNET_MODEL,
+        max_tokens: 16000,
+        system: developerMessage,
+        messages: [{ role: 'user', content: userMessage }],
+      }, abortSignal ? { signal: abortSignal } : undefined);
+
+      const durationMs = Date.now() - t0;
+
+      // Extract text
+      const textBlock = response.content.find((c: any) => c.type === 'text');
+      if (!textBlock || textBlock.type !== 'text') {
+        console.warn(`[Batched Sonnet] ${label} attempt ${attempt}: no text in response`);
+        if (attempt === 1) continue;
+        return { evidence: null, durationMs, tokenUsage: {} };
+      }
+
+      const rawText = textBlock.text;
+      const evidence = parseCumulativeEvidenceFromOutput(rawText);
+
+      if (!evidence) {
+        console.warn(`[Batched Sonnet] ${label} attempt ${attempt}: failed to parse JSON (${rawText.length} chars)`);
+        // Debug save raw response for inspection
+        try {
+          writeFileSync(`/tmp/prospectai-outputs/DEBUG-sonnet-${label.replace(/[^a-zA-Z0-9]/g, '-')}-raw-attempt${attempt}.txt`, rawText);
+        } catch { /* ignore */ }
+        if (attempt === 1) continue;
+        return { evidence: null, durationMs, tokenUsage: {} };
+      }
+
+      const tokenUsage = {
+        inputTokens: response.usage?.input_tokens || 0,
+        outputTokens: response.usage?.output_tokens || 0,
+        reasoningTokens: 0,
+      };
+
+      console.log(`[Batched Sonnet] ${label}: parsed ${evidence.sources_processed.length} sources, ${evidence.cross_source_patterns.length} patterns (${(durationMs / 1000).toFixed(1)}s)`);
+
+      return { evidence, durationMs, tokenUsage };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === 'Pipeline aborted by client') throw err;
+
+      console.error(`[Batched Sonnet] ${label} attempt ${attempt} failed: ${errMsg}`);
+      if (attempt === 2) {
+        console.error(`[Batched Sonnet] ${label} failed after 2 attempts — skipping`);
+        return { evidence: null, durationMs: Date.now() - t0, tokenUsage: {} };
+      }
+    }
+  }
+
+  return { evidence: null, durationMs: 0, tokenUsage: {} };
+}
+
+// ── Run a DR batch with timeout/retry (gap-fill only) ─────────────
 
 async function runBatchWithRetry(
   label: string,
@@ -457,9 +545,9 @@ export async function runBatchedDeepResearch(
   const totalSourcesInBatches = batches.reduce((sum, b) => sum + b.sources.length, 0);
   const droppedSources = rankedSources.length - totalSourcesInBatches;
 
-  console.log(`[Batched DR] ${batches.length} source batches from ${rankedSources.length} ranked sources (${droppedSources} dropped)`);
+  console.log(`[Batched] ${batches.length} source batches (Sonnet) from ${rankedSources.length} ranked sources (${droppedSources} dropped)`);
   for (const b of batches) {
-    console.log(`[Batched DR]   Batch ${b.batchNumber}: ${b.sources.length} sources, ~${Math.round(b.totalChars / 1000)}K chars`);
+    console.log(`[Batched]   Batch ${b.batchNumber}: ${b.sources.length} sources, ~${Math.round(b.totalChars / 1000)}K chars`);
   }
 
   let accumulated = createEmptyScaffold();
@@ -521,11 +609,10 @@ export async function runBatchedDeepResearch(
       writeFileSync(`/tmp/prospectai-outputs/DEBUG-batch-${batch.batchNumber}-user-msg.txt`, userMessage);
     } catch { /* ignore */ }
 
-    const result = await runBatchWithRetry(
+    const result = await executeSourceBatchWithSonnet(
       `${donorName} ${batchLabel}`,
       developerMessage,
       userMessage,
-      false, // no web search for source batches
       onProgress,
       abortSignal,
       onActivity,
@@ -533,16 +620,14 @@ export async function runBatchedDeepResearch(
 
     if (result.evidence) {
       accumulated = mergeEvidence(accumulated, result.evidence);
-      console.log(`[Batched DR] ${batchLabel}: merged. Total quotes: ${countTotalQuotes(accumulated)}, patterns: ${accumulated.cross_source_patterns.length}`);
+      console.log(`[Batched Sonnet] ${batchLabel}: merged. Total quotes: ${countTotalQuotes(accumulated)}, patterns: ${accumulated.cross_source_patterns.length}`);
     } else {
-      console.warn(`[Batched DR] ${batchLabel}: no parseable output — skipped`);
+      console.warn(`[Batched Sonnet] ${batchLabel}: no parseable output — skipped`);
     }
 
-    allCitations.push(...result.citations);
-    totalSearchCount += result.searchCount;
+    // Source batches via Sonnet don't produce citations or search counts
     totalInputTokens += result.tokenUsage?.inputTokens || 0;
     totalOutputTokens += result.tokenUsage?.outputTokens || 0;
-    totalReasoningTokens += result.tokenUsage?.reasoningTokens || 0;
 
     // Debug save accumulated evidence after each batch
     try {
@@ -653,10 +738,10 @@ export async function runBatchedDeepResearch(
     }, null, 2));
   } catch { /* ignore */ }
 
-  console.log(`[Batched DR] Complete: ${batches.length} batches + ${hasGaps ? '1' : '0'} gap-fill, ${countTotalQuotes(accumulated)} quotes, ${dossier.length} chars, ${durationMin} min`);
+  console.log(`[Batched] Complete: ${batches.length} Sonnet batches + ${hasGaps ? '1 DR' : '0'} gap-fill, ${countTotalQuotes(accumulated)} quotes, ${dossier.length} chars, ${durationMin} min`);
 
   emit(
-    `Deep research complete: ${batches.length} batches, ${totalSearchCount} searches, ${Math.round(dossier.length / 4)} tokens, ${durationMin} min`,
+    `Research complete: ${batches.length} extraction batches + ${hasGaps ? '1' : '0'} gap-fill, ${totalSearchCount} searches, ${Math.round(dossier.length / 4)} tokens, ${durationMin} min`,
     'research',
     22,
     38,
@@ -678,7 +763,7 @@ export async function runBatchedDeepResearch(
       reasoningTokens: totalReasoningTokens,
     },
     durationMs,
-    researchStrategy: 'v5-batched-synthesis',
+    researchStrategy: 'v5-sonnet-extract-dr-gapfill',
     evidenceDensity,
   };
 }
