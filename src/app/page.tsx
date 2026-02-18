@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProgressEvent {
@@ -30,6 +30,7 @@ export default function Home() {
   const [totalSteps, setTotalSteps] = useState(28);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activity, setActivity] = useState<any>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -86,108 +87,134 @@ export default function Home() {
       }
 
       const { jobId } = await submitResponse.json();
-      console.log('[Poll] Job submitted:', jobId);
+      console.log('[SSE] Job submitted:', jobId);
       setActiveJobId(jobId);
 
-      // Step 2: Poll for status every 20 seconds
-      const POLL_INTERVAL = 20_000;
-      const MAX_POLL_DURATION = 45 * 60 * 1000; // 45 minute safety cap
-      const pollStart = Date.now();
+      // Shared handler for both SSE events and poll responses
+      const handleJobData = (data: any) => {
+        if (data.type === 'complete') {
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+          setActiveJobId(null);
+          localStorage.setItem('lastProfile', JSON.stringify(data.result));
+          router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+          return true;
+        }
+        if (data.type === 'error') {
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+          setActiveJobId(null);
+          setProgressMessages(prev => [...prev, {
+            type: 'error' as const,
+            message: `Error: ${data.message || 'Generation failed'}`
+          }]);
+          setIsLoading(false);
+          return true;
+        }
+        if (data.type === 'cancelled') {
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+          setActiveJobId(null);
+          setProgressMessages(prev => [...prev, {
+            type: 'status' as const,
+            message: 'Research cancelled.'
+          }]);
+          setIsLoading(false);
+          return true;
+        }
 
-      const poll = async (): Promise<void> => {
-        while (true) {
-          // Safety timeout
-          if (Date.now() - pollStart > MAX_POLL_DURATION) {
-            setProgressMessages(prev => [...prev, {
-              type: 'error' as const,
-              message: 'Error: Generation timed out. Please try again.'
-            }]);
-            setIsLoading(false);
-            setActiveJobId(null);
-            return;
-          }
-
-          try {
-            const statusResponse = await fetch(`/api/generate/status/${jobId}`);
-            if (!statusResponse.ok) {
-              throw new Error(`Status check failed: ${statusResponse.status}`);
+        // Progress update
+        if (data.phase) setCurrentPhase(data.phase);
+        if (data.step) setCurrentStep(data.step);
+        if (data.totalSteps) setTotalSteps(data.totalSteps);
+        if (data.activity) setActivity(data.activity);
+        if (data.message) {
+          setProgressMessages(prev => {
+            const lastMsg = prev[prev.length - 1]?.message;
+            if (lastMsg !== data.message) {
+              return [...prev, { type: 'status' as const, message: data.message }];
             }
-
-            const status = await statusResponse.json();
-
-            if (status.status === 'complete') {
-              console.log('[Poll] Job complete, navigating to profile');
-              setActiveJobId(null);
-              localStorage.setItem('lastProfile', JSON.stringify(status.result));
-              router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
-              return;
+            return prev;
+          });
+        }
+        if (data.milestones?.length) {
+          setProgressMessages(prev => {
+            const existingMilestones = new Set(prev.filter(m => m.message.startsWith('\u2713')).map(m => m.message));
+            const newMilestones = data.milestones.filter((m: string) => !existingMilestones.has(m));
+            if (newMilestones.length > 0) {
+              return [...prev, ...newMilestones.map((m: string) => ({ type: 'status' as const, message: m }))];
             }
+            return prev;
+          });
+        }
+        return false;
+      };
 
-            if (status.status === 'failed') {
-              console.error('[Poll] Job failed:', status.error);
-              setActiveJobId(null);
+      // Polling fallback — called when SSE drops
+      const startPollingFallback = () => {
+        console.warn('[Poll] SSE lost, falling back to polling every 4s');
+        const POLL_INTERVAL = 4_000;
+        const MAX_POLL_DURATION = 45 * 60 * 1000;
+        const pollStart = Date.now();
+
+        const loop = async () => {
+          while (true) {
+            if (Date.now() - pollStart > MAX_POLL_DURATION) {
               setProgressMessages(prev => [...prev, {
                 type: 'error' as const,
-                message: `Error: ${status.error || 'Generation failed'}`
+                message: 'Error: Generation timed out. Please try again.'
               }]);
               setIsLoading(false);
-              return;
-            }
-
-            if (status.status === 'cancelled') {
-              console.log('[Poll] Job cancelled');
               setActiveJobId(null);
-              setProgressMessages(prev => [...prev, {
-                type: 'status' as const,
-                message: 'Research cancelled.'
-              }]);
-              setIsLoading(false);
               return;
             }
+            try {
+              const res = await fetch(`/api/generate/status/${jobId}`);
+              if (!res.ok) throw new Error(`Status ${res.status}`);
+              const status = await res.json();
 
-            // Still running — update progress UI
-            if (status.phase) setCurrentPhase(status.phase);
-            if (status.step) setCurrentStep(status.step);
-            if (status.totalSteps) setTotalSteps(status.totalSteps);
-
-            // Capture activity data for rich display
-            if (status.activity) {
-              setActivity(status.activity);
+              const mapped = status.status === 'complete'
+                ? { type: 'complete', result: status.result }
+                : status.status === 'failed'
+                  ? { type: 'error', message: status.error }
+                  : status.status === 'cancelled'
+                    ? { type: 'cancelled' }
+                    : {
+                        type: 'progress',
+                        phase: status.phase,
+                        step: status.step,
+                        totalSteps: status.totalSteps,
+                        message: status.message,
+                        milestones: status.milestones,
+                        activity: status.activity,
+                      };
+              if (handleJobData(mapped)) return;
+            } catch (err) {
+              console.warn('[Poll] Error (will retry):', err);
             }
-
-            // Add latest message if it's new
-            if (status.message) {
-              setProgressMessages(prev => {
-                const lastMsg = prev[prev.length - 1]?.message;
-                if (lastMsg !== status.message) {
-                  return [...prev, { type: 'status' as const, message: status.message }];
-                }
-                return prev;
-              });
-            }
-
-            // Add any new milestones
-            if (status.milestones?.length) {
-              setProgressMessages(prev => {
-                const existingMilestones = new Set(prev.filter(m => m.message.startsWith('\u2713')).map(m => m.message));
-                const newMilestones = status.milestones.filter((m: string) => !existingMilestones.has(m));
-                if (newMilestones.length > 0) {
-                  return [...prev, ...newMilestones.map((m: string) => ({ type: 'status' as const, message: m }))];
-                }
-                return prev;
-              });
-            }
-          } catch (pollError) {
-            console.warn('[Poll] Status check error (will retry):', pollError);
-            // Don't fail immediately on a single poll error — network blip
+            await new Promise(r => setTimeout(r, POLL_INTERVAL));
           }
+        };
+        loop();
+      };
 
-          // Wait before next poll
-          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+      // Step 2: Open SSE stream for real-time progress
+      const es = new EventSource(`/api/job-status/${jobId}`);
+      eventSourceRef.current = es;
+
+      es.onmessage = (event) => {
+        try {
+          handleJobData(JSON.parse(event.data));
+        } catch (e) {
+          console.warn('[SSE] Parse error:', e);
         }
       };
 
-      await poll();
+      es.onerror = () => {
+        es.close();
+        eventSourceRef.current = null;
+        startPollingFallback();
+      };
     } catch (error) {
       console.error('Error:', error);
       setProgressMessages(prev => [...prev, {
@@ -395,6 +422,8 @@ export default function Home() {
               className="mt-6 text-xs text-white/30 hover:text-white/60 transition-colors duration-200 underline underline-offset-2"
               onClick={async () => {
                 try {
+                  eventSourceRef.current?.close();
+                  eventSourceRef.current = null;
                   await fetch(`/api/generate/cancel/${activeJobId}`, { method: 'POST' });
                   setActiveJobId(null);
                   setActivity(null);

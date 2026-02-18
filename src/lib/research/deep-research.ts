@@ -328,9 +328,9 @@ async function executeDeepResearch(
           if (event.item?.type === 'web_search_call') {
             const actionType = event.item.action?.type || 'search';
             if (actionType === 'search') {
-              const query = event.item.action?.query || 'unknown';
-              console.log(`[Deep Research] Searching: "${query}"`);
-              searchQueries.push(query);
+              // Query text not reliably populated on 'added' events —
+              // capture it on 'output_item.done' where it's always present.
+              console.log(`[Deep Research] Search starting...`);
             } else if (actionType === 'open_page' || actionType === 'find_in_page') {
               pageVisits++;
             }
@@ -348,6 +348,7 @@ async function executeDeepResearch(
             if (actionType === 'search') {
               const query = event.item.action?.query || 'unknown';
               console.log(`[Deep Research] Search done: "${query}" -> ${event.item.status}`);
+              searchQueries.push(query);
             } else if (actionType === 'open_page' || actionType === 'find_in_page') {
               pageVisits++;
             }
