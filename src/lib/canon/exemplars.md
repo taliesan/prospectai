@@ -1,6 +1,24 @@
-# EXEMPLAR PROFILES
+═══════════════════════════════════════════════════════════════════════
+⛔ EXEMPLAR ZONE — START ⛔
+═══════════════════════════════════════════════════════════════════════
 
-The following three profiles are the production standard. They demonstrate the Geoffrey Block register, the seven-section structure, correct evidence deployment, and appropriate section length variation. The voice is direct, warm, and talking to a person — not performing on the page. If a sentence sounds like something you'd write in a report rather than say to a colleague, it fails. Model the voice, the structure, and the judgment about when evidence is rich enough for strong claims and when it requires an honest ceiling.
+WARNING: Everything between START and END markers is REFERENCE MATERIAL
+ONLY. These are profiles of OTHER PEOPLE — not your target.
+
+DO NOT pull any facts, quotes, claims, affiliations, anecdotes, board
+memberships, dollar amounts, or behavioral descriptions from this zone
+into your output. These people's lives are NOT your target's life.
+
+You are learning VOICE and STRUCTURE only. Not content. Not facts.
+
+The following three profiles demonstrate the Geoffrey Block register,
+the seven-section structure, correct evidence deployment, and
+appropriate section length variation.
+═══════════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────────
+⛔ EXEMPLAR: CRAIG NEWMARK — NOT YOUR TARGET. DO NOT USE THEIR FACTS.
+───────────────────────────────────────────────────────────────────────
 
 # PERSUASION PROFILE — CRAIG NEWMARK
 
@@ -101,6 +119,10 @@ He visits sites. He does customer service himself. He knocked on doors. He will 
 
 ---
 
+───────────────────────────────────────────────────────────────────────
+⛔ EXEMPLAR: ROY BAHAT — NOT YOUR TARGET. DO NOT USE THEIR FACTS.
+───────────────────────────────────────────────────────────────────────
+
 # PERSUASION PROFILE — ROY BAHAT
 
 ---
@@ -199,6 +221,10 @@ He was "totally wrong" about AI as an investment thesis — admitted it publicly
 **What he watches for:** Whether you push back when he challenges you. Whether you lead with what's broken rather than what's polished. Whether you've done the work or just read about it. Whether you can hold multiple, contradictory ideas without needing to resolve them into a neat frame. Whether you treat him as the whole picture — not just a VC, not just a labor guy, not just a tech person — but the uncategorizable kid from the 102 interviews who built a career around making that work.
 
 ---
+
+───────────────────────────────────────────────────────────────────────
+⛔ EXEMPLAR: LORI McGLINCHEY — NOT YOUR TARGET. DO NOT USE THEIR FACTS.
+───────────────────────────────────────────────────────────────────────
 
 # PERSUASION PROFILE — LORI McGLINCHEY
 

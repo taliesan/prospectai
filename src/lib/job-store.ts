@@ -38,14 +38,19 @@ export interface Job {
 const jobs = new Map<string, Job>();
 const abortControllers = new Map<string, AbortController>();
 
-// Clean up jobs older than 30 minutes every 5 minutes
+// Clean up finished jobs after 30 minutes of inactivity.
+// Running jobs are NEVER cleaned up — the pipeline may take 30-45 minutes
+// with large source sets (21 sources / 150K chars).
 const JOB_TTL = 30 * 60 * 1000;
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
 
 setInterval(() => {
   const now = Date.now();
   jobs.forEach((job, id) => {
-    if (now - job.createdAt > JOB_TTL) {
+    // Never clean up a job that's still running
+    if (job.status === 'running') return;
+    // For finished/failed/cancelled jobs, clean up after TTL from last poll
+    if (now - job.lastPolledAt > JOB_TTL) {
       jobs.delete(id);
       abortControllers.delete(id);
     }

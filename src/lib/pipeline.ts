@@ -997,7 +997,7 @@ ${pdfText}`;
         `Selected sources: ${selectedSources.length}`,
         `Total content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
         '',
-        'Sources ranked by scarcity-weighted scoring within 80K char budget.',
+        `Sources ranked by scarcity-weighted scoring within ${Math.round(CONTENT_BUDGET_CHARS / 1000)}K char budget.`,
         'These go to Opus extraction+synthesis, NOT to DR.',
         '',
       ];
@@ -1687,6 +1687,14 @@ The "pass" field is false if critical_count > 0.
 5. LinkedIn claims: "Lists unemployment periods on LinkedIn" — verify against the canonical biographical data JSON. If the LinkedIn JSON doesn't show this, check if the research package mentions it. If neither does but an exemplar profile describes this behavior, EXEMPLAR_LEAK.
 
 6. Named connections: "Ford Foundation connections", "Bloomberg Beta network" — verify these organizations appear in the target's research package or LinkedIn, not just in an exemplar's profile.
+
+7. Institutional affiliations (CRITICAL): Every board seat, committee membership, roundtable chair, fellowship, advisory role, or named initiative in the profile must appear in EITHER:
+   (a) The canonical biographical data (LinkedIn JSON) — specifically the boards/advisory array and career history, OR
+   (b) A source in the research package that explicitly names this target in connection with that institution.
+
+   If an affiliation appears in the profile but NOT in (a) or (b), check whether it appears in an exemplar profile. If it does, classify as EXEMPLAR_LEAK with CRITICAL severity. The exemplar donors (Newmark, Bahat, McGlinchey) sit on different boards, chair different roundtables, and hold different advisory roles than the target. Common exemplar affiliations that MUST NOT leak include: Aspen Roundtable on Organized Labor, Blue Star Families, Aspen Digital, Bob Woodruff Foundation, Bloomberg Beta, Partnership on AI, National Domestic Workers Alliance, Public Interest Technology University Network, and any other institution mentioned in the exemplar profiles.
+
+   This rule also applies to role titles, organization names, and named initiatives that belong to exemplar donors — not just formal board seats. If someone "chairs" or "co-convened" or "advises" something, verify the claim the same way.
 
 Be thorough. Check every specific claim. Err on the side of flagging rather than passing. A false positive (flagging something that turns out to be fine) is far less costly than a false negative (passing exemplar contamination into the final profile).`,
       factCheckUserMessage,
