@@ -53,9 +53,17 @@ export const SCARCITY_CAP = 6.0;
 export const DIVERSITY_BONUSES = [1.3, 1.15, 1.05, 1.0]; // 0 selected, 1, 2, 3+
 
 /** Maximum chars of source content to send to Opus extraction+synthesis.
- *  80K is tuned for Opus's reliable reading range — enough for 8-16 sources
- *  depending on length mix, well within the 200K token context window. */
-export const CONTENT_BUDGET_CHARS = 80_000;
+ *  150K (~37K tokens) uses more of Opus's 200K token context window,
+ *  pulling in 15-25+ sources depending on length mix. */
+export const CONTENT_BUDGET_CHARS = 150_000;
+
+/** Domain concentration penalty thresholds.
+ *  After 3 sources from one domain, apply 30% penalty to additional sources.
+ *  After 5, apply 60%. Pushes algorithm to prefer diverse domains. */
+export const DOMAIN_PENALTY_THRESHOLDS = [
+  { after: 3, penalty: 0.30 },
+  { after: 5, penalty: 0.60 },
+] as const;
 
 /** How many sources per Sonnet scoring batch */
 const SCORING_BATCH_SIZE = 18;
@@ -363,6 +371,16 @@ async function scoreAllSources(
 // STAGE 5b — SOURCE SELECTION ALGORITHM (server code, no LLM)
 // ══════════════════════════════════════════════════════════════════════
 
+/** Extract the registrable domain from a URL (e.g. "intangible.ca" from "https://www.intangible.ca/foo") */
+function extractDomain(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    return hostname;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Iteratively select sources using scarcity-weighted scoring.
  * After each pick, scarcity recalculates because coverage changes.
@@ -378,6 +396,9 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
 
   // Source tier counts for diversity bonus
   const tierCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+  // Domain counts for concentration penalty
+  const domainCounts: Record<string, number> = {};
 
   while (remaining.length > 0) {
     let bestIdx = -1;
@@ -404,9 +425,19 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
       const tierCount = tierCounts[src.sourceTier] || 0;
       const diversityBonus = DIVERSITY_BONUSES[Math.min(tierCount, 3)];
 
+      // Domain concentration penalty: penalize sources from overrepresented domains
+      const srcDomain = extractDomain(src.url);
+      const domainCount = domainCounts[srcDomain] || 0;
+      let domainPenaltyFactor = 1.0;
+      for (const { after, penalty } of DOMAIN_PENALTY_THRESHOLDS) {
+        if (domainCount >= after) {
+          domainPenaltyFactor = 1.0 - penalty;
+        }
+      }
+
       // Guard against zero-length sources
       const charCount = Math.max(src.char_count, 1);
-      const score = (dimSum * diversityBonus) / charCount * 1000;
+      const score = (dimSum * diversityBonus * domainPenaltyFactor) / charCount * 1000;
 
       if (score > bestScore) {
         bestScore = score;
@@ -435,11 +466,56 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
       }
     }
 
-    // Update tier count
+    // Update tier count and domain count
     tierCounts[chosen.sourceTier]++;
+    const chosenDomain = extractDomain(chosen.url);
+    domainCounts[chosenDomain] = (domainCounts[chosenDomain] || 0) + 1;
 
     // Scarcity recalculates automatically on next loop iteration
     // because it reads from the updated coverage object
+  }
+
+  // ── Knapsack backfill: fill remaining budget with smaller high-value sources ──
+  // The greedy pass may leave budget unused because the next-ranked source was
+  // too large to fit. Scan remaining sources smallest-to-largest and add any
+  // that fit and have signal on at least 2 dimensions.
+  const budgetRemaining = CONTENT_BUDGET_CHARS - totalChars;
+  if (budgetRemaining > 0) {
+    const backfillCandidates = remaining
+      .map((s, idx) => ({ s, idx }))
+      .filter(({ s }) => {
+        const nonZeroDims = Object.values(s.depth_scores).filter(v => v > 0).length;
+        return nonZeroDims >= 2 && s.char_count <= budgetRemaining;
+      })
+      .sort((a, b) => a.s.char_count - b.s.char_count);
+
+    let backfillChars = 0;
+    const backfillIndices = new Set<number>();
+    for (const { s, idx } of backfillCandidates) {
+      if (totalChars + backfillChars + s.char_count > CONTENT_BUDGET_CHARS) continue;
+      backfillChars += s.char_count;
+      backfillIndices.add(idx);
+      selected.push(s);
+
+      // Update coverage and domain counts
+      for (let d = 1; d <= 25; d++) {
+        if ((s.depth_scores[d] || 0) > 0) coverage[d]++;
+      }
+      tierCounts[s.sourceTier]++;
+      const bfDomain = extractDomain(s.url);
+      domainCounts[bfDomain] = (domainCounts[bfDomain] || 0) + 1;
+    }
+
+    // Remove backfilled sources from remaining (reverse order to preserve indices)
+    const sortedIndices = Array.from(backfillIndices).sort((a, b) => b - a);
+    for (const idx of sortedIndices) {
+      remaining.splice(idx, 1);
+    }
+
+    totalChars += backfillChars;
+    if (backfillIndices.size > 0) {
+      console.log(`[Stage 5b] Backfill: added ${backfillIndices.size} smaller sources (~${backfillChars} chars), total now ${totalChars} chars`);
+    }
   }
 
   // Build gap report from final coverage state
