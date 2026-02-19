@@ -65,7 +65,7 @@ function parseMarkdown(markdown: string): ParsedGuide {
   // ── Extract donor name from header ──
   for (; i < lines.length; i++) {
     const trimmed = lines[i].trim();
-    const headerMatch = trimmed.match(/^##\s+MEETING GUIDE\s*[—–-]\s*(.+)$/i);
+    const headerMatch = trimmed.match(/^#{1,3}\s+MEETING GUIDE\s*[—–-]+\s*(.+)$/i);
     if (headerMatch) {
       guide.donorName = headerMatch[1].trim();
       i++;
@@ -94,7 +94,7 @@ function parseMarkdown(markdown: string): ParsedGuide {
     if (trimmed === '---') { i++; continue; }
 
     // Look for **Heading.**
-    const headingMatch = trimmed.match(/^\*\*(.+?)\.\*\*$/);
+    const headingMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*$/);
     if (headingMatch) {
       const heading = headingMatch[1];
       i++;
@@ -146,7 +146,7 @@ function parseMarkdown(markdown: string): ParsedGuide {
     if (trimmed === '---') { i++; continue; }
 
     // Beat header
-    const beatMatch = trimmed.match(/^\*\*Beat\s+(\d+)[:\s·–-]+\s*(.+?)\*\*$/i);
+    const beatMatch = trimmed.match(/^\*\*Beat\s+(\d+)[:\s·–-]+\s*(.+?)\.*\*\*\s*$/i);
     if (beatMatch) {
       const beat: Beat = {
         number: parseInt(beatMatch[1]),
@@ -164,7 +164,7 @@ function parseMarkdown(markdown: string): ParsedGuide {
       // Goal line (italic)
       if (i < lines.length) {
         const goalLine = lines[i].trim();
-        const goalMatch = goalLine.match(/^\*(.+)\*$/);
+        const goalMatch = goalLine.match(/^\*([^*].+?)\*\s*$/);
         if (goalMatch) {
           beat.goal = goalMatch[1];
           i++;
@@ -260,8 +260,8 @@ function parseMarkdown(markdown: string): ParsedGuide {
       break;
     }
 
-    // Tripwire: **Label.** *Tell:* ... *Recovery:* ...
-    const tripMatch = trimmed.match(/^\*\*(.+?)\.\*\*\s*\*Tell:\*\s*(.+?)\s*\*Recovery:\*\s*(.+)$/);
+    // Tripwire: **Label.** *Tell:* ... *Recovery:* ... (single-line)
+    const tripMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*\*Tell:\*\s*(.+?)\s*\*Recovery:\*\s*(.+)$/);
     if (tripMatch) {
       guide.tripwires.push({
         name: tripMatch[1].trim(),
@@ -273,17 +273,18 @@ function parseMarkdown(markdown: string): ParsedGuide {
     }
 
     // Multi-line tripwire: **Label.** on one line, Tell/Recovery on next lines
-    const nameMatch = trimmed.match(/^\*\*(.+?)\.\*\*$/);
+    const nameMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*$/);
     if (nameMatch) {
       const name = nameMatch[1].trim();
       let tell = '';
       let recovery = '';
       i++;
 
-      // Look for Tell and Recovery
+      // Look for Tell and Recovery (tolerate blank lines between them)
       while (i < lines.length) {
         const tLine = lines[i].trim();
-        if (tLine === '' || tLine.startsWith('**') || tLine.startsWith('### ') || tLine === '---') break;
+        if (tLine.startsWith('**') || tLine.startsWith('### ') || tLine === '---') break;
+        if (tLine === '') { i++; continue; }
         const tellMatch = tLine.match(/^\*Tell:\*\s*(.+)$/);
         if (tellMatch) {
           tell = tellMatch[1].trim();
@@ -320,6 +321,13 @@ function parseMarkdown(markdown: string): ParsedGuide {
   if (i < lines.length) {
     guide.oneLine = lines[i].trim();
   }
+
+  // Defensive logging — surface silent parse failures
+  if (!guide.donorName) console.warn('[Meeting Guide HTML] WARNING: donor name not parsed from markdown');
+  if (guide.setupGroups.length === 0) console.warn('[Meeting Guide HTML] WARNING: no setup groups parsed');
+  if (guide.beats.length === 0) console.warn('[Meeting Guide HTML] WARNING: no beats parsed');
+  if (guide.tripwires.length === 0) console.warn('[Meeting Guide HTML] WARNING: no tripwires parsed');
+  if (!guide.oneLine) console.warn('[Meeting Guide HTML] WARNING: no ONE LINE parsed');
 
   return guide;
 }
@@ -787,11 +795,27 @@ body {
 @media print {
   body { background: white; font-size: 12px; }
   .page { padding: 24px; max-width: none; }
+  .beat { page-break-before: auto; page-break-inside: avoid; }
   .beat-number { width: 40px; height: 40px; font-size: 18px; }
   .phase { break-inside: avoid; }
   .tripwire { break-inside: avoid; }
   .one-line-box { background: var(--ink) !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }`;
+}
+
+/** Compact overrides for embeddable version — tighter spacing for in-page rendering */
+function getCompactCSS(): string {
+  return `
+body { font-size: 13px; }
+.page { padding: 32px 28px 48px; }
+.setup { margin-bottom: 36px; }
+.arc { margin-bottom: 36px; }
+.tripwires { margin-bottom: 36px; }
+.beat-header { padding: 10px 0; }
+.beat-number { width: 40px; height: 40px; font-size: 18px; }
+.setup-bullets { gap: 6px; }
+.phase-content { padding: 10px 14px; }
+`;
 }
 
 /** Scope CSS by prefixing selectors with `.mg-root` */
@@ -981,7 +1005,7 @@ ${body}
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
-  const css = scopeCSS(getCSS());
+  const css = scopeCSS(getCSS() + getCompactCSS());
   const body = renderBodyContent(parsed);
 
   return `<style>${css}</style>
