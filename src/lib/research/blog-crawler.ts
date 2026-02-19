@@ -3,6 +3,7 @@
 
 import { complete } from '../anthropic';
 import { ResearchSource } from './screening';
+import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
 
 // ── Blog detection ──────────────────────────────────────────────────
 
@@ -390,13 +391,30 @@ Return JSON only:
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return {
+    const result = {
       isAuthor: !!parsed.isAuthor,
       reason: parsed.reason || 'No reason given',
     };
+
+    // Log to debug file
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      const logLine = `[${new Date().toISOString()}] ${result.isAuthor ? 'CONFIRMED' : 'REJECTED'} | Target: "${subjectName}" | URL: ${postUrl} | Reason: ${result.reason}\n`;
+      appendFileSync('/tmp/prospectai-outputs/DEBUG-blog-authorship-checks.txt', logLine);
+    } catch { /* ignore */ }
+
+    return result;
   } catch (err) {
     // Fail-open on API/network errors
     console.error(`[Blog Crawl] Authorship check failed for ${postUrl}:`, err);
+
+    // Log error to debug file
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      const logLine = `[${new Date().toISOString()}] ERROR (fail-open) | Target: "${subjectName}" | URL: ${postUrl} | Error: ${err instanceof Error ? err.message : String(err)}\n`;
+      appendFileSync('/tmp/prospectai-outputs/DEBUG-blog-authorship-checks.txt', logLine);
+    } catch { /* ignore */ }
+
     return { isAuthor: true, reason: 'Authorship check errored — failing open' };
   }
 }

@@ -675,6 +675,62 @@ export async function runDeepResearchV5(
 
 // runDeepResearchPipeline() archived to _archived/deep-research-legacy.ts
 
+// ── Gap-Fill Message Builders (v6 Pipeline) ─────────────────────────
+//
+// DR receives NO raw source text. It receives only the gap report,
+// LinkedIn career history, and instructions to search the web for
+// evidence on thin dimensions. The pre-fetched sources go to Opus.
+
+export function buildGapFillDeveloperMessage(
+  subjectName: string,
+  coverageGapReport: string,
+  linkedinJson: string,
+): string {
+  return `You are a behavioral research analyst performing gap-fill research on ${subjectName}.
+
+Pre-research has already scored and selected sources covering most behavioral dimensions. Your job is to find what the initial search missed — sources that Tavily didn't surface, pages that weren't in the initial query set, content that fills the specific gaps below.
+
+CURRENT COVERAGE STATUS:
+${coverageGapReport}
+
+YOUR INSTRUCTIONS:
+1. Review the coverage map. Focus on dimensions with ZERO_COVERAGE, CRITICAL_GAP, or THIN strength.
+2. Conduct targeted web searches for those gaps (max 15-20 searches).
+3. Read what you find carefully. Extract specific behavioral evidence — quotes, described actions, observed patterns — not biographical summaries.
+4. Write up your findings organized by dimension. For each dimension you find new evidence for:
+   - Quote the relevant passages (50-300 words each)
+   - Note the source URL
+   - Write a brief analysis of what the evidence reveals about behavior
+5. If a search returns nothing useful for a dimension, say so honestly. "No evidence found" is better than thin inference.
+6. Do NOT search for dimensions already at STRONG coverage unless you spot a contradiction.
+
+ANALYTICAL REGISTER: Write what the behavior looks like in the room. Not personality descriptions. What someone across the table would see, and what they should do about it.
+
+BEHAVIORAL DIMENSIONS:
+${formatDimensionsForPrompt()}
+
+CAREER HISTORY (use for search targeting):
+${linkedinJson}`;
+}
+
+export function buildGapFillUserMessage(
+  subjectName: string,
+  currentTitle: string,
+  currentEmployer: string,
+): string {
+  return `Target: ${subjectName}
+Current title: ${currentTitle} at ${currentEmployer}
+
+Find behavioral evidence for the underserved dimensions listed in the coverage status above. Focus your searches on:
+- Interview transcripts, podcast appearances, panel discussions
+- Conference talks or presentations
+- Long-form writing not on their known personal domains
+- Third-party profiles or features
+- Organizational documents from their tenure at key employers
+
+Prioritize sources where the target reveals HOW they think, not just WHAT they've done.`;
+}
+
 // ── Quality Validation ──────────────────────────────────────────────
 
 export function validateResearchPackage(
