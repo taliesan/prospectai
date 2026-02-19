@@ -109,6 +109,13 @@ export function updateActivity(id: string, responseId: string, activity: DeepRes
   job.activity = activity;
 }
 
+/** Clear deep research activity data (e.g. when DR completes and Opus begins). */
+export function clearActivity(id: string): void {
+  const job = jobs.get(id);
+  if (!job) return;
+  job.activity = undefined;
+}
+
 export function completeJob(id: string, result: any): void {
   const job = jobs.get(id);
   if (!job) return;

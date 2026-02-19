@@ -555,9 +555,37 @@ export async function runDimensionScoring(
 ): Promise<Stage5Result> {
   console.log(`[Stage 5] Scoring ${sources.length} sources against 25 dimensions`);
 
+  // Content diagnostics — surfaces fetch failures before scoring
+  const thinSources = sources.filter(s => (s.content || s.snippet || '').length < 500);
+  const emptySources = sources.filter(s => (s.content || s.snippet || '').length === 0);
+  if (thinSources.length > 0) {
+    console.warn(`[Stage 5] Content warning: ${thinSources.length} sources have <500 chars (${emptySources.length} empty)`);
+    for (const s of thinSources.slice(0, 10)) {
+      console.warn(`[Stage 5]   THIN: ${s.url} (${(s.content || s.snippet || '').length} chars)`);
+    }
+  }
+
   // ── Stage 5a: Parallel batched scoring ──────────────────────────
   const allScored = await scoreAllSources(sources, subjectName);
   console.log(`[Stage 5a] Scored ${allScored.length} sources`);
+
+  // Zero-score diagnostics — helps differentiate fetch problems from scoring prompt problems
+  const zeroScored = allScored.filter(s => Object.keys(s.depth_scores).length === 0);
+  const nonZeroScored = allScored.filter(s => Object.keys(s.depth_scores).length > 0);
+  console.log(`[Stage 5a] Score distribution: ${nonZeroScored.length} with signal, ${zeroScored.length} all-zero`);
+  if (zeroScored.length > 0) {
+    // Group zero-scored by content length to identify fetch vs scoring issues
+    const zeroWithContent = zeroScored.filter(s => s.char_count >= 500);
+    const zeroThin = zeroScored.filter(s => s.char_count > 0 && s.char_count < 500);
+    const zeroEmpty = zeroScored.filter(s => s.char_count === 0);
+    console.log(`[Stage 5a] Zero-scored breakdown: ${zeroEmpty.length} empty, ${zeroThin.length} thin (<500 chars), ${zeroWithContent.length} with content (>=500 chars)`);
+    if (zeroWithContent.length > 0) {
+      console.warn(`[Stage 5a] *** ${zeroWithContent.length} sources have real content but scored zero — possible scoring prompt issue ***`);
+      for (const s of zeroWithContent.slice(0, 5)) {
+        console.warn(`[Stage 5a]   CONTENT BUT ZERO: ${s.url} (${s.char_count} chars, tier ${s.sourceTier})`);
+      }
+    }
+  }
 
   // ── Stage 5b: Iterative selection algorithm (no LLM) ───────────
   const selectionResult = selectSources(allScored);
@@ -587,11 +615,15 @@ export async function runDimensionScoring(
     });
   }
 
-  // Build notSelected reasons for logging
-  const notSelected = selectionResult.not_selected.map(s => ({
-    url: s.url,
-    reason: 'Zero behavioral signal (all dimension scores = 0)',
-  }));
+  // Build notSelected reasons for logging — differentiate zero-scored from budget/rank excluded
+  const notSelected = selectionResult.not_selected.map(s => {
+    const nonZeroDims = Object.values(s.depth_scores).filter(v => v > 0).length;
+    const totalDepth = Object.values(s.depth_scores).reduce((sum, v) => sum + v, 0);
+    if (nonZeroDims === 0) {
+      return { url: s.url, reason: `Zero behavioral signal (all dimension scores = 0, content: ${s.char_count} chars)` };
+    }
+    return { url: s.url, reason: `Budget/rank excluded (scored ${nonZeroDims} dims, total depth ${totalDepth}, content: ${s.char_count} chars)` };
+  });
 
   return {
     selectedSources: selectionResult.selected,
