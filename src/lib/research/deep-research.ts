@@ -760,15 +760,22 @@ export function validateResearchPackage(
   // Zero-coverage dimensions
   checks.zeroCoverageDims = DIMENSIONS.map(d => d.key).filter(d => !dossier.includes(d));
 
-  // Pattern flag checks
-  checks.crossSourcePatterns = (dossier.match(/CROSS-SOURCE PATTERN/g) || []).length;
-  checks.contradictionsFlagged = (dossier.match(/CONTRADICTION:/g) || []).length;
-  checks.conditionalsFlagged = (dossier.match(/CONDITIONAL:/g) || []).length;
-  checks.totalPatternFlags = checks.crossSourcePatterns + checks.contradictionsFlagged + checks.conditionalsFlagged;
-  checks.patternFlagsPass = checks.totalPatternFlags >= 3;
+  // v2 structural checks
+  checks.crossSourcePatterns = (dossier.match(/CROSS-SOURCE PATTERN:/g) || []).length;
+  checks.conditionals = (dossier.match(/CONDITIONAL:/g) || []).length;
 
-  // Institutional inference usage
-  checks.institutionalInferences = (dossier.match(/institutional_inference/g) || []).length;
+  // Attribution tag counts
+  checks.targetAuthored = (dossier.match(/target_authored/g) || []).length;
+  checks.targetCoverage = (dossier.match(/target_coverage/g) || []).length;
+  checks.institutionalInference = (dossier.match(/institutional_inference/g) || []).length;
+  checks.attributionTags = checks.targetAuthored + checks.targetCoverage + checks.institutionalInference;
+
+  // Synthesis flags
+  const flagMatches = dossier.match(/### Flag \d+:/g) || [];
+  checks.synthesisFlags = flagMatches.length;
+
+  // Source coverage audit
+  checks.hasCoverageAudit = dossier.includes('## SOURCE COVERAGE AUDIT');
 
   return checks;
 }
