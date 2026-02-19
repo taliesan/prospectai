@@ -1,4 +1,9 @@
-// Prompts for Step 1: Research
+// Stage 1 — Query Generation (v5 Pipeline)
+//
+// Sonnet reads LinkedIn JSON + seed URL content and generates 40-80 targeted
+// search queries across three categories (A/B/C) with 25-dimension awareness.
+
+import { formatDimensionsForPrompt } from '../dimensions';
 
 export const IDENTITY_EXTRACTION_PROMPT = `You are extracting identity information from a webpage about a person.
 
@@ -30,112 +35,224 @@ Output as JSON:
   "uniqueIdentifiers": ["Specific facts that distinguish this person"]
 }`;
 
-export const QUERY_GENERATION_PROMPT = `You are generating search queries to research a donor comprehensively.
+export const QUERY_GENERATION_PROMPT = `You are a research strategist preparing search queries for a behavioral profiling system. You will receive a subject's LinkedIn profile and seed URL content. Your job is to generate 40-80 targeted search queries that will surface behavioral evidence across 25 dimensions.
 
-Given the identity signals extracted from their seed URL, generate 15-25 targeted queries.
+## Your Task
 
-CRITICAL: Every query must include enough specificity to find THIS person, not someone else with the same name. Combine name with:
-- Current organization
-- Current role
-- Location
-- Unique identifiers
+Generate search queries in three categories:
 
-Categories to cover:
-1. INTERVIEWS (4-5 queries): Podcasts, video interviews, Q&As — use name + org + "interview" or "podcast"
-2. PERSONAL_WRITING (2-3 queries): Substack, Medium, blog, op-eds — use name + org + platform names
-3. SPEECHES (2-3 queries): Talks, keynotes, panels — use name + org + "keynote" or "speech" or conference names
-4. PHILANTHROPY (2-3 queries): Giving, foundation work, causes — use name + "philanthropy" or "foundation" or "donor"
-5. NEWS_PROFILES (3-4 queries): In-depth coverage — use name + org + publication names (NYT, WSJ, etc.)
-6. CONTROVERSY (1-2 queries): Criticism, conflicts — use name + org + "controversy" or "criticism"
-7. RECENT (2-3 queries): Last 12 months — use name + org + "2024" or "2025"
+### Category A — Direct Name Queries
+Search for the subject by name combined with:
+- Each organization they worked at (from LinkedIn)
+- Known campaigns, initiatives, or projects (from seed URL and LinkedIn)
+- Media appearances: podcast, interview, conference, panel, keynote, video
+- Crisis/controversy: criticized, controversy, backlash, resigned, fired
+- Failure/setback: failure, mistake, setback, apology, lessons learned
+- Writing: op-ed, essay, blog, newsletter, book, chapter
 
-Keep queries concise (4-8 words). Use quotes around full name.
+### Category B — Institutional Actions During Tenure
+For each LinkedIn role lasting 2+ years:
+1. Identify the subject's area of responsibility from their title
+2. Generate queries about what the ORGANIZATION did in that area
+   during the subject's tenure dates
+3. DO NOT generate queries about organizational functions outside
+   the subject's role
+
+Example: If subject was "VP of Fundraising" at Org X from 2015-2019:
+  YES: "Org X fundraising strategy 2015 2016 2017 2018 2019"
+  YES: "Org X major donors partnerships 2016 2017"
+  YES: "Org X largest donation gift 2015 2016 2017 2018 2019"
+  NO:  "Org X engineering team hiring 2017" (outside their role)
+  NO:  "Org X product launch 2018" (outside their role)
+
+### Category C — Network & Affiliations
+- Board and advisory roles (from LinkedIn)
+- Co-authors, co-signers, coalition partners (from seed URL)
+- Political giving, campaign finance (if applicable)
+- Foundation 990 filings naming the subject or their org during tenure
+
+## Dimension Targeting
+
+Each query should target 1-3 of these behavioral dimensions.
+Annotate each query with its target dimensions.
+
+${formatDimensionsForPrompt()}
+
+Dimensions 16-25 (LOW INVESTMENT tier) are the hardest to find and the most tactically
+valuable. Generate at least 5 queries specifically targeting these.
+
+## Output Format
+
+Return a JSON object:
+{
+  "queries": [
+    {
+      "query": "\\"Jane Smith\\" Mozilla net neutrality",
+      "category": "A",
+      "target_dimensions": [1, 8, 15],
+      "source_from": "LinkedIn: VP Engagement, Mozilla Foundation 2012-2016",
+      "rationale": "Net neutrality was a major campaign during her Mozilla tenure"
+    },
+    {
+      "query": "Mozilla Foundation advocacy campaign 2014 2015 net neutrality",
+      "category": "B",
+      "target_dimensions": [1, 13, 14],
+      "source_from": "LinkedIn: VP Engagement, Mozilla Foundation 2012-2016",
+      "rationale": "Institutional action in her area of responsibility"
+    }
+  ],
+  "coverage_intent": {
+    "1_DECISION_MAKING": 8,
+    "2_TRUST_CALIBRATION": 6,
+    "25_POWER_ANALYSIS": 6
+  }
+}
+
+## Rules
+- Every query must trace to a specific fact in the LinkedIn or seed URL.
+  If you can't cite where it came from, don't generate it.
+- Assess the subject's public profile before setting category mix:
+  * HIGH-PROFILE (frequently named in press, many interviews):
+    Category A 60%, B 15%, C 25%. Direct searches will be productive.
+  * MODERATE-PROFILE (named in some press, few interviews):
+    Category A 45%, B 30%, C 25%. Standard mix.
+  * LOW-PROFILE (behind-the-scenes, rarely named in press):
+    Category A 25%, B 50%, C 25%. Institutional queries are primary.
+- At minimum, generate one Category B query per LinkedIn role lasting
+  2+ years regardless of profile type.
+- Minimum 5 queries targeting dimensions 17-25.
+- No generic queries like "[name] bio" or "[name] Wikipedia."
+- Use quoted name format for Category A: "First Last"
+- Include year ranges for Category B to constrain to tenure period.`;
+
+// ── Build the full Stage 1 prompt ───────────────────────────────────
+
+export function generateResearchQueries(
+  donorName: string,
+  identity: any,
+  seedUrlExcerpt?: string,
+  linkedinJson?: any,
+): string {
+  const formatIdentity = () => {
+    const lines: string[] = [];
+    lines.push(`Name: ${identity.fullName || donorName}`);
+    lines.push(`Current Role: ${identity.currentRole || 'Unknown'}`);
+    lines.push(`Current Organization: ${identity.currentOrg || 'Unknown'}`);
+
+    if (identity.pastRoles?.length) {
+      lines.push('Past Roles:');
+      for (const r of identity.pastRoles) {
+        lines.push(`  - ${r.role} at ${r.org}${r.years ? ` (${r.years})` : ''}`);
+      }
+    }
+
+    if (identity.locations?.length) {
+      lines.push(`Locations: ${identity.locations.join(', ')}`);
+    }
+    if (identity.education?.length) {
+      lines.push(`Education: ${identity.education.map((e: any) => `${e.school}${e.degree ? ` (${e.degree})` : ''}`).join(', ')}`);
+    }
+    if (identity.affiliations?.length) {
+      lines.push(`Affiliations: ${identity.affiliations.join(', ')}`);
+    }
+    if (identity.uniqueIdentifiers?.length) {
+      lines.push(`Unique Identifiers: ${identity.uniqueIdentifiers.join(', ')}`);
+    }
+
+    return lines.join('\n');
+  };
+
+  let linkedinSection = '';
+  if (linkedinJson) {
+    linkedinSection = `## LinkedIn JSON\n\`\`\`json\n${JSON.stringify(linkedinJson, null, 2)}\n\`\`\`\n\n`;
+  }
+
+  return `SUBJECT: ${donorName}
+
+## Subject Information
+
+${formatIdentity()}
+
+${linkedinSection}${seedUrlExcerpt ? `## Seed URL Content (excerpt)\n${seedUrlExcerpt.slice(0, 15000)}\n\n` : ''}${QUERY_GENERATION_PROMPT}`;
+}
+
+// ── Supplementary query prompt (for retry when <30 URLs) ────────────
+
+export function generateSupplementaryQueryPrompt(
+  donorName: string,
+  identity: any,
+  initialUrlCount: number,
+  gapDimensions: string[],
+): string {
+  return `The initial search for ${donorName} returned only ${initialUrlCount} unique URLs.
+Generate 15-20 additional queries targeting the following gap dimensions:
+${gapDimensions.map(d => `- ${d}`).join('\n')}
+
+Focus on Category B (institutional) and Category C (network) queries — direct
+name searches are likely exhausted.
+
+Subject: ${identity.fullName || donorName}
+Current Role: ${identity.currentRole || 'Unknown'} at ${identity.currentOrg || 'Unknown'}
+${identity.pastRoles?.length ? `Past Roles:\n${identity.pastRoles.map((r: any) => `  - ${r.role} at ${r.org}${r.years ? ` (${r.years})` : ''}`).join('\n')}` : ''}
 
 Output as JSON array:
 [
-  { "query": "search query text", "category": "CATEGORY_NAME" }
+  {
+    "query": "...",
+    "category": "B",
+    "target_dimensions": [17, 25],
+    "rationale": "..."
+  }
 ]`;
-
-export const SOURCE_RELEVANCE_PROMPT = `You are screening search results to verify they are about the correct person.
-
-Given:
-- The target person's identity signals (from their seed URL)
-- A search result (URL, title, snippet)
-
-Determine if this search result is about the SAME person or a DIFFERENT person with the same/similar name.
-
-Check for:
-- Does the organization match?
-- Does the role/title match?
-- Does the location match?
-- Do any unique identifiers match?
-- Are there contradicting facts (different org, different field, different location)?
-
-Output as JSON:
-{
-  "isMatch": true|false,
-  "confidence": "high"|"medium"|"low",
-  "matchingSignals": ["List of signals that match"],
-  "conflictingSignals": ["List of signals that conflict"],
-  "reason": "Brief explanation"
-}`;
-
-export function generateResearchQueries(donorName: string, identity: any): string {
-  const orgContext = identity.currentOrg ? ` at ${identity.currentOrg}` : '';
-  const roleContext = identity.currentRole ? ` (${identity.currentRole})` : '';
-  const locationContext = identity.locations?.length ? ` in ${identity.locations[0]}` : '';
-
-  return `Generate search queries for researching this donor:
-
-Name: ${donorName}${roleContext}${orgContext}${locationContext}
-
-IDENTITY SIGNALS (use these to make queries specific):
-- Current Organization: ${identity.currentOrg || 'Unknown'}
-- Current Role: ${identity.currentRole || 'Unknown'}
-- Past Roles: ${identity.pastRoles?.map((r: any) => `${r.role} at ${r.org}`).join(', ') || 'Unknown'}
-- Locations: ${identity.locations?.join(', ') || 'Unknown'}
-- Education: ${identity.education?.map((e: any) => e.school).join(', ') || 'Unknown'}
-- Affiliations: ${identity.affiliations?.join(', ') || 'Unknown'}
-- Unique Identifiers: ${identity.uniqueIdentifiers?.join(', ') || 'None'}
-
-${QUERY_GENERATION_PROMPT}`;
 }
 
-// Keep SOURCE_CLASSIFICATION_PROMPT for backward compatibility if used elsewhere
-export const SOURCE_CLASSIFICATION_PROMPT = `You are classifying a source for donor research quality.
+// ── Query interface ─────────────────────────────────────────────────
 
-Given the URL, title, and snippet, classify:
+export interface CategorizedQuery {
+  category: 'A' | 'B' | 'C';
+  query: string;
+  rationale: string;
+  targetDimensions?: number[];
+  sourceFrom?: string;
+}
 
-1. SOURCE_TYPE:
-   - PERSONAL: Personal blog, Substack, Medium, personal website
-   - INTERVIEW: Podcast, video interview, Q&A, long-form conversation
-   - PROFILE: In-depth media profile, feature article about them
-   - EMPLOYER: Company bio, org website, foundation page
-   - NEWS: News article, brief mention
-   - SOCIAL: LinkedIn, Twitter, public social media
-   - DIRECTORY: Wikipedia, Crunchbase, people-finder sites
+export function parseQueryGenerationResponse(response: string): CategorizedQuery[] {
+  try {
+    // Try object format first: { "queries": [...] }
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.queries && Array.isArray(parsed.queries)) {
+        return parsed.queries.map((q: any) => ({
+          category: q.category || 'A',
+          query: q.query,
+          rationale: q.rationale || q.hypothesis || '',
+          targetDimensions: q.target_dimensions,
+          sourceFrom: q.source_from,
+        }));
+      }
+    }
 
-2. IDENTITY_MATCH:
-   - HIGH: Clearly this specific person (multiple details match)
-   - MEDIUM: Likely this person (some details match)
-   - LOW: Uncertain or likely wrong person
+    // Try array format as fallback
+    const arrayMatch = response.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      const parsed = JSON.parse(arrayMatch[0]);
+      return parsed.map((q: any) => ({
+        category: q.category || 'A',
+        query: q.query,
+        rationale: q.rationale || q.hypothesis || '',
+        targetDimensions: q.target_dimensions,
+        sourceFrom: q.source_from,
+      }));
+    }
 
-3. EVIDENCE_QUALITY:
-   - HIGH: Direct quotes, in-depth content, first-person perspective
-   - MEDIUM: Third-party description, some quotes or details
-   - LOW: Brief mention, directory listing, minimal content
+    return [];
+  } catch {
+    return [];
+  }
+}
 
-4. BEHAVIORAL_POTENTIAL:
-   - HIGH: Likely contains behavioral evidence (interviews, personal writing)
-   - MEDIUM: May contain behavioral evidence
-   - LOW: Unlikely to contain behavioral evidence (directories, brief news)
+// Backward compat: old parseAnalyticalQueries maps to new interface
+export const parseAnalyticalQueries = parseQueryGenerationResponse;
 
-Output as JSON:
-{
-  "sourceType": "TYPE",
-  "identityMatch": "HIGH|MEDIUM|LOW",
-  "evidenceQuality": "HIGH|MEDIUM|LOW",
-  "behavioralPotential": "HIGH|MEDIUM|LOW",
-  "shouldFetch": true|false,
-  "reason": "Brief explanation"
-}`;
+// SOURCE_CLASSIFICATION_PROMPT archived to _archived/prompts-research-legacy.ts

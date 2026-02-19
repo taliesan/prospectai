@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ProgressEvent {
@@ -13,16 +13,31 @@ interface ProgressEvent {
 }
 
 export default function Home() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
   const [donorName, setDonorName] = useState('');
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
+  const [linkedinPdf, setLinkedinPdf] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(28);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activity, setActivity] = useState<any>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (localStorage.getItem('prospectai_auth') === 'true') {
+      setAuthenticated(true);
+    }
+    setAuthChecked(true);
+  }, []);
 
   // Polish item 5: URL validation state
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
@@ -38,111 +53,210 @@ export default function Home() {
     setTotalSteps(28);
 
     try {
-      const response = await fetch('/api/generate', {
+      // Convert LinkedIn PDF to base64 if provided
+      let linkedinPdfBase64: string | undefined;
+      if (linkedinPdf) {
+        console.log('[Form] LinkedIn PDF selected:', linkedinPdf.name, 'size:', linkedinPdf.size);
+        const arrayBuffer = await linkedinPdf.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        linkedinPdfBase64 = btoa(binary);
+        console.log('[Form] LinkedIn base64 length:', linkedinPdfBase64.length);
+      } else {
+        console.log('[Form] No LinkedIn PDF selected');
+      }
+
+      // Step 1: Submit job — returns immediately with jobId
+      const submitResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           donorName: donorName.trim(),
           fundraiserName: fundraiserName.trim(),
-          seedUrls: seedUrls.split('\n').filter(u => u.trim()),
-          mode
+          seedUrls: [seedUrls.trim()].filter(Boolean),
+          linkedinPdf: linkedinPdfBase64,
         })
       });
 
-      if (!response.ok) {
+      if (!submitResponse.ok) {
         throw new Error('Generation failed');
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      const { jobId } = await submitResponse.json();
+      console.log('[Poll] Job submitted:', jobId);
+      setActiveJobId(jobId);
 
-      if (!reader) {
-        throw new Error('No response body');
-      }
+      // Step 2: Poll for status every 20 seconds
+      const POLL_INTERVAL = 20_000;
+      const MAX_POLL_DURATION = 45 * 60 * 1000; // 45 minute safety cap
+      const pollStart = Date.now();
 
-      let buffer = '';
+      const poll = async (): Promise<void> => {
+        while (true) {
+          // Safety timeout
+          if (Date.now() - pollStart > MAX_POLL_DURATION) {
+            setProgressMessages(prev => [...prev, {
+              type: 'error' as const,
+              message: 'Error: Generation timed out. Please try again.'
+            }]);
+            setIsLoading(false);
+            setActiveJobId(null);
+            return;
+          }
 
-      while (true) {
-        const { done, value } = await reader.read();
+          try {
+            const statusResponse = await fetch(`/api/generate/status/${jobId}`);
+            if (!statusResponse.ok) {
+              throw new Error(`Status check failed: ${statusResponse.status}`);
+            }
 
-        if (done) {
-          if (buffer.trim()) {
-            console.log('[SSE] Processing remaining buffer after stream end:', buffer);
-            if (buffer.startsWith('data: ')) {
-              try {
-                const event: ProgressEvent = JSON.parse(buffer.slice(6));
-                if (event.type === 'complete' && event.detail) {
-                  const result = JSON.parse(event.detail);
-                  localStorage.setItem('lastProfile', JSON.stringify(result));
-                  router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
-                  return;
-                } else if (event.type === 'error') {
-                  setProgressMessages(prev => [...prev, event]);
-                  setIsLoading(false);
-                  return;
+            const status = await statusResponse.json();
+
+            if (status.status === 'complete') {
+              console.log('[Poll] Job complete, navigating to profile');
+              setActiveJobId(null);
+              localStorage.setItem('lastProfile', JSON.stringify(status.result));
+              router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+              return;
+            }
+
+            if (status.status === 'failed') {
+              console.error('[Poll] Job failed:', status.error);
+              setActiveJobId(null);
+              setProgressMessages(prev => [...prev, {
+                type: 'error' as const,
+                message: `Error: ${status.error || 'Generation failed'}`
+              }]);
+              setIsLoading(false);
+              return;
+            }
+
+            if (status.status === 'cancelled') {
+              console.log('[Poll] Job cancelled');
+              setActiveJobId(null);
+              setProgressMessages(prev => [...prev, {
+                type: 'status' as const,
+                message: 'Research cancelled.'
+              }]);
+              setIsLoading(false);
+              return;
+            }
+
+            // Still running — update progress UI
+            if (status.phase) setCurrentPhase(status.phase);
+            if (status.step) setCurrentStep(status.step);
+            if (status.totalSteps) setTotalSteps(status.totalSteps);
+
+            // Capture activity data for rich display
+            if (status.activity) {
+              setActivity(status.activity);
+            }
+
+            // Add latest message if it's new
+            if (status.message) {
+              setProgressMessages(prev => {
+                const lastMsg = prev[prev.length - 1]?.message;
+                if (lastMsg !== status.message) {
+                  return [...prev, { type: 'status' as const, message: status.message }];
                 }
-              } catch (parseErr) {
-                console.error('Failed to parse final SSE event from buffer:', parseErr);
-              }
+                return prev;
+              });
             }
-          }
-          break;
-        }
 
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event: ProgressEvent = JSON.parse(line.slice(6));
-
-              if (event.type === 'ping') {
-                continue;
-              }
-
-              if (event.type === 'phase') {
-                setCurrentPhase(event.phase || '');
-              } else if (event.type === 'status') {
-                setProgressMessages(prev => [...prev, event]);
-                if (event.phase) setCurrentPhase(event.phase);
-                if (event.step) setCurrentStep(event.step);
-                if (event.totalSteps) setTotalSteps(event.totalSteps);
-              } else if (event.type === 'complete' && event.detail) {
-                console.log('[SSE] Received complete event with profile data');
-                const result = JSON.parse(event.detail);
-                localStorage.setItem('lastProfile', JSON.stringify(result));
-                router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
-                return;
-              } else if (event.type === 'error') {
-                setProgressMessages(prev => [...prev, event]);
-                setIsLoading(false);
-                return;
-              }
-            } catch (parseErr) {
-              console.error('Failed to parse SSE event:', parseErr);
+            // Add any new milestones
+            if (status.milestones?.length) {
+              setProgressMessages(prev => {
+                const existingMilestones = new Set(prev.filter(m => m.message.startsWith('\u2713')).map(m => m.message));
+                const newMilestones = status.milestones.filter((m: string) => !existingMilestones.has(m));
+                if (newMilestones.length > 0) {
+                  return [...prev, ...newMilestones.map((m: string) => ({ type: 'status' as const, message: m }))];
+                }
+                return prev;
+              });
             }
+          } catch (pollError) {
+            console.warn('[Poll] Status check error (will retry):', pollError);
+            // Don't fail immediately on a single poll error — network blip
           }
-        }
-      }
 
-      console.error('[SSE] Stream ended without receiving complete event');
-      setProgressMessages(prev => [...prev, {
-        type: 'error',
-        message: 'Error: Stream ended unexpectedly. Please try again.'
-      }]);
-      setIsLoading(false);
+          // Wait before next poll
+          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+        }
+      };
+
+      await poll();
     } catch (error) {
       console.error('Error:', error);
       setProgressMessages(prev => [...prev, {
-        type: 'error',
+        type: 'error' as const,
         message: 'Error: Generation failed. Please try again.'
       }]);
       setIsLoading(false);
     }
   };
+
+  // Password gate
+  if (!authChecked) {
+    return <div className="min-h-screen bg-dtw-black" />;
+  }
+
+  if (!authenticated) {
+    const handleAuth = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (authPassword === 'profile') {
+        localStorage.setItem('prospectai_auth', 'true');
+        setAuthenticated(true);
+        setAuthError(false);
+      } else {
+        setAuthError(true);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-dtw-black flex flex-col items-center justify-center px-4">
+        <div
+          className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
+          style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-[500px] h-[500px] opacity-15"
+          style={{ background: 'radial-gradient(circle at 30% 70%, #2D6A4F, transparent 60%)' }}
+        />
+
+        <h1 className="font-serif text-[56px] leading-[1.05] text-white mb-10 relative z-10">
+          Prospect<span className="font-serif italic" style={{ color: '#D894E8' }}>AI</span>
+        </h1>
+
+        <form onSubmit={handleAuth} className="w-full max-w-xs relative z-10">
+          <input
+            type="password"
+            value={authPassword}
+            onChange={(e) => { setAuthPassword(e.target.value); setAuthError(false); }}
+            placeholder="Password"
+            autoFocus
+            className="w-full text-[15px] text-white border border-white/15 rounded-lg px-4 py-3.5
+                       focus:border-purple-400 focus:outline-none placeholder-white/30 transition-all"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
+          />
+          {authError && (
+            <p className="text-sm mt-2" style={{ color: '#E07A5F' }}>Incorrect password</p>
+          )}
+          <button
+            type="submit"
+            className="w-full mt-4 rounded-lg text-[15px] font-semibold text-white py-3.5 transition-all duration-300 hover:-translate-y-0.5"
+            style={{ background: '#6B21A8' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            Enter
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   // Loading state — full dark screen with progress
   if (isLoading) {
@@ -168,6 +282,13 @@ export default function Home() {
             animation: 'gradientShift 8s ease-in-out infinite',
           }}
         />
+
+        {/* Version badge — loading screen */}
+        <div className="flex justify-end px-6 pt-4">
+          <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
+            v3.57
+          </span>
+        </div>
 
         <div className="flex flex-col items-center justify-center min-h-[90vh] px-4">
           <h1 className="font-serif text-5xl text-white mb-8">{donorName}</h1>
@@ -212,6 +333,46 @@ export default function Home() {
               </p>
             </div>
 
+            {/* Deep research activity — real-time OpenAI data */}
+            {activity && currentPhase === 'research' && activity.openaiStatus && (
+              <div className="border-t border-white/10 pt-3 mt-3">
+                {/* Search/page counters */}
+                {(activity.searches > 0 || activity.pageVisits > 0) && (
+                  <div className="flex gap-4 text-xs text-white/50 mb-2">
+                    {activity.searches > 0 && (
+                      <span>{activity.searches} web searches</span>
+                    )}
+                    {activity.pageVisits > 0 && (
+                      <span>{activity.pageVisits} pages analyzed</span>
+                    )}
+                    {activity.reasoningSteps > 0 && (
+                      <span>{activity.reasoningSteps} reasoning steps</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Recent search queries */}
+                {activity.recentSearchQueries?.length > 0 && (
+                  <div className="space-y-0.5 mb-2">
+                    <p className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30">Recent searches</p>
+                    {activity.recentSearchQueries.slice(-3).map((q: string, i: number) => (
+                      <p key={i} className="text-xs text-white/40 truncate">&ldquo;{q}&rdquo;</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reasoning summary */}
+                {activity.reasoningSummary?.length > 0 && (
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30">Model reasoning</p>
+                    {activity.reasoningSummary.slice(-1).map((s: string, i: number) => (
+                      <p key={i} className="text-xs text-white/40 italic">{s}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Completed milestones — newest on top */}
             {progressMessages.filter(msg => msg.message.startsWith('\u2713')).length > 0 && (
               <div className="border-t border-white/10 pt-3 space-y-1">
@@ -227,6 +388,29 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Cancel button — user-initiated only */}
+          {activeJobId && (
+            <button
+              className="mt-6 text-xs text-white/30 hover:text-white/60 transition-colors duration-200 underline underline-offset-2"
+              onClick={async () => {
+                try {
+                  await fetch(`/api/generate/cancel/${activeJobId}`, { method: 'POST' });
+                  setActiveJobId(null);
+                  setActivity(null);
+                  setProgressMessages(prev => [...prev, {
+                    type: 'status' as const,
+                    message: 'Research cancelled.'
+                  }]);
+                  setIsLoading(false);
+                } catch (err) {
+                  console.warn('[Cancel] Failed:', err);
+                }
+              }}
+            >
+              Cancel research
+            </button>
+          )}
         </div>
       </div>
     );
@@ -245,9 +429,12 @@ export default function Home() {
       />
 
       {/* Dark nav bar */}
-      <nav className="bg-dtw-black px-6 py-4">
+      <nav className="bg-dtw-black px-6 py-4 flex items-center justify-between">
         <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50">
           Democracy Takes Work
+        </span>
+        <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
+          v3.57
         </span>
       </nav>
 
@@ -263,7 +450,7 @@ export default function Home() {
           style={{ background: 'radial-gradient(circle at 30% 70%, #2D6A4F, transparent 60%)' }}
         />
 
-        <div className="relative z-10 text-center py-24 pb-32 px-4">
+        <div className="relative z-10 text-center py-14 pb-20 px-4">
           <h1 className="font-serif text-[80px] leading-[1.05] text-white mb-4">
             Prospect<span className="font-serif italic" style={{ color: '#D894E8' }}>AI</span>
           </h1>
@@ -295,8 +482,8 @@ export default function Home() {
               <h2 className="font-serif text-2xl text-dtw-black">Start a Profile</h2>
 
               <div>
-                <label htmlFor="donorName" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
-                  Donor Name
+                <label htmlFor="donorName" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  Donor name
                 </label>
                 {/* Item 8: input bg #F5F3EF, bottom border #D5D2CC */}
                 <input
@@ -316,8 +503,8 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="fundraiserName" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
-                  Fundraiser Name
+                <label htmlFor="fundraiserName" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  Fundraiser name
                 </label>
                 <input
                   type="text"
@@ -336,19 +523,78 @@ export default function Home() {
               </div>
 
               <div>
-                <label htmlFor="seedUrls" className="block text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px] mb-2">
+                <label className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
+                  LinkedIn profile PDF
+                </label>
+                <div
+                  className={`relative rounded border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-purple-500 bg-purple-50'
+                      : linkedinPdf
+                        ? 'border-dtw-green bg-green-50/50'
+                        : 'border-dtw-light-gray hover:border-purple-300'
+                  }`}
+                  style={{ background: isDragging ? undefined : linkedinPdf ? undefined : '#F5F3EF' }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files[0];
+                    if (file?.type === 'application/pdf') setLinkedinPdf(file);
+                  }}
+                  onClick={() => document.getElementById('linkedinPdf')?.click()}
+                >
+                  <input
+                    type="file"
+                    id="linkedinPdf"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => setLinkedinPdf(e.target.files?.[0] || null)}
+                    disabled={isLoading}
+                  />
+                  {linkedinPdf ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 text-dtw-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span className="text-sm text-dtw-black font-medium">{linkedinPdf.name}</span>
+                      <button
+                        type="button"
+                        className="ml-2 text-xs text-dtw-mid-gray hover:text-dtw-red"
+                        onClick={(e) => { e.stopPropagation(); setLinkedinPdf(null); }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-dtw-mid-gray">
+                        <span className="font-medium text-purple-700">Choose a file</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-dtw-mid-gray/70 mt-1">PDF only</p>
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-dtw-mid-gray">
+                  Recommended — ensures accurate title and career history.<br />
+                  <span className="font-medium">How to save:</span> Open their LinkedIn profile &rarr; More &rarr; Save to PDF
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="seedUrls" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
                   Seed URL <span className="text-dtw-red">*</span>
                 </label>
-                {/* Item 4: shorter placeholder, Item 5: green border on valid URL */}
-                <textarea
+                <input
+                  type="url"
                   id="seedUrls"
                   value={seedUrls}
                   onChange={(e) => setSeedUrls(e.target.value)}
                   placeholder="https://linkedin.com/in/donor-name"
-                  rows={3}
                   className={`w-full text-[15px] text-dtw-black border border-dtw-light-gray border-b-2 rounded px-4 py-3.5
                              focus:border-dtw-green focus:border-b-dtw-green focus:bg-white focus:outline-none
-                             placeholder-dtw-mid-gray transition-all resize-none
+                             placeholder-dtw-mid-gray transition-all
                              ${hasValidUrl ? 'border-dtw-green' : ''}`}
                   style={{
                     boxShadow: 'none',
@@ -370,16 +616,17 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isLoading || !donorName.trim() || !seedUrls.trim()}
-                  className="w-full rounded-pill text-[15px] font-semibold text-white bg-dtw-black py-[18px] px-8 tracking-[0.3px]
-                             hover:bg-dtw-green hover:-translate-y-0.5
+                  className="w-full rounded-pill text-[15px] font-semibold text-white py-[18px] px-8 tracking-[0.3px]
+                             hover:-translate-y-0.5
                              disabled:bg-dtw-light-gray disabled:text-dtw-mid-gray disabled:cursor-not-allowed disabled:hover:translate-y-0
                              transition-all duration-300"
                   style={{
                     boxShadow: 'none',
+                    background: (!donorName.trim() || !seedUrls.trim()) ? undefined : '#6B21A8',
                     ...((!donorName.trim() || !seedUrls.trim()) ? { border: '1px solid #D5D2CC' } : {}),
                   }}
-                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.boxShadow = '0 4px 16px rgba(45,106,79,0.3)'; }}
-                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = (!donorName.trim() || !seedUrls.trim()) ? '' : '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
                 >
                   Generate Profile
                 </button>
@@ -392,7 +639,7 @@ export default function Home() {
           </div>
 
           {/* RIGHT: What you'll get — Item 6: sidebar pt-[40px] */}
-          <div className="flex-1 lg:pt-[40px]">
+          <div className="flex-1 lg:pt-[40px]" style={{ borderLeft: '3px solid #6B21A8', paddingLeft: '24px' }}>
             <p className="text-[11px] font-semibold tracking-[3px] uppercase text-dtw-mid-gray mb-8">
               What you&apos;ll get
             </p>

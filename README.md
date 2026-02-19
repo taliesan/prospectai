@@ -7,7 +7,7 @@ Premium donor profiling system that generates behavioral intelligence for fundra
 ProspectAI takes a donor name and produces three outputs:
 
 1. **Raw Research** — Comprehensive search results from multiple queries, fully traceable
-2. **Behavioral Dossier** — 17-dimension analysis of behavioral patterns, contradictions, and meeting dynamics
+2. **Research Package** — 24-dimension behavioral evidence extraction
 3. **Persuasion Profile** — 7-section tactical guide for your meeting
 
 The key differentiator is **behavioral focus** — not "who they are" but "how they'll behave in your meeting."
@@ -22,17 +22,17 @@ Step 1: Research
     - Query generation (15-25 targeted searches)
     - Source collection and classification
     ↓
-Step 2: Behavioral Dossier
-    - Per-source evidence extraction (17 dimensions)
-    - Pattern synthesis across sources
-    - Cross-cutting analysis (contradiction, dangerous truth, substrate)
+Step 2: Research Package
+    - Agentic research with web_search and fetch_page tools
+    - 24-dimension behavioral evidence extraction
+    - Agent reads, reasons, and organizes evidence directly
     ↓
 Step 3: Profile Generation
     - Canon-guided generation
     - Validation loop (generator + validator)
     - Up to 3 refinement passes
     ↓
-Output: Research + Dossier + Profile
+Output: Research Package + Profile + Meeting Guide
 ```
 
 ## Setup
@@ -134,7 +134,7 @@ A valid profile must:
 - ✓ Have conditional logic (when X, they do Y)
 - ✓ Surface contradictions (tension between stated and revealed)
 - ✓ Make retreat patterns explicit
-- ✓ Be fully grounded in dossier evidence
+- ✓ Be fully grounded in research evidence
 - ✓ Match exemplar quality
 
 ## Specifications
@@ -142,7 +142,7 @@ A valid profile must:
 Full system specifications are in:
 
 - `MASTER_SYSTEM_SPECIFICATION.md` — Complete system design
-- `DOSSIER_SPECIFICATION.md` — 17-dimension extraction methodology
+- `DOSSIER_SPECIFICATION.md` — 24-dimension extraction methodology (legacy naming)
 
 ## License
 

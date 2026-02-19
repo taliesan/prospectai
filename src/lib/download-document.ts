@@ -19,7 +19,7 @@ interface Source {
 interface DownloadableProfile {
   donorName: string;
   fundraiserName?: string;
-  profile: string;          // Persuasion Profile markdown (from dossier.rawMarkdown)
+  profile: string;          // Persuasion Profile markdown
   meetingGuide?: string;    // Meeting Guide markdown
   sources: Source[];
 }
