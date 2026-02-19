@@ -10,18 +10,38 @@ export function buildProfilePrompt(
   // --- Layer 1: Geoffrey Block v2 (full, unmodified) ---
   const layer1 = geoffreyBlock;
 
-  // --- Layer 2: Exemplar Profiles + Quote Isolation ---
+  // --- Layer 2: Exemplar Profiles + Contamination Fence ---
   const layer2 = `---
 
 ${exemplars}
 
-QUOTE ISOLATION — HARD RULE: The exemplar profiles above contain direct quotes from Craig Newmark, Roy Bahat, and Lori McGlinchey. Those quotes belong to those donors. They must NEVER appear in a profile about a different person.
+═══════════════════════════════════════════════════════════════════════
+⛔ EXEMPLAR ZONE — END ⛔
+═══════════════════════════════════════════════════════════════════════
 
-This is not about attribution style. This is about content contamination. When two donors share structural similarities — both uncategorizable, both focused on labor, both direct communicators — the temptation is to borrow language that "fits." Do not. If Roy Bahat said "I don't consider myself to be a particularly ideological person," that sentence cannot appear in any profile except Bahat's, regardless of how well it would describe another donor.
+CONTAMINATION RULES — HARD ENFORCEMENT:
 
-The rule: every direct quote in this profile must come from a source document about THIS donor. If you cannot find a quote in the source material, write the analytical observation in your own voice instead. A profile with fewer quotes and no contamination is better than a profile with borrowed eloquence.
+1. Every FACT in your output must trace to the research dossier below
+   or to the canonical biographical data. If it's not there, it cannot
+   appear in the profile. No exceptions.
 
-Vocabulary and register from the exemplars are teaching tools — absorb them. Attributed language is donor-specific — it stays with the person who said it.`;
+2. Every QUOTE in your output must come from a source about THIS target.
+   If Craig Newmark said it, it stays with Newmark. If Roy Bahat said
+   it, it stays with Bahat. If Lori McGlinchey said it, it stays with
+   McGlinchey.
+
+3. Every INSTITUTIONAL AFFILIATION (board seats, roundtables, committee
+   memberships, fellowships) must appear in either the LinkedIn data or
+   a cited source URL. The exemplar donors sit on different boards than
+   your target. Do not import their affiliations.
+
+4. Before writing each bolded assertion, ask: "Where in the research
+   dossier is the evidence for this?" If you cannot point to it, do
+   not write the assertion.
+
+The exemplars taught you how to write. The dossier tells you what to
+write. These are different jobs. Do not confuse them.
+═══════════════════════════════════════════════════════════════════════`;
 
   // --- Layer 3: Canonical Biographical Data (only if linkedinData exists) ---
   let layer3 = '';
