@@ -18,9 +18,10 @@ interface ProfileData {
     rawMarkdown: string;
     sources?: Source[];
   };
-  dossier: { rawMarkdown: string };
+  researchProfile: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
   meetingGuide?: string;
+  meetingGuideHtml?: string;
 }
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
@@ -56,7 +57,7 @@ export default function ProfilePage() {
       const downloadData: DownloadableProfile = {
         donorName,
         fundraiserName,
-        profile: data.dossier.rawMarkdown,
+        profile: data.researchProfile.rawMarkdown,
         meetingGuide: data.meetingGuide,
         sources: extractSources(),
       };
@@ -86,7 +87,7 @@ export default function ProfilePage() {
       const profileData = parseProfileForPDF(
         donorName,
         fundraiserName,
-        data.dossier.rawMarkdown,
+        data.researchProfile.rawMarkdown,
         data.meetingGuide,
         sources
       );
@@ -221,7 +222,7 @@ export default function ProfilePage() {
           "Contradiction Patterns": "Where to Start",
         };
 
-        let displayMarkdown = data.dossier.rawMarkdown;
+        let displayMarkdown = data.researchProfile.rawMarkdown;
         for (const [original, replacement] of Object.entries(headingMap)) {
           displayMarkdown = displayMarkdown.replace(original, replacement);
         }
@@ -253,6 +254,19 @@ export default function ProfilePage() {
             </div>
           );
         }
+
+        // Use formatted HTML if available, fall back to markdown
+        if (data.meetingGuideHtml) {
+          return (
+            <div
+              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+              dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }}
+            />
+          );
+        }
+
+        // Fallback: render markdown directly
         return (
           <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
@@ -430,6 +444,48 @@ export default function ProfilePage() {
       {/* Content */}
       <main className="max-w-[800px] mx-auto px-4 py-10">
         {renderContent()}
+
+        {/* Debug Downloads */}
+        <details className="mt-8 border-t border-dtw-light-gray pt-4">
+          <summary className="cursor-pointer text-sm text-dtw-mid-gray hover:text-dtw-warm-gray transition-colors">
+            Debug Files
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { file: 'screening-audit', label: 'Screening Audit' },
+              { file: 'source-selection', label: 'Source Selection' },
+              { file: 'source-packet-manifest', label: 'Source Packet Manifest' },
+              { file: 'deep-research-developer-msg', label: 'Deep Research Dev Msg' },
+              { file: 'deep-research-user-msg', label: 'Deep Research User Msg' },
+              { file: 'fact-check', label: 'Fact Check' },
+              { file: 'research-package', label: 'Research Package' },
+              { file: 'research-conversation', label: 'Agent Conversation' },
+              { file: 'prompt', label: 'Profile Prompt' },
+              { file: 'first-draft', label: 'First Draft' },
+              { file: 'critique-prompt', label: 'Critique Prompt' },
+              { file: 'final', label: 'Final Profile' },
+              { file: 'meeting-guide-prompt', label: 'Meeting Guide Prompt' },
+              { file: 'meeting-guide', label: 'Meeting Guide (MD)' },
+              { file: 'meeting-guide-html', label: 'Meeting Guide (HTML)' },
+              { file: 'linkedin', label: 'LinkedIn Data' },
+            ].map(({ file, label }) => {
+              const ext = file === 'linkedin' || file === 'fact-check' ? 'json'
+                : file === 'meeting-guide-html' ? 'html'
+                : file === 'meeting-guide' ? 'md'
+                : 'txt';
+              return (
+                <a
+                  key={file}
+                  href={`/api/debug-dump?file=${file}`}
+                  download={`DEBUG-${file}.${ext}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
+                >
+                  {label}
+                </a>
+              );
+            })}
+          </div>
+        </details>
       </main>
 
       {/* Footer */}
