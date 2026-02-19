@@ -185,6 +185,8 @@ ${linkedinJson}
 
 YOU MUST read every one of the ${numSources} pre-fetched sources and extract all behavioral evidence.
 
+OUTPUT RULE: For each dimension, write analysis ONLY about what the sources in THIS batch reveal. If a dimension has no relevant evidence in these sources, return an empty quotes array and an empty analysis string. Do NOT write "No new evidence in this batch" or similar filler.
+
 OUTPUT FORMAT — Return valid JSON matching this schema:
 ${CUMULATIVE_EVIDENCE_SCHEMA}
 
@@ -231,7 +233,9 @@ ${linkedinJson}
 OUTPUT FORMAT — Return valid JSON matching this schema:
 ${CUMULATIVE_EVIDENCE_SCHEMA}
 
-IMPORTANT: Your output should contain ONLY the NEW evidence from this batch's sources. Do not repeat quotes already in the accumulated evidence. The system will merge your output into the accumulated evidence automatically.
+CRITICAL OUTPUT RULE: Return ONLY new quotes and new analysis from the sources in THIS batch. Do not repeat, summarize, or echo any analysis from prior batches provided in context. Do not restate patterns already identified — only add genuinely new observations. If a dimension has no new evidence in this batch, return an empty quotes array and an empty analysis string for that dimension. Do NOT write "No new evidence in this batch" or similar filler.
+
+The system will merge your output into the accumulated evidence automatically. Echoing prior analysis causes duplication in the final output.
 
 Return ONLY the JSON object. No markdown fences, no commentary before or after.`;
 }

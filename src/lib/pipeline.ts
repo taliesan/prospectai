@@ -1259,11 +1259,12 @@ For each claim, assign one verdict:
 
 **SUPPORTED** — The claim traces to specific text in the research package or canonical biographical data. Provide the source quote.
 
-**EXEMPLAR_LEAK** — The claim matches biographical content from an exemplar profile (Bahat, Newmark, or McGlinchey) AND does not independently appear in the research package for this person. This includes:
-- Specific facts from an exemplar (numbers, events, named organizations)
+**EXEMPLAR_LEAK** — The claim matches biographical content from an exemplar profile (Bahat, Newmark, or McGlinchey) AND does not independently appear in the research package or canonical biographical data for this person. This includes:
+- Specific facts from an exemplar (numbers, events, named organizations) projected onto the target
 - Behavioral patterns described in an exemplar that were projected onto the target without independent evidence
 - Phrases or framings distinctive to an exemplar that were transferred to the target
-IMPORTANT: If a claim is true of BOTH the target and an exemplar, it is still EXEMPLAR_LEAK unless there is independent evidence in the research package. The risk is too high that the model pattern-matched rather than independently derived the claim.
+
+CRITICAL — avoid false positives: Before classifying a claim as EXEMPLAR_LEAK, check whether the specific fact appears in the research package or LinkedIn JSON for the TARGET. If the fact is independently supported by the target's own career data or research sources, classify it as SUPPORTED, not EXEMPLAR_LEAK. The presence of an exemplar's name in a factual claim about the target's career is NOT contamination. For example, if the target donated to "Craig Newmark Philanthropies" and this fact appears in the target's research package, that is SUPPORTED — it is not exemplar contamination just because "Newmark" is an exemplar name. Only flag EXEMPLAR_LEAK when the claim's substance traces to an exemplar profile and has NO independent support in the target's own evidence.
 
 **FABRICATED** — The claim contains a specific number, quote, or event that appears in neither the research package, the canonical biographical data, nor the exemplars. The model invented it.
 
@@ -1345,19 +1346,23 @@ Be thorough. Check every specific claim. Err on the side of flagging rather than
       console.log(`[Fact-Check] Passing ${criticalItems.length} critical items to editorial pass`);
 
       // Build the mandatory-fix block for the editorial prompt
-      factCheckBlock = `\n\n## FACT-CHECK RESULTS — MANDATORY FIXES
+      factCheckBlock = `\n\n## MANDATORY CORRECTIONS — HARD AUDIT GATE
 
-The following claims in the first draft have been flagged as CRITICAL
-by the fact-checker. You MUST fix every one before producing the final version.
-
-Do not preserve any claim marked EXEMPLAR_LEAK or FABRICATED.
+Every item below MUST be acted on. Your output will be audited against this list. If any flagged claim survives unchanged, the profile fails QA.
 
 ${JSON.stringify(criticalItems, null, 2)}
 
-For each flagged item:
-- If a "fix" is provided, use it as a starting point (verify it against the evidence yourself).
-- If the fix says "REMOVE", delete the claim entirely. Do not replace it with a softened version of the same fabricated content.
-- If removing a claim creates a gap in the narrative, fill it ONLY with evidence from the research package.
+RULES — non-negotiable:
+
+1. **EXEMPLAR_LEAK**: DELETE the claim entirely, including any rephrased version of the same behavioral pattern. Do not soften it, do not paraphrase it, do not keep the insight in different words. If the claim traces to an exemplar profile rather than this person's research package, it must vanish completely.
+
+2. **FABRICATED**: DELETE entirely. The fact-checker found no source for this claim — it was invented. Remove it and do not replace it with a hedged version of the same fabrication.
+
+3. **UNSUPPORTED**: Either find explicit textual support in the research package or canonical biographical data provided above, or delete. Do not downgrade to softer language — either the evidence is there or the claim goes.
+
+4. After deletions, if a section becomes thin, fill ONLY with evidence from the research package. Never invent replacement content.
+
+5. After completing all corrections, re-read the full profile once more to check for any surviving instances of the deleted claims that may appear in other sections (claims often repeat across sections).
 `;
     }
 
