@@ -80,6 +80,23 @@ function computeStrength(quoteCount: number, dim: DimensionDef): EvidenceStrengt
   return 'STRONG';
 }
 
+// ── Text similarity helper ────────────────────────────────────────
+
+/** Compute word-level Jaccard similarity between two strings (0–1). */
+function textSimilarity(a: string, b: string): number {
+  const arrA = a.toLowerCase().split(/\s+/).filter(Boolean);
+  const arrB = b.toLowerCase().split(/\s+/).filter(Boolean);
+  if (arrA.length === 0 && arrB.length === 0) return 1;
+  if (arrA.length === 0 || arrB.length === 0) return 0;
+  const setB = new Set(arrB);
+  let intersection = 0;
+  const setA = new Set(arrA);
+  for (let i = 0; i < arrA.length; i++) {
+    if (setB.has(arrA[i])) intersection++;
+  }
+  return intersection / (setA.size + setB.size - intersection);
+}
+
 // ── Merge a batch result into accumulated evidence ────────────────
 
 export function mergeEvidence(
@@ -93,23 +110,44 @@ export function mergeEvidence(
     const batch = batchResult.dimensions[key];
     if (!batch) continue;
 
-    // Append new quotes, deduplicating by source_url + text prefix
+    // Append new quotes, deduplicating by source_url + text prefix AND by >90% text overlap
     const existingFingerprints = new Set(
       acc.quotes.map(q => `${q.source_url}|||${q.text.slice(0, 80)}`)
     );
     for (const q of batch.quotes) {
       const fp = `${q.source_url}|||${q.text.slice(0, 80)}`;
-      if (!existingFingerprints.has(fp)) {
-        acc.quotes.push(q);
-        existingFingerprints.add(fp);
-      }
+      if (existingFingerprints.has(fp)) continue;
+
+      // Check for >90% text overlap with any existing quote in this dimension
+      const isDuplicate = acc.quotes.some(
+        existing => textSimilarity(existing.text, q.text) > 0.9
+      );
+      if (isDuplicate) continue;
+
+      acc.quotes.push(q);
+      existingFingerprints.add(fp);
     }
 
-    // Extend analysis (append new analysis after existing)
+    // Extend analysis — deduplicate paragraphs with >80% text overlap
     if (batch.analysis) {
-      acc.analysis = acc.analysis
-        ? `${acc.analysis}\n\n${batch.analysis}`
-        : batch.analysis;
+      if (!acc.analysis) {
+        acc.analysis = batch.analysis;
+      } else {
+        const existingParagraphs = acc.analysis.split(/\n\n+/).filter(Boolean);
+        const newParagraphs = batch.analysis.split(/\n\n+/).filter(Boolean);
+        const genuinelyNew: string[] = [];
+
+        for (const newPara of newParagraphs) {
+          const isDup = existingParagraphs.some(
+            existing => textSimilarity(existing, newPara) > 0.8
+          );
+          if (!isDup) genuinelyNew.push(newPara);
+        }
+
+        if (genuinelyNew.length > 0) {
+          acc.analysis = `${acc.analysis}\n\n${genuinelyNew.join('\n\n')}`;
+        }
+      }
     }
 
     // Recalculate coverage and strength from merged quotes
@@ -262,11 +300,18 @@ export function formatEvidenceAsDossier(evidence: CumulativeEvidence): string {
       sections.push('');
     }
 
-    // ANALYSIS block
+    // ANALYSIS block — strip no-op filler lines before outputting
     if (dimEv.analysis) {
-      sections.push('ANALYSIS:');
-      sections.push(dimEv.analysis);
-      sections.push('');
+      const cleaned = dimEv.analysis
+        .split('\n')
+        .filter(line => !/no new evidence|no additional evidence|no usable evidence|no relevant evidence/i.test(line.trim()))
+        .join('\n')
+        .trim();
+      if (cleaned) {
+        sections.push('ANALYSIS:');
+        sections.push(cleaned);
+        sections.push('');
+      }
     }
 
     sections.push('');
