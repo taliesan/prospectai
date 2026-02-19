@@ -45,7 +45,7 @@ import type { ActivityCallback } from './job-store';
 // v5 pipeline modules
 import { deduplicateSources } from './research/dedup';
 import { runRelevanceFilter } from './research/relevance-filter';
-import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch } from './prompts/source-scoring';
+import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch, CONTENT_BUDGET_CHARS } from './prompts/source-scoring';
 import { parseQueryGenerationResponse, generateSupplementaryQueryPrompt, type CategorizedQuery } from './prompts/research';
 
 const anthropic = new Anthropic();
@@ -516,6 +516,7 @@ export async function runFullPipeline(
   fetchFunction?: (url: string) => Promise<string>,
   abortSignal?: AbortSignal,
   onActivity?: ActivityCallback,
+  onClearActivity?: () => void,
 ): Promise<CodedPipelineResult> {
   const emit = onProgress || (() => {});
   const TOTAL_STEPS = 38;
@@ -913,7 +914,7 @@ ${pdfText}`;
         `Generated: ${new Date().toISOString()}`,
         `Selected: ${selectedSources.length} of ${stage5Result.stats.totalScored} scored`,
         `Total content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
-        `Budget: ${100_000} chars`,
+        `Budget: ${CONTENT_BUDGET_CHARS} chars`,
         '',
       ];
 
@@ -1072,11 +1073,17 @@ ${pdfText}`;
       writeFileSync('/tmp/prospectai-outputs/DEBUG-dr-gapfill-output.txt', gapFillEssay);
     } catch (e) { /* ignore */ }
 
-    emit(`Gap-fill found ${deepResearchResult.searchCount} new sources — launching Opus synthesis`, 'research', 18, TOTAL_STEPS);
+    emit(`✓ Gap-fill complete: ${deepResearchResult.searchCount} new sources found`, 'research', 18, TOTAL_STEPS);
+
+    // Clear DR activity data so the frontend stops showing the DR panel
+    if (onClearActivity) onClearActivity();
 
     // ── Stage 4 (Opus Extraction + Synthesis): One call reads everything ──
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
     console.log('[Stage 4/Opus] Running Opus extraction + synthesis');
+
+    // Transition to analysis phase — frontend will show "ANALYZING BEHAVIOR" instead of DR panel
+    emit('Launching Opus synthesis — reading all sources', 'analysis', 19, TOTAL_STEPS);
 
     const sourcesFormatted = formatSourcesForDeepResearch(selectedSources);
     const sourceCharsK = Math.round(sourcesFormatted.length / 1000);
@@ -1354,7 +1361,7 @@ ${gapFillEssay}`;
     console.log(`[Stage 4/Opus] System msg: ${opusSynthesisSystemMsg.length} chars, User msg: ${opusSynthesisUserMsg.length} chars`);
     console.log(`[Stage 4/Opus] Total input: ~${Math.round((opusSynthesisSystemMsg.length + opusSynthesisUserMsg.length) / 4)} tokens`);
 
-    emit('Opus reading all sources and producing analytical dossier...', 'research', 19, TOTAL_STEPS);
+    emit('Opus reading all sources and producing analytical dossier...', 'analysis', 19, TOTAL_STEPS);
 
     // Stream Opus extraction+synthesis
     const opusSynthesisStream = anthropic.messages.stream({
@@ -1371,7 +1378,7 @@ ${gapFillEssay}`;
       const now = Date.now();
       if (now - lastSynthesisProgress > 30_000) {
         const tokens = estimateTokens(researchPackage);
-        emit(`Opus synthesis in progress — ${tokens} tokens so far...`, 'research', 19, TOTAL_STEPS);
+        emit(`Opus synthesis in progress — ${tokens} tokens so far...`, 'analysis', 19, TOTAL_STEPS);
         lastSynthesisProgress = now;
       }
     });

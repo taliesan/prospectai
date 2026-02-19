@@ -4,7 +4,7 @@ import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
-import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity } from '@/lib/job-store';
+import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity } from '@/lib/job-store';
 import type { DeepResearchActivity } from '@/lib/job-store';
 
 // No timeout config needed — Railway doesn't use Next.js route segment config.
@@ -276,6 +276,7 @@ async function runPipelineInBackground(
           fetchUrl,
           abortSignal,
           onActivity,
+          () => clearActivity(jobId),
         );
 
         // Save outputs
