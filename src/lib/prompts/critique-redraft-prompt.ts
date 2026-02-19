@@ -75,9 +75,9 @@ The following is the first draft of the Persuasion Profile for ${donorName}. You
   prompt += firstDraftProfile;
   prompt += '\n\n';
 
-  // Layer 5b: Fact-Check Results (if critical items found)
+  // Layer 5b: Fact-Check Mandatory Corrections (if critical items found)
   if (factCheckBlock) {
-    prompt += `---\n${factCheckBlock}\n\nIMPORTANT: The corrections above are your FIRST priority. Before applying any other editorial instruction, process every mandatory correction. Then proceed with editorial improvements on whatever remains.\n\n`;
+    prompt += `---\n${factCheckBlock}\n\nIMPORTANT: The mandatory corrections above are your FIRST priority. Before applying any other editorial instruction, process every mandatory correction. Then proceed with editorial improvements on whatever remains.\n\n`;
   }
 
   // Layer 6: Editorial Instructions

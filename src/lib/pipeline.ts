@@ -38,15 +38,14 @@ import {
   getPersonalDomains,
 } from './research/tiering';
 
-// Deep research (OpenAI o3-deep-research) — alternative to Tavily pipeline
-import { DeepResearchResult, validateResearchPackage } from './research/deep-research';
-import { runBatchedDeepResearch } from './research/batched-deep-research';
+// Deep research (OpenAI o3-deep-research) — gap-fill only in v6 pipeline
+import { DeepResearchResult, executeDeepResearch, validateResearchPackage, buildGapFillDeveloperMessage, buildGapFillUserMessage } from './research/deep-research';
 import type { ActivityCallback } from './job-store';
 
 // v5 pipeline modules
 import { deduplicateSources } from './research/dedup';
 import { runRelevanceFilter } from './research/relevance-filter';
-import { runDimensionScoring, formatCoverageGapReport } from './prompts/source-scoring';
+import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch } from './prompts/source-scoring';
 import { parseQueryGenerationResponse, generateSupplementaryQueryPrompt, type CategorizedQuery } from './prompts/research';
 
 const anthropic = new Anthropic();
@@ -612,15 +611,17 @@ ${pdfText}`;
 
   if (researchProvider === 'openai') {
     // ═══════════════════════════════════════════════════════════════
-    // v5 HYBRID PIPELINE: Stages 1→2→3→4→4.5→5→6
+    // v6 PIPELINE: Tavily→Screen→Score→DR gap-fill→Opus synthesis
     //
-    // Stage 1: Query Generation (Sonnet)
-    // Stage 2: Search Execution (Tavily)
-    // Stage 3: Screening & Attribution (Sonnet)
-    // Stage 4: Content Fetch + Dedup (Tavily Extract)
-    // Stage 4.5: Relevance Filter (Sonnet) — defense in depth
-    // Stage 5: Dimension Scoring & Selection (Sonnet) — unbounded ranking
-    // Stage 6: Batched Research Synthesis (o3-deep-research × 2-4 calls)
+    // Stage 1:  Source Discovery + Screening (Tavily + Sonnet)
+    // Stage 1b: Relevance Filter (Sonnet)
+    // Stage 2:  Dimension Scoring & Selection (Sonnet, 80K budget)
+    // Stage 3:  DR Gap-Fill (searches web, no raw sources)
+    // Stage 4:  Opus Extraction + Synthesis (reads all sources + DR essay)
+    // Stage 5:  Profile Generation (Opus)
+    // Stage 5a: Fact-Check (Sonnet)
+    // Stage 5b: Editorial Pass (Opus)
+    // Stage 6:  Meeting Guide (Sonnet)
     // ═══════════════════════════════════════════════════════════════
     emit('', 'research');
 
@@ -982,21 +983,21 @@ ${pdfText}`;
       }
     } catch (e) { /* ignore */ }
 
-    // ── Stage 6: Research Synthesis (Batched Deep Research) ──────
+    // ── Stage 3 (DR Gap-Fill): Search web for evidence Tavily missed ──
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-    emit('Launching batched synthesis with ranked sources', 'research', 16, TOTAL_STEPS);
-    console.log('[Stage 6] Running Batched Deep Research');
+    emit('Launching gap-fill web search for thin dimensions', 'research', 16, TOTAL_STEPS);
+    console.log('[Stage 3/DR] Running DR gap-fill (no raw sources — gap report + LinkedIn only)');
 
     // ── DEBUG: Source Packet Manifest ─────────────────────────────
     try {
       const manifestLines: string[] = [
         `SOURCE PACKET MANIFEST — ${donorName}`,
         `Generated: ${new Date().toISOString()}`,
-        `Ranked sources: ${selectedSources.length}`,
+        `Selected sources: ${selectedSources.length}`,
         `Total content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
         '',
-        'Sources ranked by scarcity-weighted scoring. Batched DR will pack',
-        'these into 30K-char batches (max 3) in rank order.',
+        'Sources ranked by scarcity-weighted scoring within 80K char budget.',
+        'These go to Opus extraction+synthesis, NOT to DR.',
         '',
       ];
       const nameLower = donorName.toLowerCase();
@@ -1023,22 +1024,256 @@ ${pdfText}`;
       console.log('[DEBUG] Wrote /tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt');
     } catch (e) { /* ignore */ }
 
-    deepResearchResult = await runBatchedDeepResearch(
+    // Build DR gap-fill messages (no raw source text — only gap report + LinkedIn)
+    const linkedinJson = linkedinData
+      ? JSON.stringify({
+        currentTitle: linkedinData.currentTitle,
+        currentEmployer: linkedinData.currentEmployer,
+        linkedinSlug: linkedinData.linkedinSlug,
+        websites: linkedinData.websites,
+        careerHistory: linkedinData.careerHistory,
+        education: linkedinData.education,
+        boards: linkedinData.boards,
+      }, null, 2)
+      : 'No LinkedIn data available';
+
+    const drGapFillDevMsg = buildGapFillDeveloperMessage(donorName, coverageGapReport, linkedinJson);
+    const drGapFillUserMsg = buildGapFillUserMessage(
       donorName,
-      linkedinData,
-      selectedSources,
-      stage5Result.coverageGaps,
+      linkedinData?.currentTitle || identity.currentRole || '',
+      linkedinData?.currentEmployer || identity.currentOrg || '',
+    );
+
+    // Debug save DR messages
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-dr-gapfill-developer-msg.txt', drGapFillDevMsg);
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-gap-report.txt', coverageGapReport);
+    } catch (e) { /* ignore */ }
+
+    const drResult = await executeDeepResearch(
+      donorName,
+      drGapFillDevMsg,
+      drGapFillUserMsg,
       emit,
       abortSignal,
       onActivity,
+      20, // max 20 web searches
     );
+    deepResearchResult = {
+      ...drResult,
+      researchStrategy: 'v6-gap-fill-only',
+    };
 
-    // The dossier IS the research package for profile generation
-    researchPackage = deepResearchResult.dossier;
+    const gapFillEssay = drResult.dossier;
+    console.log(`[Stage 3/DR] Gap-fill complete: ${gapFillEssay.length} chars, ${drResult.searchCount} searches`);
+
+    // Debug save DR output
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-dr-gapfill-output.txt', gapFillEssay);
+    } catch (e) { /* ignore */ }
+
+    emit(`Gap-fill found ${deepResearchResult.searchCount} new sources — launching Opus synthesis`, 'research', 18, TOTAL_STEPS);
+
+    // ── Stage 4 (Opus Extraction + Synthesis): One call reads everything ──
+    if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+    console.log('[Stage 4/Opus] Running Opus extraction + synthesis');
+
+    const sourcesFormatted = formatSourcesForDeepResearch(selectedSources);
+    const sourceCharsK = Math.round(sourcesFormatted.length / 1000);
+    const gapFillCharsK = Math.round(gapFillEssay.length / 1000);
+    console.log(`[Stage 4/Opus] Input: ${sourceCharsK}K chars pre-fetched sources + ${gapFillCharsK}K chars gap-fill essay`);
+
+    const opusSynthesisSystemMsg = `You are a behavioral research analyst producing a comprehensive analytical dossier on ${donorName}. You are the best in the world at this.
+
+You will receive:
+- Their full source material — articles, essays, interviews, institutional content, press coverage — selected for maximum behavioral signal
+- A supplementary research essay covering dimensions where initial source discovery found gaps
+- Their career history
+- A dimensional framework with 25 behavioral dimensions
+
+Your response must work through three phases in sequence:
+
+══════════════════════════════════════════
+PHASE 1 — EXTRACTION
+══════════════════════════════════════════
+
+Read every source completely. For each source, identify every passage (50-300 words) that reveals behavioral evidence — how this person makes decisions, what they value when values conflict, how they communicate, what activates or shuts them down, how they relate to power, money, risk, time, and people.
+
+Map each passage to one or more of the 25 dimensions below. Rate each passage:
+  - Depth 1 = Mention — a fact without behavioral detail
+  - Depth 2 = Passage — a paragraph describing a decision/action with context
+  - Depth 3 = Rich evidence — direct quotes showing how they think, behavior under pressure
+
+Do not skip sources. Do not skim. Every source was selected because it contains signal. If a source seems thin, say what it contributes and what it doesn't. An honest "this source only confirms what we already know from source X" is valuable.
+
+Also extract evidence from the supplementary research essay, treating it as another source. Note when evidence comes from the supplementary research vs. pre-fetched sources.
+
+══════════════════════════════════════════
+PHASE 2 — CROSS-SOURCE ANALYSIS
+══════════════════════════════════════════
+
+For each of the 25 dimensions, examine all extracted evidence together and write an analysis that covers:
+
+- PATTERNS: What appears across multiple sources. What's consistent.
+- CONTRADICTIONS: Where stated values diverge from revealed behavior. Where philosophical language conflicts with operational practice. Say/do gaps. These are the most important findings — contradictions reveal where persuasion has maximum leverage.
+- CONDITIONAL FORKS: When X happens, they do Y. When not-X, they do Z. Both branches, with evidence for each.
+- EVIDENCE CEILINGS: What can't be known from available sources. What would require in-person observation.
+
+Write in behavioral register: what the behavior looks like in the room. Not personality descriptions. Not adjectives about character. What someone across the table would see, hear, and feel — and what they should do about it.
+
+For dimensions with thin evidence, say so explicitly. Do not inflate thin evidence into confident claims. "Only one source addresses this, and it suggests X, but we can't confirm the pattern" is the right register.
+
+══════════════════════════════════════════
+PHASE 3 — SYNTHESIS FLAGS
+══════════════════════════════════════════
+
+Identify the 3-5 most important cross-dimensional patterns — tensions and contradictions that span multiple dimensions and predict how this person will behave in a meeting. These are the master keys that should drive the profile's architecture.
+
+For each pattern:
+- Name it concisely
+- Show which dimensions it connects
+- Explain what it predicts about behavior
+- State what it means for someone trying to work with this person
+
+These synthesis flags are the highest-value output of your analysis. They're what makes the difference between a profile that describes someone and a profile that predicts what they'll do.
+
+══════════════════════════════════════════
+BEHAVIORAL DIMENSIONS
+══════════════════════════════════════════
+
+HIGH INVESTMENT (target: 7+ evidence entries):
+1. DECISION_MAKING — How they evaluate proposals and opportunities. Speed of decisions, gut vs analysis, what triggers yes/no.
+2. TRUST_CALIBRATION — What builds or breaks credibility. Verification behavior, skepticism triggers.
+3. COMMUNICATION_STYLE — Language patterns, directness, framing, how they explain.
+4. IDENTITY_SELF_CONCEPT — How they see and present themselves. Origin story, identity markers.
+5. VALUES_HIERARCHY — What they prioritize when values conflict. Trade-off decisions.
+6. CONTRADICTION_PATTERNS — Inconsistencies between stated and revealed preferences. Say/do gaps. MOST IMPORTANT — contradictions reveal where persuasion has maximum leverage.
+7. POWER_ANALYSIS — How they read, navigate, and deploy power. Their implicit theory of how institutions actually work vs. how they're supposed to work.
+
+MEDIUM INVESTMENT (target: 5+ evidence entries):
+8. INFLUENCE_SUSCEPTIBILITY — What persuades them, who they defer to, resistance patterns.
+9. TIME_ORIENTATION — Past/present/future emphasis, patience level, urgency triggers.
+10. BOUNDARY_CONDITIONS — Hard limits and non-negotiables. Explicit red lines.
+11. EMOTIONAL_TRIGGERS — What excites or irritates them. Energy shifts, enthusiasm spikes.
+12. RELATIONSHIP_PATTERNS — How they engage with people. Loyalty, collaboration style.
+13. RISK_TOLERANCE — Attitude toward uncertainty and failure. Bet-sizing, hedging.
+14. RESOURCE_PHILOSOPHY — How they think about money, time, leverage.
+15. COMMITMENT_PATTERNS — How they make and keep commitments. Escalation, exit patterns.
+
+LOW INVESTMENT (target: 2+ evidence entries):
+16. LEARNING_STYLE — How they take in new information. Reading vs conversation, deep dive vs summary.
+17. STATUS_RECOGNITION — How they relate to prestige and credit. Recognition needs.
+18. KNOWLEDGE_AREAS — Domains of expertise and intellectual passion.
+19. RETREAT_PATTERNS — How they disengage, recover, reset.
+20. SHAME_DEFENSE_TRIGGERS — What they protect, what feels threatening. Ego-defense behavior.
+21. REAL_TIME_INTERPERSONAL_TELLS — Observable behavior in interaction. Evaluation vs collaboration signals.
+22. TEMPO_MANAGEMENT — Pacing of decisions, conversations, projects.
+23. HIDDEN_FRAGILITIES — Vulnerabilities they manage or compensate for.
+24. RECOVERY_PATHS — How they bounce back from setbacks. Reset mechanisms.
+25. CONDITIONAL_BEHAVIORAL_FORKS — When X happens, they do Y. When not-X, they do Z.
+
+══════════════════════════════════════════
+OUTPUT FORMAT
+══════════════════════════════════════════
+
+Organize by dimension:
+
+## 1. DECISION_MAKING — Decision Making
+Investment Tier: HIGH | Evidence Strength: {STRONG/MODERATE/THIN/ZERO}
+
+QUOTES:
+[Depth rating | source URL]
+{quoted passage}
+
+[Depth rating | source URL]
+{quoted passage}
+
+ANALYSIS:
+{Cross-source analysis for this dimension — patterns, contradictions, conditional forks, evidence ceilings}
+
+## 2. TRUST_CALIBRATION — Trust Calibration
+...
+
+{... all 25 dimensions ...}
+
+## SYNTHESIS FLAGS
+
+### Flag 1: {name}
+Dimensions: {list}
+Pattern: {description}
+Prediction: {what it means for someone across the table}
+
+### Flag 2: {name}
+...`;
+
+    const opusSynthesisUserMsg = `TARGET: ${donorName}
+
+CAREER HISTORY:
+${linkedinJson}
+
+COVERAGE GAP REPORT FROM PRE-RESEARCH:
+${coverageGapReport}
+
+══════════════════════════════════════════
+PRE-FETCHED SOURCES (${selectedSources.length} sources, ~${sourceCharsK}K chars)
+══════════════════════════════════════════
+
+${sourcesFormatted}
+
+══════════════════════════════════════════
+SUPPLEMENTARY RESEARCH (gap-fill findings)
+══════════════════════════════════════════
+
+The following analysis was produced by a research agent that searched the web for evidence on dimensions that were underserved by the pre-fetched sources. Treat this as another source — extract what's useful, note what's thin, integrate it into your cross-source analysis.
+
+${gapFillEssay}`;
+
+    // Debug save Opus messages
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-opus-synthesis-system-msg.txt', opusSynthesisSystemMsg);
+      // Truncate user msg for debug if huge
+      const userMsgDebug = opusSynthesisUserMsg.length > 10000
+        ? opusSynthesisUserMsg.slice(0, 2000) + `\n\n... [TRUNCATED — ${opusSynthesisUserMsg.length} chars total] ...\n\n` + opusSynthesisUserMsg.slice(-2000)
+        : opusSynthesisUserMsg;
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-opus-synthesis-user-msg.txt', userMsgDebug);
+    } catch (e) { /* ignore */ }
+
+    console.log(`[Stage 4/Opus] System msg: ${opusSynthesisSystemMsg.length} chars, User msg: ${opusSynthesisUserMsg.length} chars`);
+    console.log(`[Stage 4/Opus] Total input: ~${Math.round((opusSynthesisSystemMsg.length + opusSynthesisUserMsg.length) / 4)} tokens`);
+
+    emit('Opus reading all sources and producing analytical dossier...', 'research', 19, TOTAL_STEPS);
+
+    // Stream Opus extraction+synthesis
+    const opusSynthesisStream = anthropic.messages.stream({
+      model: 'claude-opus-4-20250514',
+      max_tokens: 32000,
+      system: opusSynthesisSystemMsg,
+      messages: [{ role: 'user', content: opusSynthesisUserMsg }],
+    }, abortSignal ? { signal: abortSignal } : undefined);
+
+    researchPackage = '';
+    let lastSynthesisProgress = Date.now();
+    opusSynthesisStream.on('text', (text) => {
+      researchPackage += text;
+      const now = Date.now();
+      if (now - lastSynthesisProgress > 30_000) {
+        const tokens = estimateTokens(researchPackage);
+        emit(`Opus synthesis in progress — ${tokens} tokens so far...`, 'research', 19, TOTAL_STEPS);
+        lastSynthesisProgress = now;
+      }
+    });
+    await opusSynthesisStream.finalMessage();
+
+    console.log(`[Stage 4/Opus] Dossier complete: ${researchPackage.length} chars (~${estimateTokens(researchPackage)} tokens)`);
+
+    // Debug save research package
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-research-package.txt', researchPackage);
+    } catch (e) { /* ignore */ }
 
     // Validate research package quality
     const validationChecks = validateResearchPackage(researchPackage, selectedSources.length);
-    console.log(`[Stage 6] Validation: length=${validationChecks.length}, sources cited=${validationChecks.uniqueSourcesCited}/${validationChecks.sourcesExpected}, patterns=${validationChecks.totalPatternFlags}`);
+    console.log(`[Stage 4/Opus] Validation: length=${validationChecks.length}, sources cited=${validationChecks.uniqueSourcesCited}/${validationChecks.sourcesExpected}, patterns=${validationChecks.totalPatternFlags}`);
 
     // Create ResearchResult for compatibility
     research = {
@@ -1049,17 +1284,17 @@ ${pdfText}`;
         tier: q.category === 'A' ? 'STANDARD' as const : 'TAILORED' as const,
         rationale: `[Cat ${q.category}] ${q.rationale}`,
       })),
-      sources: deepResearchResult.citations.map(c => ({
-        url: c.url,
-        title: c.title,
-        snippet: '',
+      sources: selectedSources.map(s => ({
+        url: s.url,
+        title: s.title,
+        snippet: (s.content || '').slice(0, 200),
       })),
-      rawMarkdown: `# v5 RESEARCH DOSSIER: ${donorName}\n\nPipeline: v5 batched synthesis (Tavily breadth + batched DR)\nQueries: ${categorizedQueries.length}\nScreened: ${screenedSources.length}/${allSources.length}\nRelevance-filtered: ${relevantSources.length}/${dedupedSources.length}\nSelected: ${selectedSources.length}\nGap-fill searches: ${deepResearchResult.searchCount}\nCitations: ${deepResearchResult.citations.length}\nDuration: ${(deepResearchResult.durationMs / 60000).toFixed(1)} minutes\nStrategy: ${deepResearchResult.researchStrategy}\n\n${researchPackage}`,
+      rawMarkdown: `# v6 RESEARCH DOSSIER: ${donorName}\n\nPipeline: v6 (Tavily + DR gap-fill + Opus synthesis)\nQueries: ${categorizedQueries.length}\nScreened: ${screenedSources.length}/${allSources.length}\nRelevance-filtered: ${relevantSources.length}/${dedupedSources.length}\nSelected for Opus: ${selectedSources.length} (~${sourceCharsK}K chars)\nDR gap-fill searches: ${deepResearchResult.searchCount}\nDR gap-fill essay: ${gapFillCharsK}K chars\nOpus dossier: ${researchPackage.length} chars\n\n${researchPackage}`,
     };
 
-    console.log(`\n[Pipeline] v5 research complete: ${deepResearchResult.searchCount} gap-fill searches, ${researchPackage.length} chars\n`);
+    console.log(`\n[Pipeline] v6 research complete: ${deepResearchResult.searchCount} gap-fill searches, ${researchPackage.length} char dossier\n`);
     STATUS.researchComplete(deepResearchResult.searchCount);
-    emit(`Research synthesis ready — ${Math.round(researchPackage.length / 4)} tokens`, 'analysis', 20, TOTAL_STEPS);
+    emit(`Opus dossier ready — ${estimateTokens(researchPackage)} tokens`, 'analysis', 20, TOTAL_STEPS);
     STATUS.researchPackageComplete();
 
   } else {
@@ -1141,11 +1376,11 @@ ${pdfText}`;
   const exemplars = loadExemplars();
 
   const researchPackagePreamble = deepResearchResult
-    ? `The behavioral evidence below is a deep research dossier compiled from ${deepResearchResult.searchCount} web searches with ${deepResearchResult.citations.length} cited sources. Each behavioral dimension contains two blocks:
+    ? `The behavioral evidence below is an analytical dossier produced by Opus reading ${research.sources.length} pre-fetched sources in full plus a supplementary gap-fill research essay (${deepResearchResult.searchCount} additional web searches). Each behavioral dimension contains two blocks:
 
 QUOTES — the subject's own words and direct evidence from sources. These are your primary evidence. Build your behavioral claims from what the subject actually said and did, not from the research analyst's interpretation of what they said and did.
 
-ANALYSIS — one research analyst's interpretive commentary on the quotes. This commentary is a first read — useful as a starting hypothesis, but not authoritative. It was written by a model optimized for research synthesis, not for the operational briefing register this profile requires. When the commentary and a quote point in different directions, follow the quote. When the commentary describes a personality trait or uses academic language ("suggests a pattern of," "indicates a relationship style"), look past it to the quote underneath for the behavioral pattern you can actually deploy in a meeting.
+ANALYSIS — cross-source analytical commentary on the quotes. This commentary identifies patterns, contradictions, conditional forks, and evidence ceilings. It is a first read — useful as a starting hypothesis, but not authoritative. When the commentary and a quote point in different directions, follow the quote. When the commentary describes a personality trait or uses academic language ("suggests a pattern of," "indicates a relationship style"), look past it to the quote underneath for the behavioral pattern you can actually deploy in a meeting.
 
 The quotes are your evidence. The analysis is scaffolding. Build from the evidence.\n\n`
     : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
@@ -1264,7 +1499,21 @@ For each claim, assign one verdict:
 - Behavioral patterns described in an exemplar that were projected onto the target without independent evidence
 - Phrases or framings distinctive to an exemplar that were transferred to the target
 
-CRITICAL — avoid false positives: Before classifying a claim as EXEMPLAR_LEAK, check whether the specific fact appears in the research package or LinkedIn JSON for the TARGET. If the fact is independently supported by the target's own career data or research sources, classify it as SUPPORTED, not EXEMPLAR_LEAK. The presence of an exemplar's name in a factual claim about the target's career is NOT contamination. For example, if the target donated to "Craig Newmark Philanthropies" and this fact appears in the target's research package, that is SUPPORTED — it is not exemplar contamination just because "Newmark" is an exemplar name. Only flag EXEMPLAR_LEAK when the claim's substance traces to an exemplar profile and has NO independent support in the target's own evidence.
+IMPORTANT — AVOIDING FALSE POSITIVES:
+
+Before classifying ANY claim as EXEMPLAR_LEAK, you MUST check whether the specific fact appears in the research package OR the LinkedIn JSON for this target.
+
+Examples of what is NOT contamination:
+- A dollar figure that appears in both an exemplar AND in this target's career history (e.g. "$6M gift from Craig Newmark Philanthropies" — this is in the target's LinkedIn description of their time at Consumer Reports, even though "Newmark" is also an exemplar name)
+- An organizational fact about a company where both the target and an exemplar worked, if the target's involvement is documented in the research package
+- A behavioral pattern that appears in an exemplar AND is independently supported by evidence in the research package for this target
+
+A claim is EXEMPLAR_LEAK only if:
+1. The behavioral pattern, biographical detail, or specific language appears in an exemplar profile, AND
+2. It does NOT appear in the research package or LinkedIn data for this target, AND
+3. The claim cannot be independently verified from the target's own sources
+
+When in doubt, classify as UNSUPPORTED rather than EXEMPLAR_LEAK.
 
 **FABRICATED** — The claim contains a specific number, quote, or event that appears in neither the research package, the canonical biographical data, nor the exemplars. The model invented it.
 
@@ -1346,23 +1595,27 @@ Be thorough. Check every specific claim. Err on the side of flagging rather than
       console.log(`[Fact-Check] Passing ${criticalItems.length} critical items to editorial pass`);
 
       // Build the mandatory-fix block for the editorial prompt
-      factCheckBlock = `\n\n## MANDATORY CORRECTIONS — HARD AUDIT GATE
+      factCheckBlock = `
 
-Every item below MUST be acted on. Your output will be audited against this list. If any flagged claim survives unchanged, the profile fails QA.
+══════════════════════════════════════════
+MANDATORY CORRECTIONS FROM FACT-CHECK
+══════════════════════════════════════════
 
+An independent fact-checker has audited every specific claim in the first draft. The following items MUST be corrected. This is not optional. Do not preserve any flagged claim in any form — not rephrased, not softened, not restructured.
+
+RULES:
+- EXEMPLAR_LEAK: DELETE the claim entirely. This content came from a reference profile about a different person, not from evidence about this target. Do not keep the behavioral pattern in different words. Remove it completely.
+- FABRICATED: DELETE the claim entirely. No evidence supports it.
+- UNSUPPORTED: Either find explicit support in the research package (cite the source URL), or delete the claim.
+
+Your editorial output will be audited against this list. Every CRITICAL item that survives in any form — including rephrased versions of the same claim — is a failure.
+
+After deletions, if a section becomes thin, fill ONLY with evidence from the research package. Never invent replacement content.
+
+After completing all corrections, re-read the full profile once more to check for any surviving instances of the deleted claims that may appear in other sections (claims often repeat across sections).
+
+CRITICAL ITEMS:
 ${JSON.stringify(criticalItems, null, 2)}
-
-RULES — non-negotiable:
-
-1. **EXEMPLAR_LEAK**: DELETE the claim entirely, including any rephrased version of the same behavioral pattern. Do not soften it, do not paraphrase it, do not keep the insight in different words. If the claim traces to an exemplar profile rather than this person's research package, it must vanish completely.
-
-2. **FABRICATED**: DELETE entirely. The fact-checker found no source for this claim — it was invented. Remove it and do not replace it with a hedged version of the same fabrication.
-
-3. **UNSUPPORTED**: Either find explicit textual support in the research package or canonical biographical data provided above, or delete. Do not downgrade to softer language — either the evidence is there or the claim goes.
-
-4. After deletions, if a section becomes thin, fill ONLY with evidence from the research package. Never invent replacement content.
-
-5. After completing all corrections, re-read the full profile once more to check for any surviving instances of the deleted claims that may appear in other sections (claims often repeat across sections).
 `;
     }
 

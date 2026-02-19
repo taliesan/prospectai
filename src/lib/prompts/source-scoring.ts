@@ -52,11 +52,10 @@ export const SCARCITY_CAP = 6.0;
 /** Mild nudge toward source-type diversity (index = sources of this tier already selected) */
 export const DIVERSITY_BONUSES = [1.3, 1.15, 1.05, 1.0]; // 0 selected, 1, 2, 3+
 
-/** Maximum chars of source content to send to Deep Research.
- *  Set to Infinity — the batched DR system handles its own budgeting
- *  via 30K-char batch packing. The selection algorithm now produces
- *  a full ranking without a budget cap. */
-export const CONTENT_BUDGET_CHARS = Infinity;
+/** Maximum chars of source content to send to Opus extraction+synthesis.
+ *  80K is tuned for Opus's reliable reading range — enough for 8-16 sources
+ *  depending on length mix, well within the 200K token context window. */
+export const CONTENT_BUDGET_CHARS = 80_000;
 
 /** How many sources per Sonnet scoring batch */
 const SCORING_BATCH_SIZE = 18;
@@ -418,8 +417,14 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
     // No source with positive signal remaining — we're done
     if (bestIdx === -1 || bestScore <= 0) break;
 
-    // Select the best source
+    // Budget check: stop if adding this source would exceed the char budget
     const chosen = remaining.splice(bestIdx, 1)[0];
+    if (totalChars + chosen.char_count > CONTENT_BUDGET_CHARS && selected.length > 0) {
+      // Put it back and stop — we've hit the budget
+      remaining.push(chosen);
+      break;
+    }
+
     selected.push(chosen);
     totalChars += chosen.char_count;
 

@@ -3,6 +3,7 @@
 
 import { complete } from '../anthropic';
 import { ResearchSource } from './screening';
+import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
 
 // ── Blog detection ──────────────────────────────────────────────────
 
@@ -343,6 +344,81 @@ If none of these are blog posts, return: []`;
   }
 }
 
+// ── Authorship verification (gate before bulk crawl) ────────────────
+
+/**
+ * After fetching the first post from a discovered blog domain, verify that
+ * the target actually wrote it. Uses Sonnet with low temperature for a fast,
+ * deterministic yes/no check on byline, author field, and first paragraph.
+ *
+ * Returns true if the post appears to be written by subjectName.
+ */
+async function verifyAuthorship(
+  postContent: string,
+  postUrl: string,
+  subjectName: string
+): Promise<{ isAuthor: boolean; reason: string }> {
+  // Use the first 3000 chars — byline/author info is always at the top
+  const contentSlice = postContent.slice(0, 3000);
+
+  const prompt = `Was this post written by "${subjectName}"?
+
+Check these signals (in order of reliability):
+1. Byline or "by" attribution
+2. Author field / author bio
+3. First-person voice in the opening paragraph that identifies the author
+4. Substack/Medium/blog "about" text naming the author
+
+Post URL: ${postUrl}
+Post content (first 3000 chars):
+${contentSlice}
+
+Return JSON only:
+{ "isAuthor": true/false, "reason": "one sentence explaining your verdict" }`;
+
+  try {
+    const response = await complete(
+      'You verify whether a blog post was written by a specific person. Return JSON only.',
+      prompt,
+      { maxTokens: 256, temperature: 0 }
+    );
+
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      // Fail-open: if we can't parse the response, let the post through
+      console.log(`[Blog Crawl] Authorship check returned unparseable response, failing open for ${postUrl}`);
+      return { isAuthor: true, reason: 'Authorship check returned unparseable response — failing open' };
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const result = {
+      isAuthor: !!parsed.isAuthor,
+      reason: parsed.reason || 'No reason given',
+    };
+
+    // Log to debug file
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      const logLine = `[${new Date().toISOString()}] ${result.isAuthor ? 'CONFIRMED' : 'REJECTED'} | Target: "${subjectName}" | URL: ${postUrl} | Reason: ${result.reason}\n`;
+      appendFileSync('/tmp/prospectai-outputs/DEBUG-blog-authorship-checks.txt', logLine);
+    } catch { /* ignore */ }
+
+    return result;
+  } catch (err) {
+    // Fail-open on API/network errors
+    console.error(`[Blog Crawl] Authorship check failed for ${postUrl}:`, err);
+
+    // Log error to debug file
+    try {
+      mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+      const logLine = `[${new Date().toISOString()}] ERROR (fail-open) | Target: "${subjectName}" | URL: ${postUrl} | Error: ${err instanceof Error ? err.message : String(err)}\n`;
+      appendFileSync('/tmp/prospectai-outputs/DEBUG-blog-authorship-checks.txt', logLine);
+    } catch { /* ignore */ }
+
+    return { isAuthor: true, reason: 'Authorship check errored — failing open' };
+  }
+}
+
 // ── Personal domain crawler (always fetch, never skip) ──────────────
 
 /**
@@ -401,10 +477,40 @@ export async function crawlPersonalDomain(
   const prioritized = prioritizePosts(posts);
   console.log(`[Blog Crawl] Prioritized to ${prioritized.length} posts from personal domain`);
 
+  // Step 6: Authorship gate — fetch the first post and verify the target wrote it
+  if (prioritized.length === 0) return [];
+
+  const firstPost = prioritized[0];
+  let firstContent: string;
+  try {
+    firstContent = await fetchFunction(firstPost.url);
+  } catch (err) {
+    console.log(`[Blog Crawl] Failed to fetch first post for authorship check: ${firstPost.url}`);
+    return [];
+  }
+
+  const authorship = await verifyAuthorship(firstContent, firstPost.url, subjectName);
+  if (!authorship.isAuthor) {
+    console.log(`[Blog Crawl] AUTHORSHIP REJECTED for domain ${domainUrl} — "${authorship.reason}". Discarding all posts from this domain.`);
+    return [];
+  }
+
+  console.log(`[Blog Crawl] Authorship confirmed for ${domainUrl}: "${authorship.reason}"`);
+
+  // First post already fetched — add it, then fetch the rest
   const sources: ResearchSource[] = [];
   const maxPosts = 12;
 
-  for (const post of prioritized.slice(0, maxPosts)) {
+  sources.push({
+    url: firstPost.url,
+    title: firstPost.title || 'Blog Post',
+    snippet: firstContent.slice(0, 300),
+    content: firstContent,
+    source: 'blog_crawl',
+    bypassScreening: true,
+  });
+
+  for (const post of prioritized.slice(1, maxPosts)) {
     try {
       const content = await fetchFunction(post.url);
       sources.push({
@@ -505,11 +611,40 @@ export async function crawlBlog(
   const prioritized = prioritizePosts(posts);
   console.log(`[Blog Crawl] Prioritized to ${prioritized.length} posts`);
 
-  // Fetch top posts
+  if (prioritized.length === 0) return [];
+
+  // Authorship gate — fetch the first post and verify the target wrote it
+  const firstPost = prioritized[0];
+  let firstContent: string;
+  try {
+    firstContent = await fetchFunction(firstPost.url);
+  } catch (err) {
+    console.log(`[Blog Crawl] Failed to fetch first post for authorship check: ${firstPost.url}`);
+    return [];
+  }
+
+  const authorship = await verifyAuthorship(firstContent, firstPost.url, subjectName);
+  if (!authorship.isAuthor) {
+    console.log(`[Blog Crawl] AUTHORSHIP REJECTED for blog ${blogUrl} — "${authorship.reason}". Discarding all posts from this blog.`);
+    return [];
+  }
+
+  console.log(`[Blog Crawl] Authorship confirmed for ${blogUrl}: "${authorship.reason}"`);
+
+  // First post already fetched — add it, then fetch the rest
   const sources: ResearchSource[] = [];
   const maxPosts = 10;
 
-  for (const post of prioritized.slice(0, maxPosts)) {
+  sources.push({
+    url: firstPost.url,
+    title: firstPost.title || 'Blog Post',
+    snippet: firstContent.slice(0, 300),
+    content: firstContent,
+    source: 'blog_crawl',
+    bypassScreening: true,
+  });
+
+  for (const post of prioritized.slice(1, maxPosts)) {
     try {
       const content = await fetchFunction(post.url);
       sources.push({
