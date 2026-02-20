@@ -803,7 +803,7 @@ body {
 }`;
 }
 
-/** Compact overrides for embeddable version — moderate spacing for in-page rendering */
+/** Compact overrides for embeddable version — generous spacing for in-page rendering */
 function getCompactCSS(): string {
   return `
 body { font-size: 13px; }
@@ -811,12 +811,17 @@ body { font-size: 13px; }
 .setup { margin-bottom: 40px; }
 .arc { margin-bottom: 40px; }
 .tripwires { margin-bottom: 40px; }
-.beat { margin-bottom: 24px; }
+.beat { margin-bottom: 44px; }
+.beat:last-child { margin-bottom: 0; }
 .beat-header { padding: 12px 0; margin-bottom: 10px; }
 .beat-number { width: 40px; height: 40px; font-size: 18px; }
+.beat-goal { margin-bottom: 16px; }
+.beat-body { margin-top: 4px; }
 .setup-bullets { gap: 8px; }
 .setup-group { margin-bottom: 24px; }
-.phase { margin-bottom: 14px; }
+.section-label { margin-bottom: 32px; }
+.phase { margin-bottom: 16px; }
+.phase:last-child { margin-bottom: 0; }
 .phase-content { padding: 12px 16px; }
 `;
 }
@@ -1002,25 +1007,33 @@ ${body}
 </html>`;
 }
 
-/** Font overrides: match website fonts (DM Sans + Instrument Serif) instead of standalone fonts */
+/** Font overrides: match website fonts — Instrument Serif for body copy, DM Sans for UI labels */
 function getWebsiteFontCSS(): string {
   return `
-body { font-family: 'DM Sans', system-ui, sans-serif; }
-.header h1 { font-family: 'Instrument Serif', serif; }
-.beat-number { font-family: 'Instrument Serif', serif; }
-.beat-title { font-family: 'Instrument Serif', serif; }
-.one-line-box p { font-family: 'Instrument Serif', serif; }
+body { font-family: 'Instrument Serif', Georgia, serif; }
+.header h1 { font-family: 'Instrument Serif', Georgia, serif; }
+.beat-number { font-family: 'Instrument Serif', Georgia, serif; }
+.beat-title { font-family: 'Instrument Serif', Georgia, serif; }
+.one-line-box p { font-family: 'Instrument Serif', Georgia, serif; }
+.phase-content { font-family: 'Instrument Serif', Georgia, serif; }
+.setup-bullets li { font-family: 'Instrument Serif', Georgia, serif; }
+.beat-goal { font-family: 'Instrument Serif', Georgia, serif; }
+.tripwire-row { font-family: 'Instrument Serif', Georgia, serif; }
+.stalling { font-family: 'Instrument Serif', Georgia, serif; }
 .header-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
 .section-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
+.setup-heading { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
 .phase-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
 .tripwire-tag { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
+.tripwire-name { font-family: 'DM Sans', system-ui, sans-serif; }
+.stalling-label { font-family: 'DM Sans', system-ui, sans-serif; }
 `;
 }
 
 /**
  * Embeddable version: returns a <div> with scoped CSS, no <html>/<body> wrapper.
  * Safe to inject via dangerouslySetInnerHTML without iframe.
- * Uses website-matching fonts (DM Sans + Instrument Serif).
+ * Uses website-matching fonts (Instrument Serif body copy + DM Sans UI labels).
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
