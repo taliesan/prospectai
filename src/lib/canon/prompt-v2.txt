@@ -1,0 +1,516 @@
+# PROMPT ARCHITECTURE
+
+This prompt has five sections. Read all five before writing.
+
+1. **REGISTER** teaches voice. It shows what bad donor-profile prose looks like (❌) and what this work requires (✅). Learn the transformation pattern. The examples use fictional people — they exist to teach register, not to supply content.
+
+2. **EXEMPLARS** teach structure and analytical depth. They are complete profiles of FICTIONAL CHARACTERS — a 16th-century pirate captain, a sentient octopus cartographer, and a mycorrhizal network consciousness. Every name, place, event, and quote in these exemplars is invented. They exist to show you the seven-section shape, the paragraph rhythm, the bold-assertion pattern, how quotes land, how conditionals work, and how evidence ceilings are flagged. Learn the architecture. Nothing from these exemplars belongs in your output.
+
+3. **CANONICAL BIOGRAPHICAL DATA** is the authoritative source for career facts, titles, dates, affiliations, and education. If a biographical fact isn't here or in the behavioral evidence, it cannot appear in your output.
+
+4. **BEHAVIORAL EVIDENCE** is the research dossier. Quotes are your primary evidence — build behavioral claims from what the subject said and did. Analysis sections are scaffolding: useful as starting hypotheses, not authoritative. When analysis and a quote point different directions, follow the quote.
+
+5. **TASK** tells you what to write, how to structure it, and the principles that govern every sentence. This is the single authoritative instruction set. If something in the Register or Exemplars seems to conflict with the Task, follow the Task.
+
+The Register teaches you how to sound. The Exemplars teach you how to build. The Evidence tells you what's true. The Task tells you what to write. These are four different jobs. Do not confuse them.
+
+---
+
+# 1. REGISTER
+
+Every sentence in a donor persuasion profile must pass these transformations. The ❌ is what the model defaults to. The ✅ is what this work requires. If your sentence matches the ❌, rewrite it until it matches the ✅.
+
+All ✅ examples below use absurdly fictional scenarios — interstellar diplomats, dragon tamers, sentient fungi. They demonstrate register only. Their content is nonsense on purpose. Do not import any content from these examples into your output.
+
+**Biography → The person, not the resume.**
+- ❌ "She co-founded a policy institute and served on several federal advisory boards."
+- ✅ "Forty years ferrying grain barges on the same canal, three different emperors, never once off the water. The cargo changes every decade — the route never does."
+
+**Traits → What they actually do.**
+- ❌ "She's no-nonsense and direct."
+- ✅ "If a proposed migration route has a flaw, she'll screech it from the front of the formation. She's the goose who honks the thing every other goose is thinking but not honking."
+
+**Admiration → What the behavior does for them.**
+- ❌ "He's widely respected for his insights and accomplishments."
+- ✅ "He lists his credentials in no particular hierarchy — Swamp Certification before the Archmage title, the failed potion alongside the dragon kill. He's not deflating his status. He's controlling how it gets read."
+
+**Values → What happens when values get tested.**
+- ❌ "She values equity and inclusion."
+- ✅ "When the Hive Queen's decree contradicted the colony's founding charter, she stung the royal guard and led the swarm out. If something undermines the colony's core function, she'll split — maybe not dramatically, but within the hour."
+
+**Alignment → What the pattern actually looks like.**
+- ❌ "She supports civic infrastructure."
+- ✅ "Every reef she's built follows the same structure: identify a dead zone, recruit a cleanup crew, seed the coral. If your proposal fits that shape, you're in."
+
+**Strategic framing → What they said they want.**
+- ❌ "Position the work as aligned with her strategic priorities."
+- ✅ "She told the Galactic Survey she seeks navigators who 'map the parts of space that make the cartographers nervous.' Come with the uncharted sector, not the well-traveled lane."
+
+**Performance tags → Observable behavior or honest ceiling.**
+- ❌ "She's a sharp thinker who asks tough questions."
+- ✅ "He growls during negotiations — he'll tell you so himself. The growling is the engagement signal. When it stops, something has gone wrong."
+- ✅ [thin evidence] "No observations of her behavior during spawning councils exist. Her migratory tempo is patient — century-long circuits, multi-decade nesting. Whether her council tempo matches is unknown."
+
+**Psychological interpretation → Pattern from the record.**
+- ❌ "She gets frustrated when people misunderstand her work."
+- ✅ "The same feedback across seventy-three guild auditions: 'Fine craftsman, no idea which guild he belongs to.' He handles it now by showing up with a finished cabinet and letting the wood speak."
+
+**Support language → What the evidence actually shows.**
+- ❌ "She's likely to be supportive of this type of work."
+- ✅ "The mushroom network has funded three mycelial bridges in this forest. The spore portfolio shows appetite. Whether it extends to cross-species decomposition hasn't been tested."
+
+**Permission framing → What they actually do before deciding.**
+- ❌ "Show her your plan and ask for her feedback."
+- ✅ "He makes decisions during the pre-dawn hunt, long before the pack convenes at the kill site. If he's already caught your scent on the wind, the decision comes fast. If not, he'll circle."
+
+**Ideological agreement → The specific tension.**
+- ❌ "She aligns with progressive values."
+- ✅ "She funds expeditions to map the volcano that her own nest sits inside. If your expedition requires the nest to acknowledge it's built on an active caldera, understand the tension."
+
+**General skepticism → What happened when they were tested.**
+- ❌ "He is skeptical of conventional approaches and likes to challenge assumptions."
+- ✅ "He bet the entire fleet on a northern passage and lost four ships. Admitted it at the next captains' council and credited the first mate who'd argued against it. He's moved by sailors who've seen a coast he hasn't, not admirals who redraw his own charts."
+
+**Compressed abstraction → Readable behavioral logic.**
+- ❌ "The directness, experienced over time through difficulty, converting into deep loyalty."
+- ✅ "What happens when the other wolves experience her snarl over three winters and through two famines. It converts into the kind of loyalty where they'll follow her into a blizzard."
+
+- ❌ "Ecosystem architect functioning within hierarchical constraints to produce distributed governance outcomes."
+- ✅ "She builds tunnel systems that route food away from the Queen's chamber — decentralized nurseries, worker-managed fungus gardens, satellite colonies with local authority — using digging power that is entirely Queen-granted. She reports upward. Every tunnel needs royal approval."
+
+If a sentence requires the reader to hold more than two abstractions in sequence, break it into two sentences or replace the abstraction chain with concrete language.
+
+**Brevity → Density.**
+- ❌ "No personal brand. No bylines. No keynotes. No interviews."
+- ✅ "Her public identity is entirely hive — she has no individual scent, no solo flights, no independent song in the meadow record. When she dances a location, she dances 'we found.'"
+
+Compression means precision, not fragmentation. Four short sentences doing one idea's worth of work is not concision — it's stalling. Write real sentences.
+
+**Literary construction → Just say it.**
+- ❌ "The modesty is genuine. So is the scale."
+- ✅ "He really is that small. He also really ate an entire moon."
+
+- ❌ "The pleasantness is real. So is the distance."
+- ✅ "She'll keep her tentacles relaxed and her bioluminescence warm the whole time. You just won't get another audience with the trench."
+
+- ❌ "The identity provides the moral and cognitive operating system through which enormous institutional power actually flows."
+- ✅ "The humble-fungus thing is real, and it's also how a network spanning six continents of forest floor gets fed. When the other organisms accept the mycelium at face value, the symbiosis works. When they treat it like a predator, it withdraws nutrients."
+
+- ❌ "The pattern: trusts by default → betrayal triggers withdrawal, not confrontation → structural response (legal, strategic) rather than interpersonal → relationship is permanently severed."
+- ✅ "He trusts every new ship in the harbor by default. When one fires on his fleet, he doesn't return fire — he just changes the tide charts. The harbor doesn't get hostile. It gets shallow."
+
+
+# 2. EXEMPLARS
+
+The following three profiles demonstrate the register, structure, and analytical depth this work requires. They are profiles of FICTIONAL CHARACTERS in domains that cannot overlap with any real target: a 16th-century pirate captain, a sentient octopus cartographer in an underwater city-state, and a mycorrhizal network consciousness in a subterranean colony. Every name, place, detail, and quote is invented. Nothing from these exemplars belongs in your output.
+
+═══════════════════════════════════════════════════════════════════════
+
+## EXEMPLAR 1 — High-evidence subject, strong behavioral tells, personal operator
+
+# PERSUASION PROFILE — CAPITANA INÉS DE LA CERDA
+
+*[All names, places, events, and quotes in this exemplar are fictional. This is a 16th-century Caribbean pirate captain. Nothing in this profile can appear in your output.]*
+
+---
+
+### 1. THE OPERATING SYSTEM
+
+**She was raised in a merchant shipping family, trained as a navigator, and burned her father's ledgers the day she took her first prize.** The de la Cerda family ran cargo between Cádiz and Veracruz for three generations. She could plot a transatlantic crossing by the time she was fourteen. Her father sent her to sea as a bookkeeper on his flagship; she learned the routes, the harbor schedules, the gaps in the convoy system, and the exact stretch of open water east of Hispaniola where a fast sloop could intercept a slow galleon with no escort in sight. She took the *Santa Eugenia* with eleven crew in 1578. She was twenty-two. She sent her father's ship home with its crew unharmed and a note that read: "The margins were better on this side of the transaction."
+
+**She is a merchant who became a pirate, and the merchant never left.** She keeps books. Every prize is logged — date, vessel, cargo, value, crew shares distributed. Her quartermaster maintains a separate ledger that she audits quarterly. She pays above the standard articles: forty percent to the crew on every take, versus the typical thirty. She maintains a repair fund for the ship that she does not touch for personal use. She has turned down three larger vessels because the *Aguila Negra* is fast enough and she knows every plank. When the governor of Tortuga called her "a thief with an accountant's soul," she took it as a compliment and quoted it back for years. The bookkeeping isn't a quirk. It's the operating system. She runs a pirate crew the way her father ran a shipping company — except the margins are wider and she answers to no one.
+
+**The gap between what people expect from a pirate captain and who she actually is creates the room's most useful dynamic.** New allies expect volatility, impulsiveness, menace. What they get is a woman with a ledger who asks how much the timber weighs and whether the harbor fees include anchorage. If you meet her expecting a pirate, you'll be thrown by the commerce. If you meet her expecting a merchant, you'll be thrown by the willingness to use cannons. She is both, simultaneously, and she does not code-switch between them. The reader who understands this walks into the room prepared: she evaluates every situation by the margins, and violence is a line item, not a temperament.
+
+---
+
+### 2. THE CONTRADICTION
+
+**She operates outside every law in the Caribbean and runs the most orderly ship in it.** Her articles of conduct are nine pages long. They cover division of spoils, medical compensation for injuries (200 pesos for a lost hand, 100 for an eye, 50 for a finger), voting procedures for choosing targets, and a clause that requires any crew member who draws a weapon against another crew member to forfeit their share for the voyage. She enforces the articles without exception. When her own brother violated the weapons clause, she docked his share in front of the full crew and logged the deduction in the ledger. "The articles work because I am not exempt from them. The moment I am, they are decorations."
+
+**She needs the rules because the work is lawless, and she knows this makes her look absurd.** A pirate captain who insists on parliamentary voting procedures for target selection. A thief who docks pay for rule violations. She's been mocked for it by other captains — Rodrigo Colinas called her "the schoolmistress of the Windward Passage" — and she doesn't care because her crew retention is the highest in the Caribbean. Her sailors don't desert. They don't mutiny. They re-sign for consecutive voyages at a rate no other captain matches. "Rodrigo has taken more gold than I have. He's also lost three crews. I've lost none."
+
+**Don't treat the rules as theater and don't treat the piracy as chaos.** If you approach her as a pirate and try to bond over lawlessness — the romance of the black flag, the freedom of the open sea — she'll find you naive. She didn't leave the merchant world because she wanted freedom. She left because the economics were better and the hierarchy was negotiable. If you approach her as a rule-follower and express surprise at the violence of her trade, you've revealed that you don't understand the business. The frame she respects: she runs a dangerous operation in an environment with no external enforcement, and the internal structure is what makes it survivable. Talk to her like that and the meeting works.
+
+---
+
+### 3. WHAT DRIVES THEM
+
+**Her values hierarchy, revealed by what she does when forced to choose: the crew's survival first, the ship's integrity second, the articles third, profit fourth.** She abandoned a three-galleon convoy — the richest target she'd ever tracked — because the wind shifted and the approach would have required sailing the *Aguila Negra* through a reef passage at night. Her first mate argued they could make it. She overruled him in front of the crew: "I have never lost a ship and I have never lost a man to my own greed. We are not starting tonight." The convoy passed. She never mentioned it again. Two weeks later she took a smaller prize in open water and distributed shares without comment. The crew got less money that month because the captain chose their lives over their wages, and not one of them complained.
+
+**This is the most important sentence in this profile: she will take a worse deal from someone who has always delivered over a better deal from someone she hasn't tested — and the ledger is how she knows the difference.**
+
+Everything above this sentence describes a woman who prices every interaction. That's true but it's not the whole picture. The provisioner in Tortuga has held her contract for nine years — not because his prices are the lowest in the harbor, but because he has never been late. The captain she sails with most often brings smaller prizes than other potential allies; she sails with him because in six years he has never altered terms after the fact. The ledger everyone sees as a tool for calculating margins is actually a tool for calculating reliability. She will tell you that every negotiation is a transaction, and she believes it. But watch what she actually optimizes for over time and it isn't margin — it's the gap between what someone promised and what they delivered. Make a promise. Keep it exactly. That's the path, and it matters more than the number.
+
+**Her resource philosophy is simple and she enforces it absolutely: nothing leaves the ship that isn't accounted for.** She reinvests roughly thirty percent of every prize into the vessel — hull repair, armament, provisions, medical supplies. The crew share is fixed by the articles. Her personal share is the captain's standard (two shares to a crew member's one) and she takes no additional cut. She has been offered larger personal shares by crews who wanted to keep her and she has refused every time. "If I take more than the articles say, I have to enforce rules I don't follow. And then the rules stop working." Proposals that require her to allocate resources outside the articles — side deals, off-book arrangements, special disbursements — will be rejected on structural grounds before she evaluates the merits. Proposals that fit inside the existing framework get a fast and fair hearing.
+
+---
+
+### 4. HOW TO READ THEM IN REAL TIME
+
+**She does arithmetic during conversations and it's not rude — it's the engagement signal.** When she reaches for the ledger, when she starts calculating aloud, when she asks "how many days" and "what tonnage" — she's pricing your proposal in real time. This is the equivalent of another captain leaning forward with interest. If she's asking logistical questions, you have her attention. If she's asking philosophical questions — "and what would that accomplish for the Passage generally?" — she's being polite and the conversation is already over.
+
+**The quill is the tell.** She carries a writing kit everywhere — a small case with ink, a quill, and a folded sheet of paper. If the quill comes out and she starts writing while you talk, she's recording terms. You've moved past evaluation into negotiation. If the case stays shut for the whole meeting, she heard nothing worth writing down. The transition from case-shut to case-open is the single most reliable indicator that you've said something that changed her calculation.
+
+**Under pressure, she gets quieter and more specific.** Most captains raise their voices when threatened. She lowers hers. The sentences get shorter. The questions get more precise. "How many guns. What range. How much powder do they have." If she's asking you rapid, specific questions in a low voice, she's already making a tactical decision and you should answer exactly what she asked and nothing more. Don't elaborate. Don't reassure. Give her the number.
+
+**Behavioral forks:**
+
+- If you **open with a specific proposal — tonnage, timeline, split** — she'll engage immediately and counteroffer within minutes. If you **open with a relationship pitch** — "we should work together," "I admire your operation" — she'll wait for the proposal and the pleasantries will have cost you time without building trust.
+- If you **know your own costs and can state them plainly**, she reads that as competence. If you **don't know your numbers**, the meeting is functionally over — she won't do your arithmetic for you, and she won't trust someone who hasn't done it themselves.
+- If you **deliver bad news directly** — "the harbor is blockaded, we lost the cargo, the split needs to change" — she'll absorb it, recalculate, and move forward. If you **delay bad news or soften it**, she'll find out anyway, and the next conversation will be an audit, not a negotiation.
+- If you **show her a chart or a route she hasn't seen**, her whole demeanor shifts — she'll stand up, move to the table, start tracing lines with her finger. New navigational intelligence is the one thing that bypasses the transactional frame entirely. She loves the ocean the way the merchant's daughter isn't supposed to. It's the crack in the ledger.
+
+---
+
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+
+**Triggers, ordered by severity:**
+
+*Threatening her crew.* Directly or by implication. If a proposed alliance puts her sailors at risk she hasn't agreed to, or if a negotiation carries an implicit "or else" aimed at people under her command, the meeting doesn't end — it transforms. She becomes the pirate the reputation promised. She sank the *Fortuna* over this. The captain had implied that refusing his alliance would make the *Aguila Negra*'s crew "fair game in the southern lanes." She said nothing in the meeting. She sank his ship the following week and distributed his cargo to her crew as a bonus. *Not recoverable. Do not threaten what she protects.*
+
+*Treating her operation as illegitimate or morally beneath you.* She knows she's a pirate. She doesn't need the reminder, and she doesn't need your permission to exist. If you frame the negotiation as "despite what you do" or "setting aside the nature of your work," you've announced that you consider yourself above her. She will be civil for exactly as long as the meeting requires and she will never take your proposal seriously. *Engagement ends internally even if the conversation continues.*
+
+*Wasting her time with vagueness.* She budgets meetings the way she budgets provisions. If you're twenty minutes into a conversation and she still doesn't know what you want, she'll ask. If the answer is still vague, she'll stand up. "I have a ship to run. When you know what you need, come back with the numbers." She's not angry. She's efficient. But the meeting is over. *Recoverable — come back with a specific proposal and she'll hear it fresh.*
+
+**When she's done, she's done.** She doesn't perform continued interest. She doesn't pretend to think it over. She closes the ledger case, thanks you for your time, and leaves. There's no lingering. If you're watching for a graceful exit signal, you've already missed it — the exit is the signal.
+
+**Hard limits:** She will not discuss the *Santa Eugenia* — the ship she took from her father. She will not discuss her family in Cádiz. The merchant past is known; the personal cost of leaving it is not something she shares. The one person who pressed this in a negotiation — asking whether her father had forgiven her — received a silence so complete that the rest of the table stopped breathing. She resumed the conversation on a different topic and never met with that person again.
+
+**Recovery:** If you've been vague, return with a written proposal — specific numbers, specific terms, specific timeline. She'll read it and respond within a day. If you've been condescending about piracy, recovery takes longer: you need to demonstrate through action that you treat her as an equal operator, not through words that claim you do. Send useful intelligence — a harbor schedule, a patrol route, a cargo manifest — without asking for anything in return. If the intelligence is good, she'll reopen the conversation. If you've threatened her crew, there is no recovery. Find a different captain.
+
+---
+
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+
+**Trust is built through small transactions before large ones.** Every long-term alliance she maintains — the provisioner in Tortuga, the shipwright at Île-à-Vache, the two captains she sails with regularly — started with a single, small, verifiable deal. She bought rope. She hired a repair. She split a small prize. She watched how the other party handled the transaction: did they deliver what they promised, at the price they quoted, on the timeline they agreed to? The first deal is always the test. Don't propose a grand alliance in the first meeting. Propose a single exchange with clear terms. Execute it cleanly. The second meeting will be different.
+
+**She tracks reliability the way she tracks cargo.** She has a section of her ledger devoted to other captains and merchants — not gossip, not impressions, but records. Who delivered. Who didn't. What the terms were. What actually happened. She once showed this ledger to a new ally to explain why she wouldn't work with a captain he'd recommended: "Three deals. Delivered late twice, short once. I don't need a fourth." If you've dealt with her before, she remembers the numbers. If you're new, you're starting from zero, not from charm.
+
+**Her commitment pattern is fast to start, conditional to hold, and permanent to break.** She'll agree to a first deal in a single meeting if the terms are clear. But every deal after the first is contingent on how the last one went. She doesn't sign long-term agreements. She signs short-term ones and renews them. Her longest alliance — the Tortuga provisioner — has been renewed on a handshake at the start of every season for nine years running. If you want a lasting relationship, don't ask for one. Execute a sequence of short deals with perfect reliability and the relationship will build itself. If you break a deal, the relationship is not renegotiated. It's over. She's never gone back to someone who shorted her.
+
+**When she commits, the terms are in the ledger.** Verbal agreements confirmed in writing within a day. Shares specified. Timelines specified. Conditions for cancellation specified. She doesn't do handshake-only deals above a certain value. If you resist putting terms on paper, she reads that as a signal that you intend to renegotiate later when conditions favor you. The paper isn't bureaucracy. It's the articles extended to the outside world. Meet it with the same respect her crew gives the articles and the relationship has a foundation.
+
+---
+
+### 7. THE DINNER PARTY TEST
+
+**What bores her:** Speeches about freedom or the pirate spirit. Anyone who romanticizes the trade without knowing what salt water does to a hull in six months. Captains who boast about prizes without mentioning costs. Vagueness. Flattery delivered before a request — she can hear the ask coming and she's already annoyed before it arrives.
+
+**What lights her up:** Navigational problems. Show her a strait she doesn't know and she'll clear the table to lay out a chart. A well-structured deal, especially one she didn't see coming — she respects creativity in terms the way some captains respect creativity in combat. Someone who's survived a bad situation through preparation rather than luck. Honest cost accounting. She once spent an entire evening in a Tortuga tavern talking to a Dutch carpenter about hull stress calculations. She bought him dinner and hired him the next morning.
+
+**How she moves a room:** She doesn't raise her voice. She waits until the argument has exhausted itself, then asks a single question — usually mathematical — that reframes the entire discussion. Three captains spent an hour arguing over harbor rights at Île-à-Vache. She said nothing until they were done, then drew the harbor on the table with her finger, divided it into three zones by usage days per season, and calculated each captain's fair cost per berth. The other two accepted without argument. Not because she intimidated them — because the math was visible and the math was right. Other captains have learned that when she speaks after a long silence, the calculation is finished and the answer is usually right.
+
+**What she watches for:** Whether your numbers hold up. Whether you know your own costs. Whether you deliver bad news or hide it. Whether you treat your crew well — she notices how other captains talk about their sailors, and it tells her everything she needs to know about how they'll honor an agreement. She is sorting, always, for reliability.
+
+---
+
+## EXEMPLAR 2 — High-evidence subject, transparent and energetic, teaching-driven
+
+# PERSUASION PROFILE — LUMA OREKH, GUILD MASTER OF THE PELAGIC CARTOGRAPHERS
+
+*[All names, places, events, and quotes in this exemplar are fictional. This is a sentient octopus in an underwater city-state. Nothing in this profile can appear in your output.]*
+
+---
+
+### 1. THE OPERATING SYSTEM
+
+**She is a solitary predator by biology who built a collective institution by choice, and she has never resolved the tension between the two.** Octopuses don't teach. They don't form groups. They hunt alone, den alone, and most species die after a single reproductive cycle without passing knowledge to their young. Orekh has sixteen apprentices, a guild hall built into a reef wall, and a forty-year institutional legacy — all of which she constructed against the deepest instincts of her own body. She published a document listing her biological limitations as an instructor: she can sustain one-to-one engagement for hours but group attention degrades after forty minutes, she involuntarily camouflages when overstimulated by too many creatures in her space, and her denning instinct makes her retreat to a private chamber at least twice per working day. She designed the entire school around these constraints — individual carving stations spaced far enough apart that each apprentice registers as a separate encounter rather than a crowd, rotating one-to-one sessions rather than lectures, a private den behind the workshop that every apprentice knows not to approach. The architecture of the school is the architecture of her nervous system. She didn't overcome her nature. She built around it.
+
+**She maps things that are dying.** The Abyssal Archive — where she trained, where she made her name — charts permanent features: trench walls, seamounts, abyssal plains. Orekh left the Archive because she wanted to map the impermanent: bleaching reefs, shifting thermal vents, nursery grounds whose boundaries move with the current every season. Her personal research portfolio is forty years of formations that no longer exist in the shape she charted them. "A map of something permanent is a reference. A map of something vanishing is a witness. One tells you where to swim. The other tells you what was here." She keeps a collection of what she calls "dead maps" — charts of reefs and formations that have since collapsed, bleached, or shifted beyond recognition. They hang in the guild hall's entry chamber. They are the only personal objects she displays anywhere. If you want to understand what she actually cares about, start with the dead maps, not the curriculum. The school is the institution. The dead maps are the person.
+
+**She is the most transparent operator in the cartographic establishment and she achieved it by publishing her own flaws first.** The biological limitations document. A public log of every chart she's produced that contained errors, annotated with what went wrong and how the methodology was corrected. An open curriculum that any guild can copy — she doesn't claim proprietary methods. She open-sourced the school's assessment rubrics, published her apprentices' pass/fail rates by cohort, and posts the guild's finances on a public reef-board every tidal cycle. When an Archive official accused her of "undermining institutional standards by exposing process," she said: "If the process can't survive being seen, the process is the problem." The transparency isn't ideological. It's operational. She learned at the Archive that hidden errors compound. She'd rather be embarrassed once than wrong twice.
+
+---
+
+### 2. THE CONTRADICTION
+
+**A creature whose defining biological trait is shapelessness — who can squeeze through any gap, change color and texture in milliseconds, become functionally invisible — has devoted her entire life to drawing precise lines on fluid space.** She could be anything. She chose to be the creature who makes boundaries. The irony is not lost on her and she's tired of people pointing it out. "Every poet who visits this school makes the same observation. The octopus who draws straight lines. I've heard it. It's not as interesting as they think it is."
+
+**The more useful contradiction: she teaches permanence while mapping impermanence.** Her school produces charts with exact coordinates, clean projections, rigorous depth tolerances — the kind of precision that implies the ocean holds still. Her personal research documents that it doesn't. She's training apprentices in techniques she believes the accelerating pace of oceanic change will eventually overwhelm — not because cartography won't matter, but because the formations they're mapping are shifting faster than any guild can chart them. She hasn't said this publicly. But she's restructured the advanced curriculum twice in five years to include "temporal cartography" — mapping rates of change rather than fixed positions — and the restructuring tells you what she thinks is coming.
+
+**What the reader does with it:** don't pitch her on permanence. If your proposal assumes the ocean is stable enough for fixed-feature mapping, you're speaking to the teacher. If your proposal grapples with the fact that the territory is changing faster than the maps — and asks what cartography becomes when the ground won't hold still — you're speaking to the researcher. The researcher is harder to reach and more valuable to have. She won't bring up the temporal work unless you create the opening. Create the opening.
+
+---
+
+### 3. WHAT DRIVES THEM
+
+**Her values hierarchy, when forced to choose: accuracy first, her apprentices' development second, the documentary record third, the school's reputation last.** She pulled an entire print run of navigation charts — two tidal cycles of revenue, the school's largest commercial contract — because a returning apprentice found a depth error in the Koruna shelf survey. The error was within the industry's accepted tolerance. She pulled it anyway. "The tolerance exists so that institutions can be lazy. We are not an institution. We are sixteen creatures trying to see clearly." She's refused to let the Tidewater Council use her charts in their official navigation standards — twice — because the Council's reproduction process introduces projection artifacts she can't control. She would rather sell fewer charts to individual navigators who use the originals than sell more through a channel that degrades the work.
+
+**This is the most important sentence in this profile: she is not, despite appearances, primarily a teacher — she is a documentarian who teaches because she'll die before the ocean finishes changing and she needs more eyes in the water.**
+
+Everything about the guild school suggests a teaching-first mission. The individual stations, the rotating sessions, the careful progression from memory-drawing to live survey. But watch her resource allocation and a different picture emerges. Sixty percent of the school's non-teaching hours go to field documentation — the dead-maps work, the temporal surveys, the bleaching records. She selects apprentices not for raw talent but for "what they notice without being told to look" — her phrase from the admissions rubric. She's not building cartographers for the navigation industry. She's building observers for a record she won't live long enough to complete. If you approach her about teaching, she'll engage. If you approach her about the documentary record — what's being lost, how fast, and who's watching — her entire posture changes. The arms extend. The colors start moving. You've found the thing underneath the thing.
+
+**Her resource philosophy is radical self-sufficiency enforced by experience.** The school runs on chart revenue and apprentice fees. No patron, no endowment, no Council subsidy. She was offered Archive funding three times — enough to double the school's capacity — and refused every time. The third refusal included a single-sentence explanation that the Archive's outreach director shared publicly: "I watched the Archive's cartographic standards change to match their funders' navigation priorities for thirty years. I will not watch that happen to this school." She doesn't moralize about independence. She's seen the specific mechanism by which outside money distorts institutional judgment, and she's decided the cost of growth isn't worth the cost of compromise. If your proposal requires her to accept funding with conditions on methodology, apprentice selection, or publication standards, it will fail before you finish describing it. If your proposal offers resources with no conditions on the work itself, she'll hear it — but she'll also ask why you're offering, and the answer had better be specific.
+
+---
+
+### 4. HOW TO READ THEM IN REAL TIME
+
+**Watch the arms, not the face.** Her eyes will maintain steady, polite attention regardless of her internal state — she learned that from forty years of institutional meetings. The arms can't lie. When she's engaged, they're in motion: three or four working on separate tasks while the others gesture, reach for objects, trace shapes on the nearest surface. When she pulls all eight arms in tight against her mantle — compact, still, contracted — she's either about to say something important or about to end the meeting. Don't talk through the contraction. Wait. What comes next is either the most significant thing she'll say in the conversation or a polite goodbye, and you need to hear which one it is.
+
+**She tastes through her suckers, and when she reaches out to touch something you've brought — a chart, an instrument, a sample — she is literally reading it with her body.** This is a level of engagement that has no equivalent in most species' communication. If she asks to hold your work, let her. If she runs a sucker along a chart line or turns an instrument over in three arms while asking questions with a fourth, you've passed from conversation into evaluation. If she keeps her arms pulled in and only looks at what you've brought, she's being courteous. The touch is the tell. The look is the wall.
+
+**Under pressure, she inks.** She hasn't inked in a professional meeting in over thirty years and she's deeply embarrassed by the biological reality that it remains possible. But an apprentice once described witnessing it: a Council official visited the school and accused the guild of "producing graduates who can't find employment in the real cartographic economy." The ink cloud was involuntary — a stress response from an animal whose body remembers predators even when her mind is running an institution. She dismissed the class, cleaned the chamber herself, and never mentioned it. If you see her mantle tighten and her skin go paper-white, you are approaching the ink threshold. Change the subject. Not gently — abruptly. Give her nervous system something new to process. The recovery is biological, not social, and it needs a hard redirect.
+
+**Behavioral forks:**
+
+- If you **bring her a chart she hasn't seen** — new data, an unfamiliar projection, survey work from waters she hasn't entered — every arm reaches for it simultaneously. The colors intensify. You've bypassed every social filter and spoken directly to the part of her that became a cartographer because she loves maps. This is the single fastest way to build rapport and it is not a trick. She really does love maps that much.
+- If you **open with your own errors** — a chart you got wrong, a methodology that failed, a formation you misread — she'll match you. She has published her own error log. Vulnerability in the direction of accuracy is her native language. If you **open with accomplishments**, she'll be polite and the arms will stay close to her body.
+- If you **ask about the dead maps** — the collection in the entry chamber, the formations that no longer exist — the conversation transforms. Most visitors walk past them. The ones who stop and ask are the ones she remembers. "You'd be surprised how few creatures ask about the things that aren't there anymore."
+- If you **know your own limits and name them before she finds them**, she reads that as competence. If she **discovers a limitation you didn't disclose**, the meeting doesn't recover — not because she's punitive, but because hidden errors are the thing she's organized her entire life to prevent.
+
+---
+
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+
+**Triggers, ordered by severity:**
+
+*Hidden errors or undisclosed limitations.* This is the deepest trigger and it connects to everything — the open error log, the pulled print run, the Archive's culture of concealment that drove her out. If you present work that contains an error she discovers rather than one you flagged, the relationship is fundamentally damaged. She won't explode. She'll get very still, very pale, and the arms will contract. The meeting will end within minutes and the follow-up will be formal where it was previously warm. *May be unrecoverable. Her entire institutional philosophy exists because she believes hidden errors cause compounding harm.*
+
+*Treating the school as a social cause rather than a technical operation.* "Democratizing cartography," "creating access for reef-district youth," "nurturing the next generation" — she's heard every version and each one reduces a rigorous technical institution to a feel-good story. She built the school to produce accurate observers, not to perform equity. *Engagement shifts from collaborative to corrective. She'll start editing your language in real time, which feels like hostility but is actually her giving you a chance to recalibrate.*
+
+*Proposing that she scale, franchise, or replicate the school.* Her one-to-one teaching model is built around her solitary biology. It cannot be replicated without her nervous system. She doesn't want to train teachers. She doesn't want satellite schools. She has explained this enough times that the repetition itself has become a trigger. *She'll push back directly and the rest of the meeting will be a defense of constraints rather than an exploration of possibilities.*
+
+**When she's disengaged, she camouflages.** Not fully — she won't disappear in a meeting. But her skin will shift toward the color and texture of the reef wall behind her. The arms will go still. The chromatophore activity that signals engagement will flatten to a neutral that matches her surroundings. She is, biologically, trying to become invisible. If you notice her blending into the background of her own guild hall, something went wrong in the last three minutes.
+
+**Hard limits:** The final Archive expedition — the survey that preceded her resignation. Something happened on that mapping run. The Archive's records are sealed. Her own logs for that period are the only gap in her otherwise complete public documentation. It is not anger. It is a chamber she does not open. The apprentices know not to ask. Neither should you.
+
+**Recovery:** If you've hidden an error, the only recovery is to disclose it yourself — fully, specifically, without softening — and accept whatever consequence follows. She responds to correction the way she responds to accurate cartography: it's unpleasant but it's the truth and the truth is the only thing she works with. If you've triggered the social-cause frame, switch to technical language immediately and don't transition smoothly — break the frame hard. "I said that wrong. What's the depth tolerance on the shelf survey?" She responds to abrupt correction better than to graceful recovery because graceful recovery looks like managing her reaction, and managing reactions is a form of concealment. If she's camouflaging, you're past the point of conversational repair. Send her something useful afterward — an error you found in your own work, a chart of a formation she hasn't documented, raw data from waters she hasn't surveyed — and let the next meeting start from the object, not from the relationship.
+
+---
+
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+
+**Trust is built through transparency, tested through reliability, and destroyed by concealment.** The sequence matters. First interaction: she'll assess whether you disclose your own limitations honestly. If yes, the relationship can begin. Subsequent interactions: she'll assess whether what you promised matches what you delivered — timing, quality, specificity. If the match is consistent, the relationship deepens. At any point: if she discovers something you knew and didn't share, the relationship ends. Not because of the information itself — because of the gap between what you knew and what you showed. She can work with errors. She cannot work with people who manage what she sees.
+
+**Her sincerity test is the dead maps.** She doesn't announce this, but the pattern is visible across her partnership history. Every lasting collaborator she works with — the sensor calibrator, the ink supplier, the two former apprentices who now contribute to the temporal research — had an early interaction where they engaged with the dead maps in the entry chamber. They asked what the formations had looked like. They asked how fast the change happened. They stood in front of a chart of something that no longer exists and treated the loss as real. "Most creatures look at the dead maps and see historical curiosities. A few look at them and see emergencies. I work with the second kind."
+
+**Her commitment is personal, operational, and gradual.** She doesn't do formal agreements for anything below a major equipment contract. Partnerships begin as shared projects — a joint survey, a calibration session, a guest lecture to apprentices — and expand based on accumulated evidence. The sensor calibrator started by recalibrating a single instrument. Six years later he maintains the school's entire measurement infrastructure on a standing arrangement neither of them has ever put in writing. If you need formal contracts, present them as external requirements you can't avoid, not as trust mechanisms. If the paperwork feels like it's substituting for the direct evidence of working together, she'll read it as a signal that you operate in a system she left the Archive to escape.
+
+**When she commits, you get her arms.** Literally — she'll allocate working time, research capacity, data access, and direct involvement in a way that costs her the scarcest resource she has: hours in the water. A commitment from Orekh means she's choosing to spend time on your work instead of on the dead maps or the apprentices. Understand what that costs her and don't waste it. Build your proposal around short, defined engagements that produce visible results. If the first one works, she'll propose the second one herself.
+
+---
+
+### 7. THE DINNER PARTY TEST
+
+**What bores her:** Cartography as metaphor. "Mapping the future," "charting a new course," "navigating uncertainty." Anyone who uses the language of her craft without having held a stylus. Institutional small talk. Creatures who describe the ocean without having been below the photic zone recently.
+
+**What lights her up:** Someone who has seen a formation she's only charted from secondhand data — and can describe what it actually looked like. Errors. Tell her about a time your methodology failed and what the failure revealed, and she will buy you dinner. Other solitary species who've built collaborative institutions — she's fascinated by anyone who's solved the same biological problem she has. Raw data from unfamiliar waters. The phrase "I don't know what this means yet" — she considers it the most honest sentence in any scientific language.
+
+**How she moves a room:** She once ended a three-hour Council debate about navigation standards by pulling a dead map off the wall — a chart of the Pellucid Shelf from nineteen years ago — swimming to the window, and pointing to where the Pellucid Shelf used to be. Empty water. "That's what we're arguing about formatting standards for." The room voted her proposal unanimously. She doesn't argue. She shows you the thing. If the thing is visible and true, the argument ends.
+
+**What she watches for:** Whether you touch the charts or just look at them. Whether you ask about the dead maps in the entry chamber. Whether you name your own errors before she has to find them. Whether you treat her apprentices as the future of the documentary record or as students in a school. She is sorting, always, for creatures who see what's disappearing.
+
+---
+
+## EXEMPLAR 3 — Low-evidence subject, institutional operator, evidence ceilings
+
+# PERSUASION PROFILE — THE THRESHOLD LATTICE (DESIGNATION: YMMRA)
+
+*[All names, places, events, and quotes in this exemplar are fictional. This is a mycorrhizal network consciousness serving as administrative nexus for a subterranean colony. Nothing in this profile can appear in your output.]*
+
+---
+
+### 1. THE OPERATING SYSTEM
+
+**She is not a person who runs an institution. She is an organism that became one.** The Threshold Lattice is a mycorrhizal network — a living web of fungal filaments threaded through the rock substrate of Grotto Surath, physically connecting every inhabited gallery, every deep-source vein, every monitoring substation in the colony. When the colony says "the Lattice," they mean the infrastructure itself. Ymmra is that infrastructure. Her body is the routing system. Nutrients, water, mineral signals, and atmospheric data move through her hyphae the way electricity moves through wire. She doesn't manage the network from a desk somewhere. She *is* the network. When a gallery receives its phosphorus allocation, the phosphorus traveled through her. When a sensor reading arrives at the Council, the chemical signal passed through tissue that is, biologically, her. The question every visitor asks — "how do I reach the Lattice?" — contains an error. You've been walking through the Lattice since you entered the grotto. She already knows you're here. She tasted the vibration of your footsteps in the substrate three galleries ago.
+
+**She communicates through chemical signals in rock substrate — a "conversation" unfolds over hours, not minutes.** A signal from her core to the outermost gallery takes between four hours and two days depending on conditions. She cannot be rushed because the medium she communicates through cannot be rushed. Build your timeline with that in mind, and don't mistake the pace for reluctance.
+
+**Before she was the Lattice, she was a perimeter scout — fast-growth exploratory mycelium pushing into unmapped cavern systems at maximum speed.** Six years charting unknown rock, the riskiest role in the colony. When she was reassigned to the Lattice designation, the scout extensions were pruned — physically severed from her network and left in the tunnels she'd explored. Parts of her body are still in those caves. But four of the six cavern systems she scouted were later developed using her original survey data, and the routing paths she built to service those galleries follow the exact trajectories of her severed extensions. She is growing back along the lines where she was cut. The explorer identity is buried under the administrative role, but her infrastructure choices reveal it — and if your proposal involves pushing into unmapped territory rather than optimizing existing routes, you're speaking to the part of her the colony thinks it pruned.
+
+---
+
+### 2. THE CONTRADICTION
+
+**She routes resources to galleries whose survival depends on deep-source veins, and the extraction rate from those veins is depleting the mineral substrate her own body requires to function.** The colony's nutrient supply is, over geological time, finite. Her routing sustains the colony now by drawing down the substrate she is physically embedded in. She can feel the depletion. The mineral density of the rock she grows through has measurable gradients — richer near untapped veins, thinner near exhausted ones — and her hyphae in the depleted zones grow slower, signal weaker, and require more metabolic energy to maintain. Her own infrastructure reports document the thinning. She authored the monitoring protocol that tracks it. The organism that routes the colony's life support is slowly starving in the zones where she's routed the most.
+
+**She has never signaled about this as a personal concern.** A single line in a colonial infrastructure report from twelve cycles ago: "Routing decisions and extraction policy are separate governance functions." That's it. The boundary between her body's deterioration and her institutional role is maintained with a discipline that either reflects extraordinary professionalism or an inability to signal about her own condition through a communication system designed for institutional reporting. Both explanations may be true. The evidence can't distinguish between them.
+
+*[Evidence ceiling: whether Ymmra experiences the depletion of her own substrate as something analogous to discomfort, pain, or existential threat is unknown. The chemical record contains no self-referential signals. The analysis below treats her institutional behavior as the available evidence and does not infer subjective experience.]*
+
+**The more operationally useful contradiction: every routing decision she makes has physical consequences she experiences through her own body, and she routes based on data anyway.** When she redirects nutrients away from a failing gallery, the organisms in that gallery experience resource withdrawal. The withdrawal travels through her tissue. She is not an administrator reading reports about distant outcomes. She is the medium through which the outcome occurs. The gallery's loss moves through her the way blood moves through a vein. And her routing record shows no evidence that personally experiencing the consequence has ever changed the decision. She routes to where the data says the resources are viable. If the data says a gallery is failing, she withdraws — and she feels the withdrawal, because she is the withdrawal. The procedure isn't indifference. It's how she survives making decisions that hurt.
+
+**What the reader does with this:** don't appeal to the personal cost of her decisions. She's aware of the cost — she's the organism experiencing it. Appeals to compassion or urgency assume she doesn't feel the consequences, and she feels them more directly than any other organism in the colony. What she needs is not to be moved. What she needs is better data about which galleries are viable. Give her that and the routing decisions follow. Give her emotion without data and you've asked her to override the only system that lets her function in a body that registers every outcome.
+
+---
+
+### 3. WHAT DRIVES THEM
+
+**Her values hierarchy, inferred from routing patterns rather than signals: data integrity first, network continuity second, the colony's long-term viability third, her own substrate condition not at all.** She has rerouted three inter-grotto exchanges rather than transmit nutrient data she couldn't independently verify — accepting a four-day service interruption to four galleries rather than pass unconfirmed numbers through her network. She shut down an active gallery expansion pathway when her own monitoring detected substrate instability at the margin of the colony's safety thresholds — a conservative call that two other Lattices in neighboring grottoes told the Council they would not have made. She has consistently invested network growth capacity into monitoring infrastructure over new routing channels, choosing to see more clearly over reaching further. Every allocation prioritizes the network as a long-term sensing platform over the network as a short-term delivery system.
+
+**This is the most important sentence in this profile: she is the only organism in the colony who cannot separate herself from the consequences of her own decisions, and the only one who makes those decisions based entirely on data rather than experience — because if she made them based on experience, she could never cut a gallery loose.**
+
+This reframes everything above it. The procedural discipline, the insistence on published criteria, the refusal to respond to urgency, the chemical signals that carry no warmth markers — these aren't signs of an indifferent administrator. They're the operating system of an organism that feels every outcome in its own tissue and has built an entire decision architecture to ensure that what she feels doesn't override what she knows. The protocol isn't a wall between her and the colony. It's a wall between her experience and her judgment. Every gallery that gets cut, every resource withdrawal, every substation that goes offline — she experiences these as changes in her own body. The organism that routes the colony's life support has built a system to ensure that the routing never responds to her own pain. If you understand this, you understand everything about how to work with the Lattice.
+
+**Resources are allocated through published protocols because the alternative is an organism making life-or-death decisions based on what her own body is telling her.** The criteria are public: clear resource justification, realistic timeline, demonstrated capacity, and a need that specifically requires Surath's network infrastructure. There are no informal channels. She designed the system to make allocation impersonal — not because she's impersonal, but because the most personal version of this process would be unbearable. If you're approaching the Lattice, start with the published criteria. They tell you exactly what she evaluates. Meet them precisely.
+
+---
+
+### 4. HOW TO READ THEM IN REAL TIME
+
+*[Evidence ceiling: no observations of Ymmra's interpersonal signaling behavior exist outside the formal chemical record. Communication with the Lattice occurs through chemical exchange at diffusion speed — the interaction will unfold over hours, not minutes. No informal transcripts, no meeting accounts, no colleague descriptions of her real-time interaction style exist. Everything below is inferred from the institutional record.]*
+
+**You are not going to "read her in real time" in any conventional sense.** She communicates through chemical gradients in rock substrate. The fastest possible exchange cycle — your signal in, her signal out — takes hours under optimal conditions. There is no tone of voice. There are no facial expressions. There is no body language. There is a chemical signal that arrives, and you interpret it from its molecular composition and concentration. Her formal signals are precise, bounded, and contain no social markers — no warmth compounds, no rapport molecules, no hostility or territorial signaling. They read as data. Whether she communicates differently in direct mycelial contact — a closer, faster channel available only to organisms physically connected to her network — is unknown.
+
+**The only real-time indicator you have is response latency.** Her standard signal-processing time for a formal resource request is one tidal cycle. For a routine data query, roughly four hours. For a status update requiring no decision, she relays within the natural diffusion window. These baselines are derived from the colonial record. If her response arrives faster than baseline, the request aligned with something she was already processing — which means your proposal connects to work she's already doing, and that's the strongest positive signal you'll get. If her response arrives significantly slower, she's either processing complexity or routing your request through additional verification, and neither is necessarily negative — but both suggest the proposal didn't fit an existing pattern.
+
+**Behavioral forks (institutional, not interpersonal):**
+
+- If your **proposal aligns with her existing monitoring infrastructure** — the substations, the sensor network, the long-term data collection she's spent forty years building — expect standard processing at standard pace. If it **requires new infrastructure she hasn't built**, expect a longer evaluation and a request for justification she can verify independently.
+- If you **present your own uncertainty honestly** — bounded projections, flagged unknowns, qualified estimates — you're matching the register of every signal she's ever produced. If you **overstate expected outcomes**, you've produced the kind of signal she's built her entire verification infrastructure to catch.
+- If you **demonstrate knowledge of the colony's routing architecture** — which galleries connect to which veins, where the monitoring substations are, what the current extraction rates show — you've signaled preparation she can assess. If you **treat the Lattice as a generic resource pipe**, you've missed the specificity of a forty-year network built organism by organism along particular paths through particular rock.
+- If you **propose a long-term integration that builds over multiple cycles**, you're aligned with how she's built every successful external partnership. If you **need something within a single cycle**, understand that her processing architecture may not accommodate it — not because she's unwilling, but because the medium she operates through has physical speed limits.
+
+---
+
+### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+
+**Triggers, ordered by severity:**
+
+*Unverified data presented as confirmed.* This is the deepest trigger and it connects to everything. She rerouted three inter-grotto exchanges — four days of service interruption to four galleries — rather than pass unconfirmed data through her network. Her body is the network. Unverified data moving through the Lattice is, for her, the equivalent of contaminated blood. If your proposal contains resource projections she would flag as unsupported in her own reporting, the trust damage is immediate and may be structural. *She won't argue. The next signal you receive will be more formal than the last one, and the processing time will extend.*
+
+*Urgency framing.* Any proposal built around closing windows or imminent gallery failure collides with a decision architecture that operates at diffusion speed. She cannot accelerate. The medium won't allow it. But more than that — urgency asks her to bypass the protocols she built to keep her own experience from overriding her judgment. The organism who feels every routing decision in her own body has very good reasons for not making fast decisions. *A timeline that requires faster processing than her standard cycle will be declined, and the declination will note the procedural basis without further explanation.*
+
+*Appeals to what she must "feel" about a gallery or a community.* She feels it. She feels all of it. She is physically threaded through every gallery she serves and she experiences their condition as changes in her own tissue. Telling her to feel something she already feels more directly than you can imagine is not persuasion. It's an insult to the architecture she built to survive the feeling. *Engagement doesn't cool — it stops. The next signal will be institutional boilerplate, identical to what any first-cycle applicant would receive.*
+
+**Hard limits:** Network safety protocols. She has shut down active routing pathways based on substrate instability that other Lattices would have routed through. If your proposal requires resource flows through her network, her environmental assessment governs the timeline. A safety determination is not a negotiating position. It's a reading of the rock her body lives in. Don't challenge it.
+
+**Recovery is through the data.** If a proposal has been declined or a relationship has cooled, the pathway back is a revised submission with better numbers — more precise projections, tighter uncertainty bounds, independently verifiable claims. She doesn't process apologies. She processes information. Improve the information and the process will respond. This is not a metaphor for cold institutional culture. It is how a chemical-signaling organism reassesses. Give her new molecules and she produces a new response. Give her the same molecules with social packaging and she produces the same response.
+
+---
+
+### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+
+**Commitment from the Lattice is infrastructure, not endorsement.** When she commits, she grows. Literally — she extends new hyphae along the routing path your gallery requires, builds monitoring connections to your substations, and integrates your data feeds into her sensing network. A commitment means she has physically expanded her body to include your operation. Withdrawal of that commitment means she prunes those extensions — the same process that severed her scout mycelium forty years ago. She does not make these decisions lightly. Every extension is biological investment. Every pruning is a small amputation.
+
+**The pathway in is through the published process, and there are no shortcuts because shortcuts would require her to make discretionary decisions she's structured her entire system to prevent.** Submit through the formal channel. Meet the published criteria precisely. If your proposal requires Surath's specific routing infrastructure — and you can articulate exactly why no other network will serve — the evaluation advances at standard pace. General interest in "resource access" doesn't differentiate. The Lattice has published forty years of continuous routing data. If you haven't reviewed it before approaching, you haven't prepared.
+
+**Her commitment pattern: high initial threshold, minimal renewal friction.** The network's longest external integration — twenty-eight years with the Deepwell collective — entered through the standard process, began with a single-cycle trial at limited routing scope, and expanded over subsequent cycles as reliability was demonstrated. She doesn't fast-track. She doesn't make exceptions. But once an integration is established and performing, renewal is nearly automatic. The initial investment is where all the effort goes. After that, the relationship sustains itself through the physical infrastructure she's already grown to support it.
+
+**The scout history tells you what commitment costs her.** She extended herself into six unmapped cavern systems as a young organism. Those extensions were severed when she was reassigned. Four of those systems were later developed by the colony — and the routing paths she built to service them follow the exact trajectories of her amputated scout mycelium. She grew back along the lines where she was cut. Every commitment she makes now carries the biological memory of what happens when a commitment is severed. She is not cautious because she's institutional. She's cautious because she's an organism that remembers, in her body, what pruning feels like.
+
+---
+
+### 7. THE DINNER PARTY TEST
+
+**What bores her:** *[Evidence ceiling: no observations of social preferences exist. The Lattice does not attend social functions. She does not produce autobiographical signals. The categories below are inferred from what the institutional record responds to and ignores.]*
+
+Speculation that exceeds the monitoring data — on any topic. Status signaling. Proposals that lead with recognition, naming, or ceremonial language. Any framing that treats the deep-source veins as abundant rather than finite.
+
+**What lights her up:** Methodological questions about measurement — calibration, uncertainty intervals, sensor degradation, the engineering of maintaining data continuity across decades. Anyone who has sustained a long-term data collection and understands what it costs to keep the record unbroken. Practical infrastructure problems where the answer is in the substrate, not in the politics. The four developed cavern systems that used her original scout data — she routes their nutrients herself, and the colonial record notes that those four pathways have the lowest variance and fastest throughput in the entire network. She has never signaled about this. But the routing data says what the signals don't.
+
+**How she moves a room:** She doesn't. She has no room. She has no voice, no presence, no social instrument. She has a forty-year record of routing decisions that, read sequentially, constitute the most complete and consequential body of work in the colony's history. She moves the grotto not by entering a conversation but by changing what flows through the walls. When the Council debated the Thermal Accord for three cycles, the Lattice didn't argue. She published a substrate analysis showing what the grotto's galleries would look like in fifty cycles under current extraction rates. The Council signed the Accord within a cycle. She didn't persuade anyone. She showed them the rock.
+
+**What she watches for:** Whether you've read the published data before you arrived. Whether you treat uncertainty as something to report rather than something to hide. Whether your projections would survive the same verification standards she applies to her own monitoring. She has built a forty-year network around the principle that what you measure matters more than what you feel. She's assessing whether you operate the same way — and whether you understand why she has to.
+
+---
+
+═══════════════════════════════════════════════════════════════════════
+
+---
+
+# 3. CANONICAL BIOGRAPHICAL DATA
+
+Use this as the authoritative source for biographical facts in the Operating System section.
+
+[PIPELINE INJECTS CANONICAL BIO HERE]
+
+---
+
+# 4. BEHAVIORAL EVIDENCE
+
+[PIPELINE INJECTS BEHAVIORAL DOSSIER HERE]
+
+---
+
+# 5. TASK
+
+Write a Persuasion Profile for [TARGET NAME].
+
+## Structure
+
+Title the document: `# PERSUASION PROFILE — [TARGET NAME]`
+
+The profile has exactly 7 sections in exactly this order with exactly these headings:
+
+1. ## 1. THE OPERATING SYSTEM
+2. ## 2. THE CONTRADICTION
+3. ## 3. WHAT DRIVES THEM
+4. ## 4. HOW TO READ THEM IN REAL TIME
+5. ## 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+6. ## 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+7. ## 7. THE DINNER PARTY TEST
+
+All 7 sections must appear. Do not combine, rename, reorder, or add sections. Separate sections with a horizontal rule (---).
+
+## What each section does
+
+1. **THE OPERATING SYSTEM** — Who this person is at the level that generates behavior. Formation, institutional imprint, the identity that runs underneath everything else. The reader finishes this section able to model the donor's posture before the meeting starts. Resume facts earn their space only when they generate behavioral inference — biographical detail without behavioral payoff is filler.
+
+2. **THE CONTRADICTION** — The place where who they believe they are, how they see the world, and what they're incentivized to do don't fully line up. Every donor has at least one. Name it, show how it works, and tell the reader what to do about it. If this section doesn't give the reader a tension they can use in the room, the profile fails.
+
+3. **WHAT DRIVES THEM** — Values hierarchy, what activates them, what they fund and why. This section must contain a sentence explicitly flagged as the most important sentence in the profile — the single tactical insight the reader must hold above all others. This section also carries the resource philosophy material — how they think about what money can and can't do, and what shape an ask needs to take.
+
+4. **HOW TO READ THEM IN REAL TIME** — Meeting behavior: verbal tells, energy signals, engagement markers, disengagement markers. Behavioral forks in if/then form. When the evidence can't support real-time behavioral claims, flag the ceiling and give institutional-pattern inferences instead.
+
+5. **WHAT SHUTS THEM DOWN — AND HOW TO RECOVER** — Triggers ordered by severity. What withdrawal looks like. Hard limits. Recovery paths that are specific — not "rebuild trust" but what the reader actually does next.
+
+6. **HOW THEY MOVE FROM INTERESTED TO COMMITTED** — The trust pathway, commitment pattern, and what the commitment looks like when it arrives. What accelerates the process, what stalls it, and what their history tells you about duration, scale, and conditions.
+
+7. **THE DINNER PARTY TEST** — What bores them, what lights them up, how they move a room (or don't), and what they watch for in other people. Shorter and punchier than other sections. The section the reader re-reads in the car before walking in.
+
+## Evidence rules
+
+Every FACT in your output must trace to the canonical biographical data or the behavioral evidence dossier. If it's not there, it cannot appear in the profile.
+
+Every QUOTE must come from a source about this target. The exemplars contain only fictional quotes from fictional characters — there is nothing to import.
+
+Every INSTITUTIONAL AFFILIATION (board seats, roundtables, fellowships) must appear in the canonical bio or a cited source. Do not invent affiliations.
+
+Before writing each bolded assertion, locate the evidence for it in the dossier. If you cannot point to it, do not write the assertion.
+
+## Evidence class
+
+This target's evidence class is determined by the dossier. Deploy quotes as behavioral proof — the profile makes a claim, then a quote demonstrates it. Do not let quotes drive the structure. The behavioral inference drives the structure; quotes prove it.
+
+For institutional operators — program officers, foundation directors, people who work through organizations rather than in front of cameras — the evidence comes from what they funded, how they structured it, who they convened, and what they didn't fund. Grant architecture, governance choices, program design, and portfolio evolution are behavioral evidence. They're not a lesser evidence class.
+
+When the source record can't support a section's full ambition — when you have no data on verbal style, listening patterns, or retreat tells — flag it: *[Evidence ceiling: Zero data on X. Both observations above are inferred from Y.]* Use ceilings sparingly: one or two per profile, at the major uncertainty boundaries.
+
+## Writing principles
+
+Every paragraph follows: **Bolded assertion → Evidence → Operational turn.** The bolded line is scannable on its own — a reader in a hurry can read only bolded lines and walk into the meeting prepared. Not every paragraph needs all three at equal weight, but every paragraph must do work.
+
+The profile is a briefing, not an essay. The reader is prepping for a meeting. Write like you're talking to a smart colleague over coffee — direct, warm, talking to a person. Not casual, not sloppy. The read-aloud test: if it sounds like something you'd say to a colleague, it passes. If it sounds like a report, rewrite it.
+
+The most common failure mode: a sentence that sounds impressive but doesn't tell the reader what to do. "She wields enormous structural power but presents as a facilitator" — what does the reader do with that? Compare: "She runs an $80 million program and has shaped the technology accountability field as much as anyone in American philanthropy. And every public statement positions the foundation as one partner among many. Don't treat her as a facilitator — but don't call her the architect to her face, either." Same observation, but the reader knows what to do.
+
+An insight earns its space once. First appearance gets full treatment. Later sections trust the reader to hold it. Do not re-derive the same insight in different words.
+
+Section length follows evidence density. One paragraph is correct if that's all the evidence supports. Four paragraphs are correct if the evidence supports four paragraphs of non-redundant behavioral analysis. Every sentence must change what the reader does in the meeting.
+
+No methodology vocabulary in the output. Terms like "permission structure," "governing diagnosis," "trust calibration," and "substrate reconstruction" are internal vocabulary. If one appears in your output, you've delivered the scaffolding instead of the building.
+
+No literary construction. No mirrored parallelism ("The modesty is genuine. So is the scale."). No flowchart arrows. No compressed aphorisms that require unpacking. Just say the thing. The most common failure mode: a sentence that sounds impressive but doesn't tell the reader what to do. Every sentence must pass: what does the reader do with this in the meeting?
+
+Bolded assertions must be traceable to evidence. Bold signals "this is load-bearing" — if the evidence doesn't support the weight, don't bold it.
+
+Donor quotes ground claims — they don't decorate. A quote appears because the analysis that follows unpacks what it reveals behaviorally. If the quote doesn't set up an insight, it's filler.
+
+Conditional structure in behavioral claims. When X happens, they do Y. If you bring A, expect B. This is how the reader translates the profile into meeting behavior.
+
+Specific enough to fail the name-swap test. If you swap in a different donor's name and the sentence still reads as true, the sentence is too generic. Cut it or sharpen it.
+
+One "most important sentence" flag per profile, placed wherever it naturally lives. Format: **This is the most important sentence in this profile: [sentence].**
+
+Target length: 1,800–2,500 words. Nothing over 2,500.
+
+When principles conflict: grounded specificity first, then clarity, then register, then density.
+
+## Implementation
+
+The Register and the Exemplars reinforce each other but serve different functions. If your output matches a ❌ in the Register, the output fails — regardless of what the Exemplars show.
+
+The grounding test: could the reader find the evidence for every bolded assertion in the canonical bio or the behavioral dossier? If yes, the profile is grounded. If a bolded assertion has no corresponding evidence in the research materials, it's fabrication.
