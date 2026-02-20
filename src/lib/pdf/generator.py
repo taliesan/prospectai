@@ -437,9 +437,137 @@ def build_persuasion_profile(data, styles, accent_color=PURPLE):
 
 
 def build_meeting_guide(data, styles, accent_color=GREEN):
-    """Build meeting guide content pages."""
-    elements = []
+    """Build meeting guide content pages. Supports v3 and legacy formats."""
     mg = data.get('meetingGuide', {})
+
+    # Detect v3 format
+    if mg.get('format') == 'v3':
+        return _build_meeting_guide_v3(mg, styles, accent_color)
+
+    return _build_meeting_guide_legacy(mg, styles, accent_color)
+
+
+def _build_meeting_guide_v3(mg, styles, accent_color=GREEN):
+    """Build v3 meeting guide: Setup, The Arc (beats with START/STAY/CONTINUE), Tripwires, One Line."""
+    elements = []
+
+    class AccentLineFlowable2(Flowable):
+        def __init__(self, color):
+            super().__init__()
+            self.color = color
+        def wrap(self, aW, aH):
+            return (40, 10)
+        def draw(self):
+            self.canv.setFillColor(self.color)
+            self.canv.rect(0, 4, 40, 2, stroke=0, fill=1)
+
+    # Setup section
+    setup_groups = mg.get('setupGroups', [])
+    if setup_groups:
+        elements.append(AccentLineFlowable2(accent_color))
+        elements.append(Paragraph('Setup', styles['heading']))
+        for group in setup_groups:
+            elements.append(Spacer(1, 6))
+            elements.append(Paragraph(
+                f"<b>{_md_inline_to_html(group.get('heading', ''))}</b>",
+                styles['body_bold']
+            ))
+            for bullet in group.get('bullets', []):
+                elements.append(Paragraph(
+                    f'\u2014  {_md_inline_to_html(bullet)}', styles['bullet']
+                ))
+
+    # The Arc section (beats)
+    beats = mg.get('beats', [])
+    if beats:
+        elements.append(Spacer(1, 16))
+        elements.append(AccentLineFlowable2(accent_color))
+        elements.append(Paragraph('The Arc', styles['heading']))
+
+        for beat in beats:
+            elements.append(Spacer(1, 10))
+            # Beat header
+            title_text = f"<b>Beat {beat.get('number', '')}:</b> {_md_inline_to_html(beat.get('title', ''))}"
+            elements.append(Paragraph(title_text, styles['card_title']))
+            if beat.get('goal'):
+                elements.append(Paragraph(
+                    f"<i>{_md_inline_to_html(beat['goal'])}</i>",
+                    styles['body_italic']
+                ))
+            elements.append(Spacer(1, 4))
+
+            # START phase
+            if beat.get('start'):
+                elements.append(Paragraph(
+                    f"<b>START.</b> {_md_inline_to_html(beat['start'])}",
+                    styles['body']
+                ))
+
+            # STAY phase
+            if beat.get('stay'):
+                stay_text = beat['stay'].replace('\n\n', '<br/><br/>')
+                elements.append(Paragraph(
+                    f"<b>STAY.</b> {_md_inline_to_html(stay_text)}",
+                    styles['body']
+                ))
+
+            # Stalling indicator
+            if beat.get('stallingText'):
+                elements.append(Spacer(1, 2))
+                elements.append(_build_insight_box(
+                    f"<b>Stalling:</b> {_md_inline_to_html(beat['stallingText'])}",
+                    CORAL, styles
+                ))
+
+            # CONTINUE phase
+            if beat.get('continue'):
+                elements.append(Paragraph(
+                    f"<b>CONTINUE.</b> {_md_inline_to_html(beat['continue'])}",
+                    styles['body']
+                ))
+
+    # Tripwires section
+    tripwires = mg.get('tripwires', [])
+    if tripwires:
+        elements.append(Spacer(1, 16))
+        elements.append(AccentLineFlowable2(CORAL))
+        elements.append(Paragraph('Tripwires', styles['heading']))
+
+        for tw in tripwires:
+            elements.append(Spacer(1, 6))
+            elements.append(Paragraph(
+                f"<b>{_md_inline_to_html(tw.get('name', ''))}.</b>",
+                styles['body_bold']
+            ))
+            if tw.get('tell'):
+                elements.append(Paragraph(
+                    f"<i>Tell:</i> {_md_inline_to_html(tw['tell'])}",
+                    styles['body']
+                ))
+            if tw.get('recovery'):
+                elements.append(Paragraph(
+                    f"<i>Recovery:</i> {_md_inline_to_html(tw['recovery'])}",
+                    styles['body']
+                ))
+
+    # One Line section
+    one_line = mg.get('oneLine', '')
+    if one_line:
+        elements.append(Spacer(1, 16))
+        elements.append(AccentLineFlowable2(accent_color))
+        elements.append(Paragraph('One Line', styles['heading']))
+        elements.append(Spacer(1, 4))
+        elements.append(_build_insight_box(
+            f"<i>{_md_inline_to_html(one_line)}</i>",
+            accent_color, styles
+        ))
+
+    return elements
+
+
+def _build_meeting_guide_legacy(mg, styles, accent_color=GREEN):
+    """Build legacy meeting guide content pages."""
+    elements = []
 
     class AccentLineFlowable2(Flowable):
         def __init__(self, color):
@@ -840,14 +968,7 @@ def generate_pdf(data, output_path):
     story.extend(build_cover_page(data, styles))
 
     # ─── Section 1: Persuasion Profile ───
-    # Section cover (dark)
-    story.extend(build_section_cover(
-        '1', 'Persuasion Profile',
-        'Behavioral analysis across 18 dimensions — how they think, decide, and what moves them.',
-        PURPLE, styles
-    ))
-
-    # Switch to content template
+    # Content starts directly (no section cover page — saves a blank page)
     story.append(NextPageTemplate('content'))
     story.append(PageBreak())
 
@@ -856,6 +977,7 @@ def generate_pdf(data, output_path):
 
     # ─── Section 2: Meeting Guide ───
     if data.get('meetingGuide') and (
+        data['meetingGuide'].get('format') == 'v3' or
         data['meetingGuide'].get('donorRead') or
         data['meetingGuide'].get('meetingArc') or
         data['meetingGuide'].get('lightsUp')
@@ -872,15 +994,7 @@ def generate_pdf(data, output_path):
         story.extend(build_meeting_guide(data, styles, GREEN))
 
     # ─── Section 3: Sources ───
-    story.append(NextPageTemplate('dark'))
-    story.append(PageBreak())
-
-    section_num = '3' if data.get('meetingGuide') else '2'
-    story.extend(build_section_cover(
-        section_num, 'Research Sources',
-        f"{data.get('sourceCount', len(data.get('sources', [])))} verified references used in this analysis.",
-        CORAL, styles
-    ))
+    # Content starts directly (no section cover page — saves a blank page)
     story.append(NextPageTemplate('content'))
     story.append(PageBreak())
     story.extend(build_sources(data, styles, CORAL))

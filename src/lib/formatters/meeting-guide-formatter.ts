@@ -564,7 +564,7 @@ body {
 }
 
 .beat {
-  margin-bottom: 4px;
+  margin-bottom: 28px;
   position: relative;
 }
 .beat:last-child {
@@ -575,7 +575,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
   padding: 16px 0;
 }
 .beat-number {
@@ -803,18 +803,21 @@ body {
 }`;
 }
 
-/** Compact overrides for embeddable version — tighter spacing for in-page rendering */
+/** Compact overrides for embeddable version — moderate spacing for in-page rendering */
 function getCompactCSS(): string {
   return `
 body { font-size: 13px; }
-.page { padding: 32px 28px 48px; }
-.setup { margin-bottom: 36px; }
-.arc { margin-bottom: 36px; }
-.tripwires { margin-bottom: 36px; }
-.beat-header { padding: 10px 0; }
+.page { padding: 36px 32px 56px; }
+.setup { margin-bottom: 40px; }
+.arc { margin-bottom: 40px; }
+.tripwires { margin-bottom: 40px; }
+.beat { margin-bottom: 24px; }
+.beat-header { padding: 12px 0; margin-bottom: 10px; }
 .beat-number { width: 40px; height: 40px; font-size: 18px; }
-.setup-bullets { gap: 6px; }
-.phase-content { padding: 10px 14px; }
+.setup-bullets { gap: 8px; }
+.setup-group { margin-bottom: 24px; }
+.phase { margin-bottom: 14px; }
+.phase-content { padding: 12px 16px; }
 `;
 }
 
@@ -999,13 +1002,29 @@ ${body}
 </html>`;
 }
 
+/** Font overrides: match website fonts (DM Sans + Instrument Serif) instead of standalone fonts */
+function getWebsiteFontCSS(): string {
+  return `
+body { font-family: 'DM Sans', system-ui, sans-serif; }
+.header h1 { font-family: 'Instrument Serif', serif; }
+.beat-number { font-family: 'Instrument Serif', serif; }
+.beat-title { font-family: 'Instrument Serif', serif; }
+.one-line-box p { font-family: 'Instrument Serif', serif; }
+.header-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
+.section-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
+.phase-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
+.tripwire-tag { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
+`;
+}
+
 /**
  * Embeddable version: returns a <div> with scoped CSS, no <html>/<body> wrapper.
  * Safe to inject via dangerouslySetInnerHTML without iframe.
+ * Uses website-matching fonts (DM Sans + Instrument Serif).
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
-  const css = scopeCSS(getCSS() + getCompactCSS());
+  const css = scopeCSS(getCSS() + getCompactCSS() + getWebsiteFontCSS());
   const body = renderBodyContent(parsed);
 
   return `<style>${css}</style>
