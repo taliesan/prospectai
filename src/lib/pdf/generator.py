@@ -371,7 +371,8 @@ def build_cover_page(data, styles):
     ))
     elements.append(Paragraph('Democracy Takes Work', styles['cover_footer']))
 
-    elements.append(PageBreak())
+    # Note: no PageBreak here — the caller handles the transition
+    # to the content template to avoid a blank page 2.
     return elements
 
 
@@ -976,20 +977,13 @@ def generate_pdf(data, output_path):
     story.extend(build_persuasion_profile(data, styles, PURPLE))
 
     # ─── Section 2: Meeting Guide ───
+    # No section cover page — content starts directly to avoid a blank divider page.
     if data.get('meetingGuide') and (
         data['meetingGuide'].get('format') == 'v3' or
         data['meetingGuide'].get('donorRead') or
         data['meetingGuide'].get('meetingArc') or
         data['meetingGuide'].get('lightsUp')
     ):
-        story.append(NextPageTemplate('dark'))
-        story.append(PageBreak())
-        story.extend(build_section_cover(
-            '2', 'Meeting Guide',
-            'Tactical preparation for your conversation — what to say, when to say it, and how to read the room.',
-            GREEN, styles
-        ))
-        story.append(NextPageTemplate('content'))
         story.append(PageBreak())
         story.extend(build_meeting_guide(data, styles, GREEN))
 
