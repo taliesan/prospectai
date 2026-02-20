@@ -461,18 +461,18 @@ function getCSS(): string {
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Instrument Sans', sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--paper);
   color: var(--ink);
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
 }
 
 .page {
   max-width: 820px;
   margin: 0 auto;
-  padding: 48px 40px 80px;
+  padding: 36px 32px 56px;
 }
 
 /* HEADER */
@@ -488,7 +488,7 @@ body {
   background: var(--ink);
 }
 .header-label {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.12em;
@@ -497,7 +497,7 @@ body {
   margin-bottom: 6px;
 }
 .header h1 {
-  font-family: 'Source Serif 4', serif;
+  font-family: 'Instrument Serif', Georgia, serif;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -506,23 +506,23 @@ body {
 
 /* SECTION LABELS */
 .section-label {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-secondary);
-  margin-bottom: 20px;
+  margin-bottom: 32px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--rule-strong);
 }
 
 /* SETUP */
 .setup {
-  margin-bottom: 56px;
+  margin-bottom: 40px;
 }
 .setup-group {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 .setup-group:last-child {
   margin-bottom: 0;
@@ -539,7 +539,7 @@ body {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .setup-bullets li {
   font-size: 13.5px;
@@ -560,11 +560,11 @@ body {
 
 /* THE ARC */
 .arc {
-  margin-bottom: 56px;
+  margin-bottom: 40px;
 }
 
 .beat {
-  margin-bottom: 28px;
+  margin-bottom: 44px;
   position: relative;
 }
 .beat:last-child {
@@ -575,20 +575,20 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 14px;
-  padding: 16px 0;
+  margin-bottom: 10px;
+  padding: 12px 0;
 }
 .beat-number {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--ink);
   color: var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Source Serif 4', serif;
-  font-size: 22px;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 18px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -596,7 +596,7 @@ body {
   flex: 1;
 }
 .beat-title {
-  font-family: 'Source Serif 4', serif;
+  font-family: 'Instrument Serif', Georgia, serif;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.3;
@@ -607,6 +607,7 @@ body {
   font-style: italic;
   line-height: 1.5;
   margin-top: 2px;
+  margin-bottom: 16px;
 }
 
 .beat-connector {
@@ -618,6 +619,7 @@ body {
 
 .beat-body {
   margin-left: 64px;
+  margin-top: 4px;
   margin-bottom: 8px;
 }
 
@@ -631,7 +633,7 @@ body {
 }
 
 .phase-label {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -640,7 +642,7 @@ body {
   display: inline-block;
 }
 .phase-content {
-  padding: 14px 18px;
+  padding: 12px 16px;
   font-size: 13.5px;
   line-height: 1.7;
   border: 1px solid;
@@ -729,7 +731,7 @@ body {
 
 /* TRIPWIRES */
 .tripwires {
-  margin-bottom: 56px;
+  margin-bottom: 40px;
 }
 .tripwire-list {
   display: flex;
@@ -762,7 +764,7 @@ body {
   color: var(--ink-secondary);
 }
 .tripwire-tag {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -783,7 +785,7 @@ body {
   text-align: center;
 }
 .one-line-box p {
-  font-family: 'Source Serif 4', serif;
+  font-family: 'Instrument Serif', Georgia, serif;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.5;
@@ -801,29 +803,6 @@ body {
   .tripwire { break-inside: avoid; }
   .one-line-box { background: var(--ink) !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }`;
-}
-
-/** Compact overrides for embeddable version — generous spacing for in-page rendering */
-function getCompactCSS(): string {
-  return `
-body { font-size: 13px; }
-.page { padding: 36px 32px 56px; }
-.setup { margin-bottom: 40px; }
-.arc { margin-bottom: 40px; }
-.tripwires { margin-bottom: 40px; }
-.beat { margin-bottom: 44px; }
-.beat:last-child { margin-bottom: 0; }
-.beat-header { padding: 12px 0; margin-bottom: 10px; }
-.beat-number { width: 40px; height: 40px; font-size: 18px; }
-.beat-goal { margin-bottom: 16px; }
-.beat-body { margin-top: 4px; }
-.setup-bullets { gap: 8px; }
-.setup-group { margin-bottom: 24px; }
-.section-label { margin-bottom: 32px; }
-.phase { margin-bottom: 16px; }
-.phase:last-child { margin-bottom: 0; }
-.phase-content { padding: 12px 16px; }
-`;
 }
 
 /** Scope CSS by prefixing selectors with `.mg-root` */
@@ -992,7 +971,7 @@ export function formatMeetingGuide(markdown: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meeting Guide &mdash; ${escapeHtml(parsed.donorName)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
 ${css}
 </style>
@@ -1007,37 +986,14 @@ ${body}
 </html>`;
 }
 
-/** Font overrides: match website fonts — Instrument Serif for body copy, DM Sans for UI labels */
-function getWebsiteFontCSS(): string {
-  return `
-body { font-family: 'Instrument Serif', Georgia, serif; }
-.header h1 { font-family: 'Instrument Serif', Georgia, serif; }
-.beat-number { font-family: 'Instrument Serif', Georgia, serif; }
-.beat-title { font-family: 'Instrument Serif', Georgia, serif; }
-.one-line-box p { font-family: 'Instrument Serif', Georgia, serif; }
-.phase-content { font-family: 'Instrument Serif', Georgia, serif; }
-.setup-bullets li { font-family: 'Instrument Serif', Georgia, serif; }
-.beat-goal { font-family: 'Instrument Serif', Georgia, serif; }
-.tripwire-row { font-family: 'Instrument Serif', Georgia, serif; }
-.stalling { font-family: 'Instrument Serif', Georgia, serif; }
-.header-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
-.section-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; }
-.setup-heading { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
-.phase-label { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
-.tripwire-tag { font-family: 'DM Sans', system-ui, sans-serif; font-weight: 700; }
-.tripwire-name { font-family: 'DM Sans', system-ui, sans-serif; }
-.stalling-label { font-family: 'DM Sans', system-ui, sans-serif; }
-`;
-}
-
 /**
  * Embeddable version: returns a <div> with scoped CSS, no <html>/<body> wrapper.
  * Safe to inject via dangerouslySetInnerHTML without iframe.
- * Uses website-matching fonts (Instrument Serif body copy + DM Sans UI labels).
+ * Uses same fonts as standalone: DM Sans body, Instrument Serif headings.
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
-  const css = scopeCSS(getCSS() + getCompactCSS() + getWebsiteFontCSS());
+  const css = scopeCSS(getCSS());
   const body = renderBodyContent(parsed);
 
   return `<style>${css}</style>
