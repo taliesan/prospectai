@@ -25,6 +25,7 @@ const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
 const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
 const dtwOrgLayerCache = loadCanonFile('dtw-org-layer.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
+const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 
 export function loadExemplars(): string {
   return exemplarsCache;
@@ -78,6 +79,10 @@ export function loadDTWOrgLayer(): string {
 
 export function loadPromptV2(): string {
   return promptV2Cache;
+}
+
+export function loadCritiqueEditorialV2(): string {
+  return critiqueEditorialV2Cache;
 }
 
 /**
