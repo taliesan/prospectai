@@ -40,6 +40,36 @@ export interface DeepResearchCitation {
 
 type ProgressCallback = (message: string, phase?: string, step?: number, totalSteps?: number) => void;
 
+// ── Hard Time Cap ────────────────────────────────────────────────
+const HARD_TIME_CAP_MS = 15 * 60 * 1000; // 15 minutes
+
+/** Wraps an async iterable so it stops yielding after a wall-clock deadline. */
+async function* withTimeCap<T>(
+  iterable: AsyncIterable<T>,
+  deadlineMs: number,
+): AsyncGenerator<T> {
+  const iterator = (iterable as any)[Symbol.asyncIterator]();
+  try {
+    while (true) {
+      const remaining = deadlineMs - Date.now();
+      if (remaining <= 0) return;
+      const nextPromise = iterator.next();
+      const result = await Promise.race([
+        nextPromise,
+        new Promise<'TIMECAP'>(resolve => setTimeout(() => resolve('TIMECAP'), remaining)),
+      ]);
+      if (result === 'TIMECAP') {
+        nextPromise.catch(() => {}); // prevent unhandled rejection
+        return;
+      }
+      if ((result as IteratorResult<T>).done) return;
+      yield (result as IteratorResult<T>).value;
+    }
+  } finally {
+    try { iterator.return?.(); } catch { /* ignore */ }
+  }
+}
+
 // ── Developer Message (Sections A-F) ─────────────────────────────
 
 function buildDeveloperMessage(
@@ -148,7 +178,7 @@ CONSTRAINTS ON PHASE 2:
 - Maximum 15-20 web searches total. This is not a full research pass.
 - Search ONLY for specific gaps identified in the coverage analysis. Do not repeat searches for dimensions already well-covered by pre-fetched sources.
 - If a web search returns a source already provided in the pre-fetched material, skip it — do not duplicate.
-- If gap-fill searches return nothing useful, report the gap honestly. An honest "no evidence found" is better than thin inference.
+- CRITICAL: If gap-fill searches return nothing useful for a dimension, write exactly "NO EVIDENCE FOUND — [dimension name]" and move on. Do not infer, speculate, or extrapolate from the career history or LinkedIn data provided in this prompt — that data is already available to later pipeline stages. A one-line "no evidence" entry is more valuable than three paragraphs of inference.
 
 ANTI-TRUNCATION:
 Extract quotes from ALL behaviorally relevant passages in your sources, not just the best ones. If a source contains 5 relevant passages, extract all 5. After extraction, identify cross-source patterns — these analytical flags are what make your output more valuable than a raw quote dump.
@@ -209,6 +239,7 @@ export async function executeDeepResearch(
   emit('Starting deep research (OpenAI o3-deep-research)...', 'research', 6, 38);
 
   const startTime = Date.now();
+  let timeCapReached = false;
 
   // Retry helper for idempotent OpenAI calls (retrieve only)
   async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
@@ -317,7 +348,7 @@ export async function executeDeepResearch(
   }
 
   try {
-    for await (const event of (stream as unknown as AsyncIterable<any>)) {
+    for await (const event of withTimeCap(stream as unknown as AsyncIterable<any>, startTime + HARD_TIME_CAP_MS)) {
       if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
 
       switch (event.type) {
@@ -417,6 +448,13 @@ export async function executeDeepResearch(
           break;
       }
     }
+
+    // If stream ended without a response.completed event, check for time cap
+    if (!result && (Date.now() - startTime) >= HARD_TIME_CAP_MS) {
+      timeCapReached = true;
+      const elapsedMin = ((Date.now() - startTime) / 60000).toFixed(1);
+      console.warn(`[Deep Research] Hard time cap reached (15 min) during stream — will extract partial output (elapsed: ${elapsedMin} min)`);
+    }
   } catch (streamError: any) {
     // Stream broke — but background=true means research continues on OpenAI's side
     console.warn(`[Deep Research] Stream interrupted: ${streamError.message}`);
@@ -429,13 +467,14 @@ export async function executeDeepResearch(
       console.log(`[Deep Research] Research continues in background (${responseId}). Falling back to polling...`);
 
       result = await withRetry('responses.retrieve', () => openai.responses.retrieve(responseId!));
-      const MAX_POLL_DURATION_MS = 45 * 60 * 1000;
 
       while (result.status !== 'completed' && result.status !== 'failed') {
         const elapsedMs = Date.now() - startTime;
-        if (elapsedMs > MAX_POLL_DURATION_MS) {
-          console.error(`[Deep Research] Polling timed out after ${Math.round(elapsedMs / 60000)} minutes`);
-          throw new Error(`Deep research timed out after ${Math.round(elapsedMs / 60000)} minutes (status: ${result.status})`);
+        if (elapsedMs > HARD_TIME_CAP_MS) {
+          timeCapReached = true;
+          const elapsedMin = (elapsedMs / 60000).toFixed(1);
+          console.warn(`[Deep Research] Hard time cap reached (15 min) during polling — using partial output (elapsed: ${elapsedMin} min)`);
+          break;
         }
 
         if (abortSignal?.aborted) {
@@ -487,11 +526,11 @@ export async function executeDeepResearch(
         const timeLabel = elapsedMin >= 1 ? `${elapsedMin}m elapsed` : `${elapsedSec}s elapsed`;
 
         console.log(
-          `[Deep Research] Polling: ${result.status} | ` +
+          `[Deep Research] Poll elapsed: ${(elapsed / 60000).toFixed(1)} min | ` +
+          `status: ${result.status} | ` +
           `${totalOutputItems} items | ` +
           `${searchQueries.length} searches, ${pageVisits} pages, ` +
-          `${reasoningSummaries.length} reasoning | ` +
-          `elapsed: ${elapsedSec}s`
+          `${reasoningSummaries.length} reasoning`
         );
 
         let progressMsg: string;
@@ -530,6 +569,12 @@ export async function executeDeepResearch(
   }
 
   if (!result) {
+    if (timeCapReached) {
+      const durationMs = Date.now() - startTime;
+      console.error('[Deep Research] Hard time cap reached (15 min) — no response ID, returning empty output');
+      emit('Deep research capped at 15 min — no output available', 'research', 14, 38);
+      return { dossier: '', citations: [], searchCount: 0, tokenUsage: {}, durationMs };
+    }
     throw new Error('Deep research completed but no result was captured');
   }
 
@@ -543,29 +588,45 @@ export async function executeDeepResearch(
   const durationMs = Date.now() - startTime;
   const durationMin = (durationMs / 60000).toFixed(1);
 
-  if (result.status === 'failed') {
+  if (result.status === 'failed' && !timeCapReached) {
     console.error('[Stage 6] Deep research failed:', JSON.stringify(result, null, 2));
     throw new Error(`Deep research failed after ${durationMin} minutes`);
   }
 
-  // Extract dossier
+  // Extract dossier — graceful degradation when time cap reached
   const outputItems = result.output || [];
   const messageItems = outputItems.filter((item: any) => item.type === 'message');
   const lastMessage = messageItems[messageItems.length - 1];
 
-  if (!lastMessage?.content?.length) {
+  let dossier: string;
+
+  if (lastMessage?.content?.length) {
+    const textContent = lastMessage.content.find((c: any) => c.type === 'output_text');
+    if (textContent?.text) {
+      dossier = textContent.text;
+    } else if (timeCapReached) {
+      console.warn('[Deep Research] Hard time cap reached (15 min) — no text in partial output, continuing without deep research');
+      dossier = '';
+    } else {
+      throw new Error('Deep research completed but returned no text content');
+    }
+  } else if (timeCapReached) {
+    console.warn('[Deep Research] Hard time cap reached (15 min) — no partial output available, continuing without deep research');
+    dossier = '';
+  } else {
     throw new Error('Deep research completed but returned no content');
   }
 
-  const textContent = lastMessage.content.find((c: any) => c.type === 'output_text');
-  if (!textContent) {
-    throw new Error('Deep research completed but returned no text content');
+  // Final log line: complete or capped
+  if (timeCapReached) {
+    console.warn(`[Deep Research] Deep research capped at 15 min — partial output used (${dossier.length} chars)`);
+  } else {
+    console.log(`[Deep Research] Deep research complete: ${durationMin} min`);
   }
 
-  const dossier = textContent.text;
-
   // Extract citations
-  const annotations = textContent.annotations || [];
+  const textContentForCitations = lastMessage?.content?.find((c: any) => c.type === 'output_text');
+  const annotations = textContentForCitations?.annotations || [];
   const citations: DeepResearchCitation[] = annotations
     .filter((a: any) => a.type === 'url_citation')
     .map((a: any) => ({
@@ -701,7 +762,7 @@ YOUR INSTRUCTIONS:
    - Quote the relevant passages (50-300 words each)
    - Note the source URL
    - Write a brief analysis of what the evidence reveals about behavior
-5. If a search returns nothing useful for a dimension, say so honestly. "No evidence found" is better than thin inference.
+5. CRITICAL: If a search returns nothing useful for a dimension, write exactly "NO EVIDENCE FOUND — [dimension name]" and move to the next dimension. Do not infer, speculate, or extrapolate from the career history or LinkedIn data provided in this prompt — that data is already available to later pipeline stages. A one-line "no evidence" entry is more valuable than three paragraphs of inference. Your job is to surface NEW sources not already in the pre-research package. If a dimension has zero new sources after your searches, say so in one line and move on. The profile generation stage handles thin-evidence dimensions — compensating for their absence is not your responsibility and degrades output quality.
 6. Do NOT search for dimensions already at STRONG coverage unless you spot a contradiction.
 
 ANALYTICAL REGISTER: Write what the behavior looks like in the room. Not personality descriptions. What someone across the table would see, and what they should do about it.
