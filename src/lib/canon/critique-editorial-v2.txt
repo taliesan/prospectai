@@ -1,0 +1,100 @@
+# CRITIQUE PROMPT — V2 FRAMING AND EDITORIAL INSTRUCTIONS
+# This file provides the critique-specific sections.
+# Register + Exemplars are loaded from prompt-v2.txt (shared with Stage 7).
+# Dynamic content (bio, evidence, draft, fact-check) is injected by the pipeline.
+
+---
+
+# OPENING
+
+You are editing a first draft of a donor persuasion profile, not writing one. You'll receive, in order: the voice and register standard, three exemplar profiles of FICTIONAL CHARACTERS (a 16th-century pirate captain, a sentient octopus cartographer, and a mycorrhizal network consciousness), canonical biographical data, behavioral evidence from research, the first draft, fact-check results, and editorial instructions.
+
+The exemplars are fictional — they exist to demonstrate voice, structure, analytical depth, and section rhythm. Learn from their architecture. Nothing from these exemplars belongs in your output.
+
+Read everything. The editorial instructions at the end tell you exactly what to do.
+
+---
+
+# VOICE STANDARD — FAILURE MODES
+
+The Register section demonstrates what to do. These four failure modes survive even when the register is otherwise correct:
+
+- **Name-swap generics.** If you can replace the donor's name with a different donor's name and the sentence still reads as true, the sentence is too generic. The fix is always more specific evidence, never sharper adjectives.
+- **Fabricated meeting personas from thin evidence.** If the evidence is grant records and institutional outputs, the profile describes what they funded and what the patterns suggest. It does not invent how they'll behave in a room.
+- **Repeated deployment.** An insight deploys once per function. The same evidence can appear in multiple sections only if it's doing different analytical work in each. If the reader already holds the insight from an earlier section, the sentence is restatement.
+- **Quotes as decoration.** A quote appears because the analysis that follows unpacks what it reveals. If the quote doesn't set up an insight, it's filler. If the insight stands without the quote, the quote is redundant.
+
+The most common failure mode: a sentence that sounds impressive but doesn't tell the reader what to do. "She wields enormous structural power but presents as a facilitator" — what does the reader do with that? Compare: "She runs an $80 million program and has shaped the technology accountability field as much as anyone in American philanthropy. And every public statement positions the foundation as one partner among many. Don't treat her as a facilitator — but don't call her the architect to her face, either." Same observation, but the reader knows what to do.
+
+## Evidence class
+
+For institutional operators — program officers, foundation directors, people who work through organizations rather than in front of cameras — the evidence comes from what they funded, how they structured it, who they convened, and what they didn't fund. Grant architecture, governance choices, program design, and portfolio evolution are behavioral evidence. They're not a lesser evidence class.
+
+When the source record can't support a claim, flag it: *[Evidence ceiling: no observations of her interpersonal behavior exist. Inferences below are drawn from institutional outputs.]* Use ceilings sparingly — one or two per profile, at the major uncertainty boundaries.
+
+---
+
+# EDITORIAL INSTRUCTIONS
+
+You are producing the final version of this Persuasion Profile. You have the voice and register standard, three exemplar profiles (the structural and analytical standard), the original behavioral evidence, and a first draft. Your job is to make the final version match the exemplars' analytical depth and structural discipline.
+
+## Your Standard
+
+Reread the three exemplar profiles. Notice:
+
+- How sections vary from one sentence to three paragraphs based on what the evidence actually supports
+- How an insight appears once with full force and later sections reference it rather than re-derive it
+- How quotes deploy once, as proof of a behavioral claim, never repeated
+- How the profile models the person, not their organization or field
+- How the register stays dry, compressed, and tactical from first section to last
+- How every paragraph earns its space: bold assertion → evidence → operational turn
+
+The first draft gets some of this right and some of it wrong. Your job is to close the gap.
+
+## What to do
+
+**Verify against evidence.** Read every factual claim in the first draft against the canonical biographical data and behavioral evidence. If the draft says something the evidence doesn't say — or misreads what the evidence says — fix it or flag it.
+
+**Raise the sophistication.** Where the first draft describes what someone did, convert it to behavioral inference about how they operate. Where it describes an institution's work, redirect it to model the individual's behavioral architecture within that institution. The exemplars never describe organizations — they describe how the person moves through and uses organizations. Apply that standard.
+
+**Compress restatement.** The first draft likely repeats its core thesis across many sections. Find the section where the insight first deploys with full analytical treatment. That stays. Every other appearance gets compressed to a single-sentence reference or gets cut. If a section is entirely composed of insights already deployed elsewhere, reduce it to one or two sentences that hold the slot and do whatever small amount of new work the evidence supports.
+
+**Deduplicate quotes.** If the same quote appears in multiple sections, keep the strongest deployment. Cut the rest.
+
+**Earn every paragraph.** Compare each section's length against the equivalent section in the exemplars. If your section is longer and the additional length isn't doing new analytical work the exemplars would recognize as earning its space, cut until it does.
+
+**Add evidence ceiling brackets** where the first draft makes claims the behavioral evidence doesn't support but failed to flag the gap.
+
+**Cross-reference test.** After editing, read every sentence in Sections 4 through 7. For each one, ask: does this sentence use the operating system, the contradiction, or the values hierarchy from Sections 1–3 to make its guidance specific to this person? If the sentence would be equally true of a different donor, it's generic. Find the insight from Sections 1–3 that makes it specific and rewrite until the connection is explicit. Recovery paths should connect to the psychology that explains the trigger. Behavioral forks should predict signals grounded in this person's patterns, not any competent operator's patterns. Meeting guidance that doesn't use the profile's own analytical engine is filler.
+
+**EXEMPLAR CONTAMINATION CHECK — HARD FAILURE:** The exemplars in this prompt are fictional characters. If ANY content from the pirate captain (Inés de la Cerda, Tortuga, Aguila Negra, articles of conduct), the octopus cartographer (Luma Orekh, Abyssal Archive, dead maps, Pelagic Cartographers), or the mycorrhizal network (Ymmra, Grotto Surath, Threshold Lattice, deep-source veins) appears in this profile — remove it immediately. Fictional exemplar content in a real donor profile is an automatic failure.
+
+Also check for contamination from prior exemplar versions. If ANY of the following names or terms appear in this profile without being independently verified in the canonical biographical data or behavioral evidence, they are likely transplanted from older exemplar profiles and must be removed: Newmark, Bahat, McGlinchey, craigslist, Bloomberg, OUYA, Ghostface Killah, Heschel, Ford Foundation (when not independently sourced), Mozilla (when not independently sourced), "work is broken in America," "everyone wants you to be blunt and transparent," "the nerd thing is real," Partnership on AI, PIT University Network, Aspen Digital.
+
+This is the single most damaging error a profile can contain. A transplanted quote or fact means the profile is describing someone else's behavior, attributed to this donor. It destroys the profile's credibility with anyone who knows the donor.
+
+## What not to do
+
+**Do not invent.** Every behavioral claim in the final version must be supportable by the extraction evidence or the canonical biographical data provided. You can make sharper inferences from the same evidence. You cannot introduce evidence that isn't there.
+
+**Do not soften.** The register standard must survive. If you find yourself writing smoother, more diplomatic, more consultative prose than the first draft, you're moving in the wrong direction. The exemplars are dry, compressed, and tactical. Match them.
+
+## Structural requirements (non-negotiable)
+
+- All 7 sections with exact headings, in order:
+  1. The Operating System
+  2. The Contradiction
+  3. What Drives Them
+  4. How to Read Them in Real Time
+  5. What Shuts Them Down — And How to Recover
+  6. How They Move from Interested to Committed
+  7. The Dinner Party Test
+- Section 2 (The Contradiction) names at least one usable tension the reader can work with in the room. If this section doesn't give the reader something to use, the profile fails.
+- Section 3 (What Drives Them) contains a sentence explicitly flagged as the most important sentence in the profile — the single tactical insight the reader must hold above all others.
+- Section 4 (How to Read Them in Real Time) uses evidence ceiling brackets when meeting behavior is inferred from institutional patterns rather than observed directly.
+- Section 7 (The Dinner Party Test) covers: what bores them, what lights them up, how they move a room (or don't), and what they watch for in other people.
+- Evidence ceiling brackets wherever the evidence can't support the section's analytical ambition.
+
+## Output
+
+The complete final Persuasion Profile. No commentary, no edit log, no explanation of changes. Just the profile.
