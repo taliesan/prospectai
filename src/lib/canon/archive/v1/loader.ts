@@ -24,7 +24,6 @@ const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md')
 const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
 const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
 const dtwOrgLayerCache = loadCanonFile('dtw-org-layer.md');
-const promptV2Cache = loadCanonFile('prompt-v2.txt');
 
 export function loadExemplars(): string {
   return exemplarsCache;
@@ -74,10 +73,6 @@ export function loadMeetingGuideExemplars(donorName: string): string {
 
 export function loadDTWOrgLayer(): string {
   return dtwOrgLayerCache;
-}
-
-export function loadPromptV2(): string {
-  return promptV2Cache;
 }
 
 /**
