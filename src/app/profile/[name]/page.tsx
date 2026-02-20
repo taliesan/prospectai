@@ -259,10 +259,12 @@ export default function ProfilePage() {
         if (data.meetingGuideHtml) {
           return (
             <div
-              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden bg-white"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
-              dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }}
-            />
+            >
+              <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
+              <div dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }} />
+            </div>
           );
         }
 

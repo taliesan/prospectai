@@ -19,6 +19,22 @@ interface ProfileSection {
 }
 
 interface MeetingGuideData {
+  // v3 format (Setup/Arc/Tripwires/One Line)
+  format: 'v3' | 'legacy';
+  donorName: string;
+  setupGroups: { heading: string; bullets: string[] }[];
+  beats: {
+    number: string;
+    title: string;
+    goal: string;
+    start: string;
+    stay: string;
+    stallingText: string;
+    continue: string;
+  }[];
+  tripwires: { name: string; tell: string; recovery: string }[];
+  oneLine: string;
+  // Legacy format fields (kept for backwards compatibility)
   donorRead: { posture: string; body: string[] };
   lightsUp: { title: string; body: string }[];
   shutsDown: string[];
@@ -159,11 +175,167 @@ function parsePersuasionProfile(markdown: string): ProfileSection[] {
 }
 
 /**
+ * Detect if markdown uses v3 format (### SETUP / ### THE ARC / ### TRIPWIRES / ### ONE LINE)
+ */
+function isV3MeetingGuide(markdown: string): boolean {
+  return /^###\s+SETUP$/im.test(markdown) && /^###\s+THE ARC$/im.test(markdown);
+}
+
+/**
+ * Parse v3 meeting guide markdown (Setup/Arc/Tripwires/One Line) into structured data.
+ */
+function parseMeetingGuideV3(markdown: string): MeetingGuideData {
+  const result: MeetingGuideData = {
+    format: 'v3',
+    donorName: '',
+    setupGroups: [],
+    beats: [],
+    tripwires: [],
+    oneLine: '',
+    // Legacy fields (empty)
+    donorRead: { posture: '', body: [] },
+    lightsUp: [],
+    shutsDown: [],
+    alignmentMap: { primary: null, secondary: [], fightOrBuild: '', handsOnWheel: '', fiveMinCollapse: '' },
+    meetingArc: { intro: '', moves: [] },
+    readingRoom: { working: [], stalling: [] },
+    resetMoves: [],
+  };
+
+  // Extract donor name from header
+  const headerMatch = markdown.match(/^#{1,3}\s+MEETING GUIDE\s*[—–-]+\s*(.+)$/im);
+  if (headerMatch) result.donorName = headerMatch[1].trim();
+
+  // Split by ### sections
+  const sections = splitByHeadings(markdown, 3);
+
+  for (const section of sections) {
+    const heading = section.heading.toUpperCase().trim();
+
+    if (heading === 'SETUP') {
+      // Parse **Heading.** followed by - bullets
+      const lines = section.body.split('\n');
+      let currentGroup: { heading: string; bullets: string[] } | null = null;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === '---') continue;
+
+        const headingMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*$/);
+        if (headingMatch) {
+          if (currentGroup) result.setupGroups.push(currentGroup);
+          currentGroup = { heading: headingMatch[1], bullets: [] };
+          continue;
+        }
+
+        if (trimmed.startsWith('- ') && currentGroup) {
+          currentGroup.bullets.push(trimmed.slice(2));
+        }
+      }
+      if (currentGroup) result.setupGroups.push(currentGroup);
+
+    } else if (heading === 'THE ARC') {
+      // Parse beats: **Beat N: Title** with START/STAY/CONTINUE phases
+      const beatRegex = /\*\*Beat\s+(\d+)[:\s·–-]+\s*(.+?)\.*\*\*/gi;
+      const beatPositions: { index: number; number: string; title: string }[] = [];
+      let match;
+      while ((match = beatRegex.exec(section.body)) !== null) {
+        beatPositions.push({ index: match.index, number: match[1], title: match[2].trim() });
+      }
+
+      for (let i = 0; i < beatPositions.length; i++) {
+        const start = beatPositions[i].index;
+        const end = i + 1 < beatPositions.length ? beatPositions[i + 1].index : section.body.length;
+        const beatContent = section.body.slice(start, end);
+
+        // Extract goal (italic line)
+        const goalMatch = beatContent.match(/^\*([^*].+?)\*\s*$/m);
+
+        // Extract phases
+        const startMatch = beatContent.match(/\*\*START\.\*\*\s*([\s\S]*?)(?=\*\*STAY\.\*\*|$)/);
+        const stayMatch = beatContent.match(/\*\*STAY\.\*\*\s*([\s\S]*?)(?=\*\*CONTINUE\.\*\*|$)/);
+        const continueMatch = beatContent.match(/\*\*CONTINUE\.\*\*\s*([\s\S]*?)(?=\*\*Beat\s+\d|---\s*$|$)/);
+
+        // Detect stalling text within STAY
+        let stayText = stayMatch ? stayMatch[1].trim() : '';
+        let stallingText = '';
+        const stallingMatch = stayText.match(/(?:When it's stalling|When it\u2019s stalling)[:\s]*(.*?)$/im);
+        if (stallingMatch) {
+          stallingText = stallingMatch[0].trim();
+          stayText = stayText.slice(0, stayText.indexOf(stallingMatch[0])).trim();
+        }
+
+        result.beats.push({
+          number: beatPositions[i].number,
+          title: beatPositions[i].title,
+          goal: goalMatch ? goalMatch[1] : '',
+          start: startMatch ? startMatch[1].trim().replace(/\n/g, ' ') : '',
+          stay: stayText.replace(/\n{2,}/g, '\n\n'),
+          stallingText,
+          continue: continueMatch ? continueMatch[1].trim().replace(/\n/g, ' ') : '',
+        });
+      }
+
+    } else if (heading === 'TRIPWIRES') {
+      // Parse tripwires: **Name.** *Tell:* ... *Recovery:* ...
+      const lines = section.body.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        // Single-line tripwire
+        const tripMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*\*Tell:\*\s*(.+?)\s*\*Recovery:\*\s*(.+)$/);
+        if (tripMatch) {
+          result.tripwires.push({
+            name: tripMatch[1].trim(),
+            tell: tripMatch[2].trim(),
+            recovery: tripMatch[3].trim(),
+          });
+          continue;
+        }
+        // Multi-line: name on one line, tell/recovery on following lines
+        const nameMatch = trimmed.match(/^\*\*(.+?)\.?\*\*\s*$/);
+        if (nameMatch) {
+          let tell = '', recovery = '';
+          for (let j = i + 1; j < lines.length && j < i + 5; j++) {
+            const tl = lines[j].trim();
+            if (tl.startsWith('**') || tl.startsWith('### ')) break;
+            const tellM = tl.match(/^\*Tell:\*\s*(.+)$/);
+            if (tellM) { tell = tellM[1].trim(); continue; }
+            const recM = tl.match(/^\*Recovery:\*\s*(.+)$/);
+            if (recM) { recovery = recM[1].trim(); continue; }
+          }
+          if (tell || recovery) {
+            result.tripwires.push({ name: nameMatch[1].trim(), tell, recovery });
+          }
+        }
+      }
+
+    } else if (heading === 'ONE LINE') {
+      const lines = section.body.split('\n').filter(l => l.trim());
+      if (lines.length > 0) result.oneLine = lines[0].trim();
+    }
+  }
+
+  return result;
+}
+
+/**
  * Parse meeting guide markdown into structured data.
- * The meeting guide has known structural sections but dynamic content.
+ * Supports both v3 format (Setup/Arc/Tripwires/One Line) and legacy format.
  */
 function parseMeetingGuide(markdown: string): MeetingGuideData {
+  // Detect and use v3 parser if appropriate
+  if (isV3MeetingGuide(markdown)) {
+    return parseMeetingGuideV3(markdown);
+  }
+
+  // Legacy parser
   const result: MeetingGuideData = {
+    format: 'legacy',
+    donorName: '',
+    setupGroups: [],
+    beats: [],
+    tripwires: [],
+    oneLine: '',
     donorRead: { posture: '', body: [] },
     lightsUp: [],
     shutsDown: [],

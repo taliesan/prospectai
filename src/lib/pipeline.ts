@@ -20,6 +20,7 @@ import { buildExtractionPrompt, LinkedInData } from './prompts/extraction-prompt
 import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
+import { buildFactCheckSystemPrompt, buildFactCheckUserMessage, processFactCheckResult } from './prompts/fact-check-prompt';
 import { selectExemplars, loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, loadDTWOrgLayer } from './canon/loader';
 import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
@@ -1551,153 +1552,14 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
   let factCheckBlock = '';
 
   try {
-    const exemplarProfiles = loadExemplarProfilesSeparate();
-    const linkedinJSON = linkedinData ? JSON.stringify(linkedinData, null, 2) : 'No LinkedIn data available.';
+    const factCheckSystemPrompt = buildFactCheckSystemPrompt();
+    const factCheckUserMsg = buildFactCheckUserMessage(firstDraftProfile, researchPackage, linkedinData);
 
-    const factCheckUserMessage = `<fact_check_input>
-<first_draft>
-${firstDraftProfile}
-</first_draft>
-
-<research_package>
-${researchPackage}
-</research_package>
-
-<canonical_biographical_data>
-${linkedinJSON}
-</canonical_biographical_data>
-
-<exemplar_profiles>
-
-=== EXEMPLAR PROFILE: ROY BAHAT (NOT the profiling target) ===
-${exemplarProfiles.bahat}
-
-=== EXEMPLAR PROFILE: CRAIG NEWMARK (NOT the profiling target) ===
-${exemplarProfiles.newmark}
-
-=== EXEMPLAR PROFILE: LORI McGLINCHEY (NOT the profiling target) ===
-${exemplarProfiles.mcglinchey}
-
-</exemplar_profiles>
-</fact_check_input>`;
-
-    console.log(`[Fact-Check] Prompt size: ~${estimateTokens(factCheckUserMessage)} tokens`);
+    console.log(`[Fact-Check] Prompt size: ~${estimateTokens(factCheckUserMsg)} tokens`);
 
     const factCheckResponse = await complete(
-      `You are a fact-checker for donor persuasion profiles. Your job is to extract every specific factual claim from a draft profile and verify it against the evidence.
-
-You will receive:
-1. FIRST DRAFT — the profile text to verify
-2. RESEARCH PACKAGE — the only permitted source of facts about this person
-3. CANONICAL BIOGRAPHICAL DATA — LinkedIn career history (authoritative for dates, titles, employers)
-4. EXEMPLAR PROFILES — profiles of OTHER donors (Bahat, Newmark, McGlinchey) used as writing examples. NO facts from these profiles should appear in the draft.
-
-## What counts as a "specific factual claim"
-
-Extract any statement containing:
-- A number (dollar amounts, counts, percentages, years, durations)
-- A named person, organization, or event
-- A direct quote or attributed paraphrase
-- A specific behavioral pattern presented as observed fact (not analytical inference)
-- A career event or biographical detail
-- A characterization of how someone behaves in meetings or conversations
-
-Do NOT extract:
-- Analytical inferences without specific evidence claims ("he values transparency")
-- Register/stylistic choices ("he'll wear the suit to get in the boardroom")
-- Structural framing ("This is the most important sentence in this profile")
-- Instructions to the reader ("Don't ask him to pick a side")
-
-## How to classify each claim
-
-For each claim, assign one verdict:
-
-**SUPPORTED** — The claim traces to specific text in the research package or canonical biographical data. Provide the source quote.
-
-**EXEMPLAR_LEAK** — The claim matches biographical content from an exemplar profile (Bahat, Newmark, or McGlinchey) AND does not independently appear in the research package or canonical biographical data for this person. This includes:
-- Specific facts from an exemplar (numbers, events, named organizations) projected onto the target
-- Behavioral patterns described in an exemplar that were projected onto the target without independent evidence
-- Phrases or framings distinctive to an exemplar that were transferred to the target
-
-IMPORTANT — AVOIDING FALSE POSITIVES:
-
-Before classifying ANY claim as EXEMPLAR_LEAK, you MUST check whether the specific fact appears in the research package OR the LinkedIn JSON for this target.
-
-Examples of what is NOT contamination:
-- A dollar figure that appears in both an exemplar AND in this target's career history (e.g. "$6M gift from Craig Newmark Philanthropies" — this is in the target's LinkedIn description of their time at Consumer Reports, even though "Newmark" is also an exemplar name)
-- An organizational fact about a company where both the target and an exemplar worked, if the target's involvement is documented in the research package
-- A behavioral pattern that appears in an exemplar AND is independently supported by evidence in the research package for this target
-
-A claim is EXEMPLAR_LEAK only if:
-1. The behavioral pattern, biographical detail, or specific language appears in an exemplar profile, AND
-2. It does NOT appear in the research package or LinkedIn data for this target, AND
-3. The claim cannot be independently verified from the target's own sources
-
-When in doubt, classify as UNSUPPORTED rather than EXEMPLAR_LEAK.
-
-**FABRICATED** — The claim contains a specific number, quote, or event that appears in neither the research package, the canonical biographical data, nor the exemplars. The model invented it.
-
-**UNSUPPORTED** — The claim is plausible and could be a reasonable inference, but no specific source text confirms it. It may be true but the evidence doesn't establish it.
-
-## Severity
-
-- EXEMPLAR_LEAK → always CRITICAL
-- FABRICATED → always CRITICAL
-- UNSUPPORTED with specific numbers or quotes → HIGH
-- UNSUPPORTED analytical inference → LOW
-
-## Output format
-
-Return ONLY valid JSON. No markdown, no preamble, no explanation outside the JSON.
-
-{
-  "target_name": "string",
-  "total_claims_checked": number,
-  "supported": number,
-  "unsupported": number,
-  "exemplar_leak": number,
-  "fabricated": number,
-  "critical_count": number,
-  "pass": boolean,
-  "items": [
-    {
-      "claim": "exact text from the draft containing the claim",
-      "section": "which profile section (e.g. '1. THE OPERATING SYSTEM')",
-      "verdict": "SUPPORTED | UNSUPPORTED | EXEMPLAR_LEAK | FABRICATED",
-      "severity": "CRITICAL | HIGH | LOW",
-      "evidence": "if SUPPORTED: quote from research package. if EXEMPLAR_LEAK: quote from the exemplar it matches plus confirmation it's absent from research package. if FABRICATED: note that no source contains this. if UNSUPPORTED: note what's missing.",
-      "exemplar_source": "Bahat | Newmark | McGlinchey | null",
-      "fix": "suggested replacement text using only research package evidence, or 'REMOVE' if no replacement possible"
-    }
-  ]
-}
-
-The "pass" field is false if critical_count > 0.
-
-## Verification rules
-
-1. Dollar amounts: verify the exact figure appears in a source. "$100 million" requires a source saying "$100 million" or numbers that sum to it. Round-number claims without sources are FABRICATED.
-
-2. Counts and durations: "102 job interviews", "three decades", "four years restoring" — each needs a source. Approximate durations derivable from LinkedIn dates (e.g. "five years at Mozilla" from 2010-2015) count as SUPPORTED via canonical biographical data.
-
-3. Direct quotes in quotation marks: must appear verbatim in the research package. If a quote appears in an exemplar but not the research package, it is EXEMPLAR_LEAK regardless of how well it fits.
-
-4. Behavioral observations: "He's a chronic interrupter" or "he signals informality as a test" — check whether the research package describes this behavior. If the exemplar describes it for a different donor and the research package doesn't independently establish it for this target, it is EXEMPLAR_LEAK.
-
-5. LinkedIn claims: "Lists unemployment periods on LinkedIn" — verify against the canonical biographical data JSON. If the LinkedIn JSON doesn't show this, check if the research package mentions it. If neither does but an exemplar profile describes this behavior, EXEMPLAR_LEAK.
-
-6. Named connections: "Ford Foundation connections", "Bloomberg Beta network" — verify these organizations appear in the target's research package or LinkedIn, not just in an exemplar's profile.
-
-7. Institutional affiliations (CRITICAL): Every board seat, committee membership, roundtable chair, fellowship, advisory role, or named initiative in the profile must appear in EITHER:
-   (a) The canonical biographical data (LinkedIn JSON) — specifically the boards/advisory array and career history, OR
-   (b) A source in the research package that explicitly names this target in connection with that institution.
-
-   If an affiliation appears in the profile but NOT in (a) or (b), check whether it appears in an exemplar profile. If it does, classify as EXEMPLAR_LEAK with CRITICAL severity. The exemplar donors (Newmark, Bahat, McGlinchey) sit on different boards, chair different roundtables, and hold different advisory roles than the target. Common exemplar affiliations that MUST NOT leak include: Aspen Roundtable on Organized Labor, Blue Star Families, Aspen Digital, Bob Woodruff Foundation, Bloomberg Beta, Partnership on AI, National Domestic Workers Alliance, Public Interest Technology University Network, and any other institution mentioned in the exemplar profiles.
-
-   This rule also applies to role titles, organization names, and named initiatives that belong to exemplar donors — not just formal board seats. If someone "chairs" or "co-convened" or "advises" something, verify the claim the same way.
-
-Be thorough. Check every specific claim. Err on the side of flagging rather than passing. A false positive (flagging something that turns out to be fine) is far less costly than a false negative (passing exemplar contamination into the final profile).`,
-      factCheckUserMessage,
+      factCheckSystemPrompt,
+      factCheckUserMsg,
       { maxTokens: 16000, model: 'claude-sonnet-4-5-20250929' },
     );
 
@@ -1708,19 +1570,17 @@ Be thorough. Check every specific claim. Err on the side of flagging rather than
     // Console logging
     console.log(`[Fact-Check] Complete: ${factCheckResult.total_claims_checked} claims checked, ${factCheckResult.supported} supported, ${factCheckResult.unsupported} unsupported, ${factCheckResult.exemplar_leak} exemplar_leak, ${factCheckResult.fabricated} fabricated`);
 
-    // Log each CRITICAL item individually
-    const criticalItems = (factCheckResult.items || []).filter((i: any) => i.severity === 'CRITICAL');
-    for (const item of criticalItems) {
-      const source = item.exemplar_source ? ` (${item.exemplar_source})` : '';
-      console.log(`[Fact-Check] CRITICAL: "${item.claim.slice(0, 80)}${item.claim.length > 80 ? '...' : ''}" → ${item.verdict}${source}`);
-    }
+    // Process results: distinguish found-in-draft from preventive checks
+    const { criticalItemsForEditorial, preventiveItems, passForEditorial } = processFactCheckResult(factCheckResult);
+
+    console.log(`[Fact-Check] ${criticalItemsForEditorial.length} items found in draft, ${preventiveItems.length} preventive checks`);
 
     // Progress event
-    if (factCheckResult.pass) {
+    if (passForEditorial) {
       emit(`✓ Fact-check passed: ${factCheckResult.supported}/${factCheckResult.total_claims_checked} claims verified`, 'analysis', 25, TOTAL_STEPS);
     } else {
-      emit(`⚠ Fact-check found ${factCheckResult.critical_count} critical issues — fixing in editorial pass`, 'analysis', 25, TOTAL_STEPS);
-      console.log(`[Fact-Check] Passing ${criticalItems.length} critical items to editorial pass`);
+      emit(`⚠ Fact-check found ${criticalItemsForEditorial.length} critical issues in draft — fixing in editorial pass`, 'analysis', 25, TOTAL_STEPS);
+      console.log(`[Fact-Check] Passing ${criticalItemsForEditorial.length} critical items to editorial pass`);
 
       // Build the mandatory-fix block for the editorial prompt
       factCheckBlock = `
@@ -1729,10 +1589,10 @@ Be thorough. Check every specific claim. Err on the side of flagging rather than
 MANDATORY CORRECTIONS FROM FACT-CHECK
 ══════════════════════════════════════════
 
-An independent fact-checker has audited every specific claim in the first draft. The following items MUST be corrected. This is not optional. Do not preserve any flagged claim in any form — not rephrased, not softened, not restructured.
+An independent fact-checker has audited every specific claim in the first draft. The following items were FOUND IN THE DRAFT and MUST be corrected. This is not optional. Do not preserve any flagged claim in any form — not rephrased, not softened, not restructured.
 
 RULES:
-- EXEMPLAR_LEAK: DELETE the claim entirely. This content came from a reference profile about a different person, not from evidence about this target. Do not keep the behavioral pattern in different words. Remove it completely.
+- EXEMPLAR_LEAK: DELETE the claim entirely. This content came from an exemplar profile (fictional or real), not from evidence about this target. Do not keep the behavioral pattern in different words. Remove it completely.
 - FABRICATED: DELETE the claim entirely. No evidence supports it.
 - UNSUPPORTED: Either find explicit support in the research package (cite the source URL), or delete the claim.
 
@@ -1742,8 +1602,8 @@ After deletions, if a section becomes thin, fill ONLY with evidence from the res
 
 After completing all corrections, re-read the full profile once more to check for any surviving instances of the deleted claims that may appear in other sections (claims often repeat across sections).
 
-CRITICAL ITEMS:
-${JSON.stringify(criticalItems, null, 2)}
+CRITICAL ITEMS (found in draft):
+${JSON.stringify(criticalItemsForEditorial, null, 2)}
 `;
     }
 
