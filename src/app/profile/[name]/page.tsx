@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
 import { parseProfileForPDF } from '@/lib/pdf/parse-profile';
+import MeetingGuideRenderer from '@/components/MeetingGuideRenderer';
 
 interface Source {
   url: string;
@@ -255,31 +256,14 @@ export default function ProfilePage() {
           );
         }
 
-        // Use formatted HTML if available, fall back to markdown
-        if (data.meetingGuideHtml) {
-          return (
-            <div
-              className="rounded-2xl border border-dtw-light-gray relative overflow-hidden bg-white"
-              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
-            >
-              <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
-              <div dangerouslySetInnerHTML={{ __html: data.meetingGuideHtml }} />
-            </div>
-          );
-        }
-
-        // Fallback: render markdown directly
+        // Primary path: render markdown with React component (site-side rendering)
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
-               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+          <div
+            className="rounded-2xl border border-dtw-light-gray relative overflow-hidden bg-white"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+          >
             <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
-            <div className="p-9 pt-10">
-              <article className="prose prose-green max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {data.meetingGuide}
-                </ReactMarkdown>
-              </article>
-            </div>
+            <MeetingGuideRenderer markdown={data.meetingGuide} />
           </div>
         );
       }

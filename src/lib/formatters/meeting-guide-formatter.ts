@@ -2,12 +2,12 @@
 // Converts intermediate markdown format (Setup/Arc/Tripwires/One Line)
 // to styled HTML matching meeting-guide-newmark.html reference
 
-interface SetupGroup {
+export interface SetupGroup {
   heading: string;
   bullets: string[];
 }
 
-interface Beat {
+export interface Beat {
   number: number;
   title: string;
   goal: string;
@@ -18,13 +18,13 @@ interface Beat {
   continue: string;
 }
 
-interface Tripwire {
+export interface Tripwire {
   name: string;
   tell: string;
   recovery: string;
 }
 
-interface ParsedGuide {
+export interface ParsedGuide {
   donorName: string;
   setupGroups: SetupGroup[];
   beats: Beat[];
@@ -34,7 +34,7 @@ interface ParsedGuide {
 
 // ── PARSER ──────────────────────────────────────────────────────────
 
-function parseMarkdown(markdown: string): ParsedGuide {
+export function parseMarkdown(markdown: string): ParsedGuide {
   const lines = markdown.split('\n');
 
   const guide: ParsedGuide = {

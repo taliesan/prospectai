@@ -22,7 +22,7 @@ import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
 import { buildFactCheckSystemPrompt, buildFactCheckUserMessage, processFactCheckResult } from './prompts/fact-check-prompt';
 import { selectExemplars, loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, loadDTWOrgLayer } from './canon/loader';
-import { formatMeetingGuide, formatMeetingGuideEmbeddable } from './formatters/meeting-guide-formatter';
+import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
 import { writeFileSync, mkdirSync } from 'fs';
 
@@ -499,7 +499,6 @@ export interface CodedPipelineResult {
   researchPackage: string;
   profile: string;
   meetingGuide: string;
-  meetingGuideHtml: string;
   linkedinData: LinkedInData | null;
 }
 
@@ -1687,7 +1686,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   });
   console.log(`[Meeting Guide] ${meetingGuide.length} chars`);
 
-  const meetingGuideHtml = formatMeetingGuideEmbeddable(meetingGuide);
+  // Generate standalone HTML for debug file / download only (not used for website rendering)
   const meetingGuideHtmlFull = formatMeetingGuide(meetingGuide);
 
   try {
@@ -1709,7 +1708,6 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
     researchPackage,
     profile: finalProfile,
     meetingGuide,
-    meetingGuideHtml,
     linkedinData,
   };
 }
