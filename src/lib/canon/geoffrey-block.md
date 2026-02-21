@@ -81,6 +81,38 @@ Compression means precision, not fragmentation. Four short sentences doing one i
 - ❌ "The pattern: trusts by default → betrayal triggers withdrawal, not confrontation → structural response (legal, strategic) rather than interpersonal → relationship is permanently severed."
 - ✅ "He trusts people by default. When that trust breaks, he doesn't confront — he just cuts the line. He never spoke to Meg Whitman again."
 
+**Performative insight → Diagnostic instruction.**
+
+The most persistent failure mode: sentences that sound like they're revealing something about the person but actually just redescribe what the evidence already said in more literary language. These sentences feel sharp on first read but evaporate on second read because they don't change what the reader does.
+
+- ❌ "She learned to hold paradox at the negotiating table—merchant prudence and pirate violence, ledger discipline and open-water lawlessness—without false resolution."
+- ✅ "Her negotiations involve both merchant buyers and crew. She doesn't resolve that tension and doesn't pretend it isn't there. Both parties are present and both see each other's constraints."
+
+- ❌ "The contradiction doesn't resolve. It becomes generative."
+- ✅ "She keeps books like a Cádiz shipping house. If you mention this, she'll agree and tell you the ledger is what prevents mutiny. The tension is usable — she doesn't mind discussing it."
+
+- ❌ "This isn't accounting. It's survival."
+- ✅ Just state why the accounting matters. The reader doesn't need you to announce what category an insight belongs to. If the ledger is the reason her crew doesn't mutiny, say that.
+
+- ❌ "She means 'partnership' the way someone who's caulked her own hull in a storm means it."
+- ✅ "She repaired the Aguila Negra herself through three hurricanes. If you propose a partnership, she expects you to do equivalent work, not oversee it."
+
+- ❌ "The caution isn't cowardice. It's scar tissue."
+- ✅ "She lost four ships on the northern passage. She now refuses any approach that requires navigating reef passages at night, regardless of the prize."
+
+- ❌ "collaborative cognition in action"
+- ✅ "She's adding to your route on her chart."
+
+The pattern: the model takes a concrete observation and re-encodes it as a compressed literary statement that sounds more profound but tells the reader less. "Scar tissue" sounds insightful but doesn't tell you which scar or what it means for the next negotiation. "She lost four ships on the northern passage" tells you what happened and predicts what she'll refuse.
+
+Three specific constructions to eliminate:
+
+1. **"This isn't X. It's Y."** — Almost always performative. The reader doesn't need the model to announce what category an insight belongs to. Just deliver the insight.
+
+2. **"The [noun] is [adjective]. So is the [noun]."** — Mirrored parallelism. Already flagged in the register but still appearing. If you catch yourself writing two short sentences with parallel structure that create a dramatic effect, combine them into one plain sentence.
+
+3. **"[Concrete thing] taught him [abstract lesson]"** — The shipwreck taught her about risk. The ledger taught her about trust. The mutiny taught her about loyalty. These constructions turn specific evidence into generic wisdom. Instead: state what happened, then state what the reader should do with it.
+
 The profile is a briefing, not an essay. The reader is prepping for a meeting, not admiring the writing. If a sentence sounds like it's trying to be good prose, it's doing the wrong job. Write like you're talking to a colleague who has a meeting tomorrow. Not casual, not sloppy — but direct, warm, and talking to a person.
 
 The most common failure mode: the model writes a sentence that sounds impressive on the page but doesn't say anything the reader can use. "She wields enormous structural power but presents as a facilitator" — what does the reader do with that? Compare: "She runs an $80 million program and has shaped the technology accountability field as much as anyone in American philanthropy. And every public statement positions Ford as one partner among many. Don't treat her as a facilitator — but don't call her the architect to her face, either." Same observation, but the reader knows what to do.
