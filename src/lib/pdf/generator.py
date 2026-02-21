@@ -132,6 +132,7 @@ def make_styles(fonts):
     sans_bold = sans + '-Bold' if fonts['sans'] else 'Helvetica-Bold'
     sans_italic = sans + '-Italic' if fonts['sans'] else 'Helvetica-Oblique'
     sans_light = 'DMSans-Light' if fonts['sans'] else 'Helvetica'
+    sans_medium = 'DMSans-Medium' if fonts['sans'] else 'Helvetica'
 
     return {
         # Cover page
@@ -266,6 +267,23 @@ def make_styles(fonts):
             'signal_item', fontName=sans, fontSize=8.5,
             leading=13, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
+
+        # Section title (two-line: small label + large serif name)
+        'title_label': ParagraphStyle(
+            'title_label', fontName=sans_medium, fontSize=8,
+            leading=11, textColor=LIGHT_GRAY, alignment=TA_LEFT,
+        ),
+        'title_name': ParagraphStyle(
+            'title_name', fontName=serif, fontSize=24,
+            leading=28, textColor=CHARCOAL, alignment=TA_LEFT,
+        ),
+
+        # Profile bullets (behavioral forks — wider spacing than meeting guide bullets)
+        'profile_bullet': ParagraphStyle(
+            'profile_bullet', fontName=sans, fontSize=10.5,
+            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
+            leftIndent=16, bulletIndent=4, spaceAfter=8,
+        ),
     }
 
 
@@ -335,6 +353,54 @@ def draw_content_page(canvas, doc):
     canvas.restoreState()
 
 
+# ─── Section title flowable ───────────────────────────────────────────────────
+
+def _spaced_text(text):
+    """Convert to wide tracking: spaces between chars, triple spaces between words."""
+    words = text.upper().split()
+    return '   '.join(' '.join(word) for word in words)
+
+
+class SectionTitleFlowable(Flowable):
+    """Two-line section title matching the app: small uppercase label + large serif name + thick divider."""
+
+    def __init__(self, label, name, width, styles):
+        super().__init__()
+        self.label_text = _spaced_text(label)
+        self.name_text = name.upper()
+        self.box_width = width
+        self.styles = styles
+        self._label_para = None
+        self._name_para = None
+        self._lh = 0
+        self._nh = 0
+        self._h = 0
+
+    def wrap(self, aW, aH):
+        self._label_para = Paragraph(self.label_text, self.styles['title_label'])
+        _, self._lh = self._label_para.wrap(self.box_width, aH)
+        self._name_para = Paragraph(self.name_text, self.styles['title_name'])
+        _, self._nh = self._name_para.wrap(self.box_width, aH)
+        # label + gap(2) + name + gap(10) + divider(~2) + bottom margin(12)
+        self._h = self._lh + 2 + self._nh + 10 + 2 + 12
+        return (self.box_width, self._h)
+
+    def draw(self):
+        c = self.canv
+        h = self._h
+        # Label at top
+        label_bottom = h - self._lh
+        self._label_para.drawOn(c, 0, label_bottom)
+        # Name: 2pt gap below label
+        name_bottom = label_bottom - 2 - self._nh
+        self._name_para.drawOn(c, 0, name_bottom)
+        # Thick divider: 10pt below name
+        divider_y = name_bottom - 10
+        c.setStrokeColor(CHARCOAL)
+        c.setLineWidth(2)
+        c.line(0, divider_y, self.box_width, divider_y)
+
+
 # ─── Content builders ─────────────────────────────────────────────────────────
 
 def build_cover_page(data, styles):
@@ -397,6 +463,12 @@ def build_section_cover(section_num, title, description, accent_color, styles):
 def build_persuasion_profile(data, styles, accent_color=PURPLE):
     """Build persuasion profile content pages from sections array."""
     elements = []
+
+    # Section title header (two-line: label + name + divider)
+    donor_name = data.get('donorName', '')
+    elements.append(SectionTitleFlowable('Persuasion Profile', donor_name, CONTENT_WIDTH, styles))
+    elements.append(Spacer(1, 8))
+
     sections = data.get('persuasionProfile', {}).get('sections', [])
 
     for i, section in enumerate(sections):
@@ -431,6 +503,10 @@ def build_persuasion_profile(data, styles, accent_color=PURPLE):
                 elements.append(Spacer(1, 4))
             elif ptype == 'bold':
                 elements.append(Paragraph(content, styles['body_bold']))
+            elif ptype == 'bullet':
+                elements.append(Paragraph(
+                    f'\u2022  {content}', styles['profile_bullet']
+                ))
             else:
                 elements.append(Paragraph(content, styles['body']))
 
@@ -440,17 +516,23 @@ def build_persuasion_profile(data, styles, accent_color=PURPLE):
 def build_meeting_guide(data, styles, accent_color=GREEN):
     """Build meeting guide content pages. Supports v3 and legacy formats."""
     mg = data.get('meetingGuide', {})
+    donor_name = data.get('donorName', '')
 
     # Detect v3 format
     if mg.get('format') == 'v3':
-        return _build_meeting_guide_v3(mg, styles, accent_color)
+        return _build_meeting_guide_v3(mg, styles, accent_color, donor_name)
 
-    return _build_meeting_guide_legacy(mg, styles, accent_color)
+    return _build_meeting_guide_legacy(mg, styles, accent_color, donor_name)
 
 
-def _build_meeting_guide_v3(mg, styles, accent_color=GREEN):
+def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
     """Build v3 meeting guide: Setup, The Arc (beats with START/STAY/CONTINUE), Tripwires, One Line."""
     elements = []
+
+    # Section title header (two-line: label + name + divider)
+    name = mg.get('donorName', '') or donor_name
+    elements.append(SectionTitleFlowable('Meeting Guide', name, CONTENT_WIDTH, styles))
+    elements.append(Spacer(1, 8))
 
     class AccentLineFlowable2(Flowable):
         def __init__(self, color):
@@ -506,9 +588,10 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN):
 
             # STAY phase
             if beat.get('stay'):
-                stay_text = beat['stay'].replace('\n\n', '<br/><br/>')
+                stay_text = _md_inline_to_html(beat['stay'])
+                stay_text = stay_text.replace('\n\n', '<br/><br/>')
                 elements.append(Paragraph(
-                    f"<b>STAY.</b> {_md_inline_to_html(stay_text)}",
+                    f"<b>STAY.</b> {stay_text}",
                     styles['body']
                 ))
 
@@ -566,9 +649,14 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN):
     return elements
 
 
-def _build_meeting_guide_legacy(mg, styles, accent_color=GREEN):
+def _build_meeting_guide_legacy(mg, styles, accent_color=GREEN, donor_name=''):
     """Build legacy meeting guide content pages."""
     elements = []
+
+    # Section title header (two-line: label + name + divider)
+    name = mg.get('donorName', '') or donor_name
+    elements.append(SectionTitleFlowable('Meeting Guide', name, CONTENT_WIDTH, styles))
+    elements.append(Spacer(1, 8))
 
     class AccentLineFlowable2(Flowable):
         def __init__(self, color):

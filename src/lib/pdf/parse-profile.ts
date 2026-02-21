@@ -15,7 +15,7 @@ interface Source {
 
 interface ProfileSection {
   title: string;
-  paragraphs: { type: 'text' | 'insight' | 'bold'; content: string }[];
+  paragraphs: { type: 'text' | 'insight' | 'bold' | 'bullet'; content: string }[];
 }
 
 interface MeetingGuideData {
@@ -159,6 +159,17 @@ function parsePersuasionProfile(markdown: string): ProfileSection[] {
     // Empty line = paragraph break
     if (line.trim() === '') {
       flushParagraph();
+      continue;
+    }
+
+    // Bullet list items (e.g., behavioral forks)
+    const bulletMatch = line.trim().match(/^[-*]\s+(.+)/);
+    if (bulletMatch && currentSection) {
+      flushParagraph();
+      currentSection.paragraphs.push({
+        type: 'bullet',
+        content: bulletMatch[1].trim(),
+      });
       continue;
     }
 
