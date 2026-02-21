@@ -461,11 +461,7 @@ function getCSS(): string {
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--paper);
-  color: var(--ink);
-  line-height: 1.6;
-  font-size: 13px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -473,6 +469,10 @@ body {
   max-width: 820px;
   margin: 0 auto;
   padding: 36px 32px 56px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #1c1917;
+  line-height: 1.6;
+  font-size: 14.5px;
 }
 
 /* HEADER */
@@ -489,7 +489,7 @@ body {
 }
 .header-label {
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -507,7 +507,7 @@ body {
 /* SECTION LABELS */
 .section-label {
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -528,7 +528,7 @@ body {
   margin-bottom: 0;
 }
 .setup-heading {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -542,7 +542,7 @@ body {
   gap: 8px;
 }
 .setup-bullets li {
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.65;
   padding-left: 16px;
   position: relative;
@@ -602,7 +602,7 @@ body {
   line-height: 1.3;
 }
 .beat-goal {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-secondary);
   font-style: italic;
   line-height: 1.5;
@@ -634,7 +634,7 @@ body {
 
 .phase-label {
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -643,7 +643,7 @@ body {
 }
 .phase-content {
   padding: 12px 16px;
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.7;
   border: 1px solid;
   border-top: none;
@@ -707,7 +707,7 @@ body {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px dashed #93c5fd;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--ink);
 }
 .stalling-label {
@@ -752,7 +752,7 @@ body {
   margin-bottom: 6px;
 }
 .tripwire-row {
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.6;
   margin-bottom: 4px;
 }
@@ -795,8 +795,8 @@ body {
 
 /* PRINT */
 @media print {
-  body { background: white; font-size: 12px; }
-  .page { padding: 24px; max-width: none; }
+  body { background: white; }
+  .page { padding: 24px; max-width: none; font-size: 12px; }
   .beat { page-break-before: auto; page-break-inside: avoid; }
   .beat-number { width: 40px; height: 40px; font-size: 18px; }
   .phase { break-inside: avoid; }
@@ -993,10 +993,13 @@ ${body}
  */
 export function formatMeetingGuideEmbeddable(markdown: string): string {
   const parsed = parseMarkdown(markdown);
-  const css = scopeCSS(getCSS());
+  const scopedCSS = scopeCSS(getCSS());
+  // Safety net: set typographic properties directly on .mg-root so inheritance
+  // works even if .page scoping is overridden by the host page's global CSS.
+  const rootCSS = `.mg-root { font-family: 'DM Sans', system-ui, sans-serif; color: #1c1917; line-height: 1.6; font-size: 14.5px; }`;
   const body = renderBodyContent(parsed);
 
-  return `<style>${css}</style>
+  return `<style>${rootCSS}\n${scopedCSS}</style>
 <div class="mg-root">
 <div class="page">
 ${body}
