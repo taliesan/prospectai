@@ -234,7 +234,29 @@ export default function ProfilePage() {
             <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-purple rounded-b-sm" />
             <div className="p-9 pt-10">
               <article className="prose max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => {
+                      const text = String(children);
+                      const match = text.match(/^PERSUASION PROFILE\s*[—–-]\s*(.+)$/i);
+                      if (match) {
+                        return (
+                          <div className="not-prose mb-12 relative">
+                            <div className="text-xs font-medium tracking-[0.12em] uppercase text-stone-500 mb-1.5">
+                              Persuasion Profile
+                            </div>
+                            <div className="font-serif text-[32px] font-bold tracking-tight leading-tight text-stone-900">
+                              {match[1]}
+                            </div>
+                            <div className="mt-5 h-0.5 bg-stone-900" />
+                          </div>
+                        );
+                      }
+                      return <h1>{children}</h1>;
+                    },
+                  }}
+                >
                   {displayMarkdown}
                 </ReactMarkdown>
               </article>
