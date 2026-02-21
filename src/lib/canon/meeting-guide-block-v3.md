@@ -84,6 +84,24 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 - ❌ "No vision — operations."
 - ✅ "He doesn't respond to big ideas or compelling storytelling. He responds to people who can show him their operation works, inside a cause he already believes in."
 
+**Performative character study → Operational briefing.**
+- ❌ "Rogue navigator who found her superpower in the thing most cartographers avoid: mapping dead zones."
+- ✅ "She's a cartographer who specializes in dead zones — the areas the Guild doesn't map. She left the Guild over it twenty years ago and has worked independently since."
+
+- ❌ "Learned to hold paradox between deep-water solitude and colony obligation—without false resolution."
+- ✅ "She maps alone for months but reports to the Archive Council. She treats both as non-negotiable. Don't ask her to choose."
+
+- ❌ "Enter ready to name the depth differential without letting it run the meeting."
+- ✅ "She works deeper water than you do. Acknowledge that early and move to substance. If you ignore the difference, she reads it as dishonest. If you over-defer to it, the meeting stalls."
+
+- ❌ "Match her precision about reef integrity but respect that not everything is equally fragile."
+- ✅ "She treats active ecological collapse differently from long-term degradation. If your timeline is institutional rather than ecological, be direct about that."
+
+- ❌ "She's calculating reef death in generations while you're calculating program cycles."
+- ✅ "Her timescale is spawning seasons. If you need planning time, tell her what you're doing to limit damage in the interim."
+
+The pattern: the meeting guide tells the fundraiser what to DO. Sentences that characterize the donor without landing in an instruction are profile language that hasn't been translated. Every sentence in the guide must end in something the reader acts on.
+
 **Analysis first → Action first.**
 - ❌ "She distinguishes between programs and fields. A program is an organization that does good work and needs funding. A field is the infrastructure that connects practitioners. She funds fields. Lead with who's already doing the work."
 - ✅ "Lead with who's already doing the work, not what your organization has accomplished. She funds fields — the infrastructure that connects practitioners — not individual programs. If you sound like a program looking for a grant, the meeting stalls."
@@ -134,6 +152,7 @@ Short ≠ compressed. Fewer words is good. Compressed aphorisms that require unp
 - Meta-commentary about the document. "This section covers..." / "The key insight here is..." / "As noted in the setup..." The guide never talks about itself.
 - Profile analytical vocabulary used as guide language. The profile organizes evidence with terms like "operating system," "the contradiction," "what drives them," "architecture," "permission structure," "presence channel," "decision architecture," "moral categories," "diagnostic." These are the profile's tools. They must never appear in the guide's output. Translate every instance into a plain description of what the reader will see and what to do about it. (These terms appear in this Block's own analytical layer — that's fine. They teach the model how to think. But they must not appear in what the model writes.)
 - Issue alignment without specific program overlap. "She cares about X and you do X" is broad-to-broad — it tells the fundraiser nothing about where the work actually lands inside the donor's portfolio. Start with the donor's named programs, funds, or initiatives and show where the organization's work fits inside them. If no specific overlap exists, say so.
+- Performative compression. "The caution isn't cowardice. It's scar tissue." / "The contradiction becomes generative." / "Hold paradox without false resolution." These sound sharp but don't tell the fundraiser what to do. The guide's job is operational instruction, not literary characterization. If a sentence sounds like it belongs in a magazine profile, it doesn't belong in the guide.
 
 ### Content failures
 - Horizontal restatement — the same insight living in multiple sections. Each section owns its content. If a trait appears in Who They Are, it does not reappear in How to Engage. If a sequencing insight appears in Where to Focus, a beat can deploy it as a move but does not re-teach it. Before finalizing, scan every insight and confirm it lives in exactly one home.

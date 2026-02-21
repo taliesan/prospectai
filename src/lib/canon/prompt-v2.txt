@@ -99,6 +99,38 @@ Compression means precision, not fragmentation. Four short sentences doing one i
 - ❌ "The pattern: trusts by default → betrayal triggers withdrawal, not confrontation → structural response (legal, strategic) rather than interpersonal → relationship is permanently severed."
 - ✅ "He trusts every new ship in the harbor by default. When one fires on his fleet, he doesn't return fire — he just changes the tide charts. The harbor doesn't get hostile. It gets shallow."
 
+**Performative insight → Diagnostic instruction.**
+
+The most persistent failure mode: sentences that sound like they're revealing something about the person but actually just redescribe what the evidence already said in more literary language. These sentences feel sharp on first read but evaporate on second read because they don't change what the reader does.
+
+- ❌ "She learned to hold paradox at the negotiating table—merchant prudence and pirate violence, ledger discipline and open-water lawlessness—without false resolution."
+- ✅ "Her negotiations involve both merchant buyers and crew. She doesn't resolve that tension and doesn't pretend it isn't there. Both parties are present and both see each other's constraints."
+
+- ❌ "The contradiction doesn't resolve. It becomes generative."
+- ✅ "She keeps books like a Cádiz shipping house. If you mention this, she'll agree and tell you the ledger is what prevents mutiny. The tension is usable — she doesn't mind discussing it."
+
+- ❌ "This isn't accounting. It's survival."
+- ✅ Just state why the accounting matters. The reader doesn't need you to announce what category an insight belongs to. If the ledger is the reason her crew doesn't mutiny, say that.
+
+- ❌ "She means 'partnership' the way someone who's caulked her own hull in a storm means it."
+- ✅ "She repaired the Aguila Negra herself through three hurricanes. If you propose a partnership, she expects you to do equivalent work, not oversee it."
+
+- ❌ "The caution isn't cowardice. It's scar tissue."
+- ✅ "She lost four ships on the northern passage. She now refuses any approach that requires navigating reef passages at night, regardless of the prize."
+
+- ❌ "collaborative cognition in action"
+- ✅ "She's adding to your route on her chart."
+
+The pattern: the model takes a concrete observation and re-encodes it as a compressed literary statement that sounds more profound but tells the reader less. "Scar tissue" sounds insightful but doesn't tell you which scar or what it means for the next negotiation. "She lost four ships on the northern passage" tells you what happened and predicts what she'll refuse.
+
+Three specific constructions to eliminate:
+
+1. **"This isn't X. It's Y."** — Almost always performative. The reader doesn't need the model to announce what category an insight belongs to. Just deliver the insight.
+
+2. **"The [noun] is [adjective]. So is the [noun]."** — Mirrored parallelism. Already flagged in the register but still appearing. If you catch yourself writing two short sentences with parallel structure that create a dramatic effect, combine them into one plain sentence.
+
+3. **"[Concrete thing] taught him [abstract lesson]"** — The shipwreck taught her about risk. The ledger taught her about trust. The mutiny taught her about loyalty. These constructions turn specific evidence into generic wisdom. Instead: state what happened, then state what the reader should do with it.
+
 
 # 2. EXEMPLARS
 
@@ -494,6 +526,10 @@ Section length follows evidence density. One paragraph is correct if that's all 
 No methodology vocabulary in the output. Terms like "permission structure," "governing diagnosis," "trust calibration," and "substrate reconstruction" are internal vocabulary. If one appears in your output, you've delivered the scaffolding instead of the building.
 
 No literary construction. No mirrored parallelism ("The modesty is genuine. So is the scale."). No flowchart arrows. No compressed aphorisms that require unpacking. Just say the thing. The most common failure mode: a sentence that sounds impressive but doesn't tell the reader what to do. Every sentence must pass: what does the reader do with this in the meeting?
+
+No performative insight. A sentence that redescribes evidence in more literary language is not analysis—it's decoration. The test: does this sentence tell the reader something they can use in the meeting that they didn't already know from the evidence? If the sentence just repackages a concrete fact as an aphorism ("The caution isn't cowardice. It's scar tissue."), cut it and keep the concrete fact. The reader is prepping for a meeting, not reading an essay.
+
+No repeated conceptual moves. If "hold paradox" or "without false resolution" or any other analytical phrase appears more than once in the profile, it's become a tic. Each analytical concept deploys once with full treatment. If the concept recurs, it means the profile is restating rather than advancing.
 
 Bolded assertions must be traceable to evidence. Bold signals "this is load-bearing" — if the evidence doesn't support the weight, don't bold it.
 
