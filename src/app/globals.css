@@ -26,6 +26,7 @@ body {
   background: var(--dtw-off-white) !important;
   color: var(--dtw-charcoal);
   font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14.5px;
 }
 
 /* Marker highlight effect (used on key insights) */

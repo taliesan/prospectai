@@ -191,27 +191,27 @@ def make_styles(fonts):
             spaceBefore=14, spaceAfter=6,
         ),
         'body': ParagraphStyle(
-            'body', fontName=sans, fontSize=9.5,
-            leading=14, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
+            'body', fontName=sans, fontSize=10.5,
+            leading=15, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
             spaceAfter=6,
         ),
         'body_bold': ParagraphStyle(
-            'body_bold', fontName=sans_bold, fontSize=9.5,
-            leading=14, textColor=CHARCOAL, alignment=TA_JUSTIFY,
+            'body_bold', fontName=sans_bold, fontSize=10.5,
+            leading=15, textColor=CHARCOAL, alignment=TA_JUSTIFY,
             spaceAfter=6,
         ),
         'body_italic': ParagraphStyle(
-            'body_italic', fontName=sans_italic, fontSize=9.5,
-            leading=14, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
+            'body_italic', fontName=sans_italic, fontSize=10.5,
+            leading=15, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
             spaceAfter=6,
         ),
         'insight': ParagraphStyle(
-            'insight', fontName=sans_italic, fontSize=9.5,
-            leading=14, textColor=BODY_TEXT, alignment=TA_LEFT,
+            'insight', fontName=sans_italic, fontSize=10.5,
+            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
         'bullet': ParagraphStyle(
-            'bullet', fontName=sans, fontSize=9.5,
-            leading=14, textColor=BODY_TEXT, alignment=TA_LEFT,
+            'bullet', fontName=sans, fontSize=10.5,
+            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
             leftIndent=16, bulletIndent=4, spaceAfter=3,
         ),
 
@@ -752,7 +752,7 @@ def _build_insight_box(text, accent_color, styles):
             sans_italic = 'DMSans-Italic' if 'DMSans-Italic' in self.canv.getAvailableFonts() else 'Helvetica-Oblique' if hasattr(self, 'canv') else 'Helvetica-Oblique'
             style = ParagraphStyle(
                 'ib', fontName='DMSans-Italic',
-                fontSize=9.5, leading=14, textColor=BODY_TEXT,
+                fontSize=10.5, leading=15, textColor=BODY_TEXT,
             )
             inner = self.box_width - 24
             self._para = Paragraph(self.text, style)
