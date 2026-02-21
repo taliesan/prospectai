@@ -312,7 +312,6 @@ async function runPipelineInBackground(
             status: 'complete',
           },
           meetingGuide: pipelineResult.meetingGuide,
-          meetingGuideHtml: pipelineResult.meetingGuideHtml,
           fundraiserName,
         };
 
