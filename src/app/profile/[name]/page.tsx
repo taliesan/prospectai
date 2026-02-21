@@ -246,7 +246,7 @@ export default function ProfilePage() {
                             <div className="text-xs font-medium tracking-[0.12em] uppercase text-stone-500 mb-1.5">
                               Persuasion Profile
                             </div>
-                            <div className="font-serif text-[32px] font-bold tracking-tight leading-tight text-stone-900">
+                            <div className="font-serif text-[32px] font-bold tracking-tight leading-tight text-stone-900 uppercase">
                               {match[1]}
                             </div>
                             <div className="mt-5 h-0.5 bg-stone-900" />
