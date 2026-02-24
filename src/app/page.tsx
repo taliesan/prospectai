@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 
 interface ProgressEvent {
   type: 'status' | 'complete' | 'error' | 'ping' | 'phase';
@@ -13,16 +14,12 @@ interface ProgressEvent {
 }
 
 export default function Home() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState(false);
+  const { data: session } = useSession();
   const [donorName, setDonorName] = useState('');
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState('');
   const [linkedinPdf, setLinkedinPdf] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const mode = 'conversation';
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
   const [currentPhase, setCurrentPhase] = useState<string>('');
@@ -32,13 +29,6 @@ export default function Home() {
   const [activity, setActivity] = useState<any>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    if (localStorage.getItem('prospectai_auth') === 'true') {
-      setAuthenticated(true);
-    }
-    setAuthChecked(true);
-  }, []);
 
   // Polish item 5: URL validation state
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
@@ -96,8 +86,14 @@ export default function Home() {
           eventSourceRef.current?.close();
           eventSourceRef.current = null;
           setActiveJobId(null);
-          localStorage.setItem('lastProfile', JSON.stringify(data.result));
-          router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+          // Navigate to the profile by database ID if available, fall back to name
+          const profileId = data.result?.profileId;
+          if (profileId) {
+            router.push(`/profile/${profileId}`);
+          } else {
+            localStorage.setItem('lastProfile', JSON.stringify(data.result));
+            router.push(`/profile/${encodeURIComponent(donorName.trim())}`);
+          }
           return true;
         }
         if (data.type === 'error') {
@@ -224,66 +220,6 @@ export default function Home() {
       setIsLoading(false);
     }
   };
-
-  // Password gate
-  if (!authChecked) {
-    return <div className="min-h-screen bg-dtw-black" />;
-  }
-
-  if (!authenticated) {
-    const handleAuth = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (authPassword === 'profile') {
-        localStorage.setItem('prospectai_auth', 'true');
-        setAuthenticated(true);
-        setAuthError(false);
-      } else {
-        setAuthError(true);
-      }
-    };
-
-    return (
-      <div className="min-h-screen bg-dtw-black flex flex-col items-center justify-center px-4">
-        <div
-          className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
-          style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-[500px] h-[500px] opacity-15"
-          style={{ background: 'radial-gradient(circle at 30% 70%, #2D6A4F, transparent 60%)' }}
-        />
-
-        <h1 className="font-serif text-[56px] leading-[1.05] text-white mb-10 relative z-10">
-          Prospect<span className="font-serif italic" style={{ color: '#D894E8' }}>AI</span>
-        </h1>
-
-        <form onSubmit={handleAuth} className="w-full max-w-xs relative z-10">
-          <input
-            type="password"
-            value={authPassword}
-            onChange={(e) => { setAuthPassword(e.target.value); setAuthError(false); }}
-            placeholder="Password"
-            autoFocus
-            className="w-full text-[15px] text-white border border-white/15 rounded-lg px-4 py-3.5
-                       focus:border-purple-400 focus:outline-none placeholder-white/30 transition-all"
-            style={{ background: 'rgba(255,255,255,0.06)' }}
-          />
-          {authError && (
-            <p className="text-sm mt-2" style={{ color: '#E07A5F' }}>Incorrect password</p>
-          )}
-          <button
-            type="submit"
-            className="w-full mt-4 rounded-lg text-[15px] font-semibold text-white py-3.5 transition-all duration-300 hover:-translate-y-0.5"
-            style={{ background: '#6B21A8' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
-          >
-            Enter
-          </button>
-        </form>
-      </div>
-    );
-  }
 
   // Loading state — full dark screen with progress
   if (isLoading) {
@@ -447,7 +383,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Item 14: Gradient bar — 5px, 300% size, 8s animation */}
+      {/* Gradient bar */}
       <div
         className="h-[5px] w-full"
         style={{
@@ -462,14 +398,32 @@ export default function Home() {
         <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50">
           Democracy Takes Work
         </span>
-        <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
-          v3.57
-        </span>
+        <div className="flex items-center gap-4">
+          {session?.user?.name && (
+            <span className="text-xs text-white/40">{session.user.name}</span>
+          )}
+          <a href="/profiles" className="text-xs text-white/40 hover:text-white/70 transition-colors">
+            Profiles
+          </a>
+          {session?.user?.isAdmin && (
+            <a href="/admin" className="text-xs text-purple-400/70 hover:text-purple-300 transition-colors">
+              Admin
+            </a>
+          )}
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="text-xs text-white/30 hover:text-white/60 transition-colors"
+          >
+            Sign out
+          </button>
+          <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
+            v3.57
+          </span>
+        </div>
       </nav>
 
-      {/* Dark hero section — Item 12: more bottom padding */}
+      {/* Dark hero section */}
       <div className="relative bg-dtw-black overflow-hidden">
-        {/* Decorative radial gradients */}
         <div
           className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
           style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}
@@ -489,32 +443,28 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Item 13: Softer clip-path transition — 60% not 20% */}
       <div
         className="h-24 bg-dtw-black"
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% 60%, 0 100%)' }}
       />
 
-      {/* Item 16: Form section fade-in-up animation */}
+      {/* Form section */}
       <div className="bg-dtw-off-white py-16 px-4">
         <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-12 items-start animate-fade-in-up opacity-0"
              style={{ animationDelay: '0.2s' }}>
-          {/* LEFT: Form card — Item 9: two-layer shadow, Item 10: purple bar glow */}
+          {/* LEFT: Form card */}
           <div className="w-full lg:w-[480px] bg-white rounded-2xl relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)' }}>
-            {/* Purple accent bar with glow */}
             <div className="absolute top-0 left-8 right-8 h-1 bg-dtw-purple rounded-b-sm"
                  style={{ boxShadow: '0 2px 8px rgba(123,45,142,0.15)' }} />
 
             <form onSubmit={handleSubmit} className="p-8 pt-10 space-y-6">
-              {/* Item 1: "Start a Profile" heading */}
               <h2 className="font-serif text-2xl text-dtw-black">Start a Profile</h2>
 
               <div>
                 <label htmlFor="donorName" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
                   Donor name
                 </label>
-                {/* Item 8: input bg #F5F3EF, bottom border #D5D2CC */}
                 <input
                   type="text"
                   id="donorName"
@@ -634,14 +584,12 @@ export default function Home() {
                   onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.background = '#F5F3EF'; }}
                   disabled={isLoading}
                 />
-                {/* Item 4: better helper text */}
                 <p className="mt-1.5 text-xs text-dtw-mid-gray">
                   Paste a LinkedIn, company bio, or interview link to anchor research
                 </p>
               </div>
 
               <div className="border-t border-dtw-light-gray pt-6">
-                {/* Item 2: duration-300, Item 7: disabled border styling */}
                 <button
                   type="submit"
                   disabled={isLoading || !donorName.trim() || !seedUrls.trim()}
@@ -659,7 +607,6 @@ export default function Home() {
                 >
                   Generate Profile
                 </button>
-                {/* Item 3: timing microcopy */}
                 <p className="text-center text-xs text-dtw-mid-gray mt-3">
                   Takes 2 – 4 minutes. You&apos;ll see progress in real time.
                 </p>
@@ -667,15 +614,13 @@ export default function Home() {
             </form>
           </div>
 
-          {/* RIGHT: What you'll get — Item 6: sidebar pt-[40px] */}
+          {/* RIGHT: What you'll get */}
           <div className="flex-1 lg:pt-[40px]" style={{ borderLeft: '3px solid #6B21A8', paddingLeft: '24px' }}>
             <p className="text-[11px] font-semibold tracking-[3px] uppercase text-dtw-mid-gray mb-8">
               What you&apos;ll get
             </p>
 
             <div className="space-y-8">
-              {/* Item 15: Full-saturation badge backgrounds with white icons */}
-              {/* Persuasion Profile */}
               <div className="flex items-start gap-5">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                      style={{ background: '#7B2D8E' }}>
@@ -689,7 +634,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Meeting Guide */}
               <div className="flex items-start gap-5">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                      style={{ background: '#2D6A4F' }}>
@@ -703,7 +647,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Sources */}
               <div className="flex items-start gap-5">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                      style={{ background: '#E07A5F' }}>
@@ -730,7 +673,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Item 11: CTA band — 42px tracking-tight, subtitle 17px text-white/65 */}
       <div className="bg-dtw-green py-20 px-4 text-center">
         <h2 className="font-serif text-[42px] tracking-tight text-white mb-3">
           Not just facts. <span className="italic">Intelligence.</span>
@@ -740,7 +682,6 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Item 17: Footer — purple border + radial gradient */}
       <footer
         className="py-6 text-center"
         style={{

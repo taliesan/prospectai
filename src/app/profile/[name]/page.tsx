@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
@@ -36,25 +37,84 @@ const tabAccents: Record<Tab, { border: string; color: string; bg: string }> = {
 
 export default function ProfilePage() {
   const params = useParams();
-  const donorName = decodeURIComponent(params.name as string);
+  const router = useRouter();
+  const { data: session } = useSession();
+  const paramValue = decodeURIComponent(params.name as string);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [donorName, setDonorName] = useState(paramValue);
+  const [fundraiserName, setFundraiserName] = useState('');
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadProfile = async () => {
+    // Try DB fetch first (param could be a database ID)
+    try {
+      const res = await fetch(`/api/profiles/${paramValue}`);
+      if (res.ok) {
+        const { profile } = await res.json();
+        setProfileId(profile.id);
+        setDonorName(profile.donorName);
+        setData({
+          research: {
+            rawMarkdown: profile.researchPackageJson || '',
+            sources: [],
+          },
+          researchProfile: { rawMarkdown: profile.profileMarkdown },
+          profile: { profile: profile.profileMarkdown, status: 'complete', validationPasses: 0 },
+          meetingGuide: profile.meetingGuideMarkdown || undefined,
+        });
+        setIsLoading(false);
+        return;
+      }
+    } catch {
+      // DB fetch failed, fall through to localStorage
+    }
+
+    // Fall back to localStorage (for just-generated or legacy profiles)
+    const stored = localStorage.getItem('lastProfile');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setData(parsed);
+        if (parsed.fundraiserName) setFundraiserName(parsed.fundraiserName);
+      } catch (e) {
+        console.error('Failed to parse stored profile:', e);
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!profileId) return;
+    if (!confirm('Delete this profile? This cannot be undone.')) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/profiles/${profileId}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/profiles');
+      }
+    } catch (err) {
+      console.error('Failed to delete profile:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    router.push(`/?donor=${encodeURIComponent(donorName)}`);
+  };
 
   const handleDownload = async (format: 'html' | 'markdown' = 'html') => {
     if (!data) return;
     setIsDownloading(true);
     try {
-      let fundraiserName = '';
-      try {
-        const raw = localStorage.getItem('lastProfile');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          fundraiserName = parsed.fundraiserName || '';
-        }
-      } catch { /* ignore */ }
-
       const downloadData: DownloadableProfile = {
         donorName,
         fundraiserName,
@@ -75,15 +135,6 @@ export default function ProfilePage() {
     if (!data) return;
     setIsDownloading(true);
     try {
-      let fundraiserName = '';
-      try {
-        const raw = localStorage.getItem('lastProfile');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          fundraiserName = parsed.fundraiserName || '';
-        }
-      } catch { /* ignore */ }
-
       const sources = extractSources();
       const profileData = parseProfileForPDF(
         donorName,
@@ -122,18 +173,6 @@ export default function ProfilePage() {
       setTimeout(() => setIsDownloading(false), 800);
     }
   };
-
-  useEffect(() => {
-    const stored = localStorage.getItem('lastProfile');
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse stored profile:', e);
-      }
-    }
-    setIsLoading(false);
-  }, []);
 
   const extractSources = (): Source[] => {
     if (!data) return [];
@@ -184,7 +223,7 @@ export default function ProfilePage() {
           <h1 className="font-serif text-3xl text-dtw-black mb-4">Profile Not Found</h1>
           <p className="text-dtw-mid-gray mb-6">No profile data found for {donorName}</p>
           <a href="/" className="text-dtw-green hover:text-dtw-green-light transition-colors">
-            ← Generate a new profile
+            &larr; Generate a new profile
           </a>
         </div>
       </div>
@@ -381,11 +420,47 @@ export default function ProfilePage() {
       {/* Dark header */}
       <header className="bg-dtw-black">
         <div className="max-w-4xl mx-auto px-6 pt-5 pb-0">
-          {/* Top row: back link + download button */}
+          {/* Top row: nav + actions */}
           <div className="flex items-center justify-between mb-6">
-            <a href="/" className="text-[13px] text-white/50 hover:text-white transition-colors">
-              ← New Profile
-            </a>
+            <div className="flex items-center gap-4">
+              <a href="/" className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50 hover:text-white transition-colors">
+                ProspectAI
+              </a>
+              <span className="text-white/20">/</span>
+              <a href="/profiles" className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50 hover:text-white transition-colors">
+                Profiles
+              </a>
+              <span className="text-white/20">/</span>
+              <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50">
+                {donorName}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {session?.user?.name && (
+                <span className="text-xs text-white/40">{session.user.name}</span>
+              )}
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+
+          {/* Overline */}
+          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
+            Donor Intelligence Report
+          </p>
+
+          {/* Donor name */}
+          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
+
+          {/* Date */}
+          <p className="text-[15px] text-white/40 mb-4">{date}</p>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 mb-8">
             <button
               onClick={handleDownloadPDF}
               disabled={isDownloading}
@@ -410,18 +485,24 @@ export default function ProfilePage() {
                 </>
               )}
             </button>
+            <button
+              onClick={handleRegenerate}
+              className="px-4 py-2 text-sm font-medium rounded-pill text-white/70 border border-white/20
+                         hover:text-white hover:border-white/40 transition-all"
+            >
+              Regenerate
+            </button>
+            {profileId && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium rounded-pill text-red-400/70 border border-red-400/20
+                           hover:text-red-400 hover:border-red-400/40 disabled:opacity-50 transition-all"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            )}
           </div>
-
-          {/* Overline */}
-          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
-            Donor Intelligence Report
-          </p>
-
-          {/* Donor name */}
-          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
-
-          {/* Date */}
-          <p className="text-[15px] text-white/40 mb-8">{date}</p>
 
           {/* Tabs */}
           <div className="flex gap-1">
