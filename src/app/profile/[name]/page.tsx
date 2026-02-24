@@ -302,6 +302,36 @@ export default function ProfilePage() {
                       }
                       return <h1>{children}</h1>;
                     },
+                    h2: ({ children }) => {
+                      const text = String(children);
+                      // Parse out confidence score: "1. THE OPERATING SYSTEM  ■■■■■■■■□□  8/10"
+                      const scoreMatch = text.match(/^(.+?)\s*[■□]+\s+(\d+)\/10\s*$/);
+                      if (scoreMatch) {
+                        const heading = scoreMatch[1].trim();
+                        const score = parseInt(scoreMatch[2], 10);
+                        const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
+                        return (
+                          <h2 className="text-xl font-semibold mt-6 mb-3 text-dtw-black flex items-center justify-between gap-3">
+                            <span>{heading}</span>
+                            <span
+                              className="flex-shrink-0 text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal"
+                              style={{ background: badgeBg }}
+                            >
+                              {score}/10
+                            </span>
+                          </h2>
+                        );
+                      }
+                      return <h2 className="text-xl font-semibold mt-6 mb-3 text-dtw-black">{children}</h2>;
+                    },
+                    blockquote: ({ children }) => {
+                      // Suppress evidence/inferred metadata blockquotes
+                      const text = String(children);
+                      if (/Evidence:|Inferred:/i.test(text)) {
+                        return null;
+                      }
+                      return <blockquote>{children}</blockquote>;
+                    },
                   }}
                 >
                   {displayMarkdown}
