@@ -41,10 +41,11 @@ export default function Home() {
 
   // Polish item 5: URL validation state
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
+  const canSubmit = donorName.trim() !== '' && (seedUrls.trim() !== '' || linkedinPdf !== null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!donorName.trim() || !seedUrls.trim()) return;
+    if (!donorName.trim() || (!seedUrls.trim() && !linkedinPdf)) return;
 
     setIsLoading(true);
     setProgressMessages([]);
@@ -572,7 +573,7 @@ export default function Home() {
 
               <div>
                 <label htmlFor="seedUrls" className="block text-xs font-semibold text-dtw-warm-gray tracking-[1px] mb-2">
-                  Seed URL <span className="text-dtw-red">*</span>
+                  Seed URL {!linkedinPdf && <span className="text-dtw-red">*</span>}
                 </label>
                 <input
                   type="url"
@@ -601,18 +602,18 @@ export default function Home() {
               <div className="border-t border-dtw-light-gray pt-6">
                 <button
                   type="submit"
-                  disabled={isLoading || !donorName.trim() || !seedUrls.trim()}
+                  disabled={isLoading || !canSubmit}
                   className="w-full rounded-pill text-[15px] font-semibold text-white py-[18px] px-8 tracking-[0.3px]
                              hover:-translate-y-0.5
                              disabled:bg-dtw-light-gray disabled:text-dtw-mid-gray disabled:cursor-not-allowed disabled:hover:translate-y-0
                              transition-all duration-300"
                   style={{
                     boxShadow: 'none',
-                    background: (!donorName.trim() || !seedUrls.trim()) ? undefined : '#6B21A8',
-                    ...((!donorName.trim() || !seedUrls.trim()) ? { border: '1px solid #D5D2CC' } : {}),
+                    background: !canSubmit ? undefined : '#6B21A8',
+                    ...(!canSubmit ? { border: '1px solid #D5D2CC' } : {}),
                   }}
                   onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#581C87'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,33,168,0.3)'; } }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = (!donorName.trim() || !seedUrls.trim()) ? '' : '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = !canSubmit ? '' : '#6B21A8'; e.currentTarget.style.boxShadow = 'none'; }}
                 >
                   Generate Profile
                 </button>
