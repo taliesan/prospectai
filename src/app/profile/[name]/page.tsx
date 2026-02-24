@@ -324,11 +324,27 @@ export default function ProfilePage() {
                         return (
                           <h2 className="text-xl font-semibold mt-6 mb-3 text-dtw-black flex items-center justify-between gap-3">
                             <span>{heading}</span>
-                            <span
-                              className="flex-shrink-0 text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal"
-                              style={{ background: badgeBg }}
-                            >
-                              {score}/10
+                            <span className="relative flex-shrink-0 group/pill cursor-pointer">
+                              <span
+                                className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block"
+                                style={{ background: badgeBg }}
+                              >
+                                Confidence {score}/10
+                              </span>
+                              <span
+                                className="invisible group-hover/pill:visible opacity-0 group-hover/pill:opacity-100
+                                           transition-opacity duration-150
+                                           absolute right-0 top-full mt-2 z-50
+                                           w-64 px-3 py-2.5 rounded-lg
+                                           text-[11px] leading-relaxed font-normal text-white
+                                           pointer-events-none"
+                                style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}
+                              >
+                                How much direct behavioral evidence supports this section.
+                                <br /><strong>8–10:</strong> Strong sourced evidence.
+                                <br /><strong>5–7:</strong> Mix of evidence and informed inference.
+                                <br /><strong>1–4:</strong> Mostly inferred from limited data.
+                              </span>
                             </span>
                           </h2>
                         );
