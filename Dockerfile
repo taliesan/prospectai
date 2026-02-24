@@ -26,5 +26,5 @@ RUN npm run build
 
 EXPOSE 3000
 
-# Run migrations (skip if DATABASE_URL not set) then start
-CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then npx prisma migrate deploy || echo '[WARN] Migration failed — tables may not exist yet'; fi && npm start"]
+# Run migrations then start
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
