@@ -6,7 +6,8 @@ export function buildProfilePrompt(
   extractionOutput: string,
   geoffreyBlock: string,
   exemplars: string,
-  linkedinData?: LinkedInData | null
+  linkedinData?: LinkedInData | null,
+  confidencePromptBlock?: string,
 ): string {
   const promptVersion = process.env.PROMPT_VERSION || 'v2';
 
@@ -40,6 +41,11 @@ ${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.board
 
     // Replace [TARGET NAME] with actual donor name
     assembled = assembled.replaceAll('[TARGET NAME]', donorName);
+
+    // Append confidence scoring instructions if provided
+    if (confidencePromptBlock) {
+      assembled += '\n\n---\n' + confidencePromptBlock;
+    }
 
     return assembled;
   }
@@ -185,10 +191,17 @@ When the source record can't support a section's full analytical ambition — wh
 - Specific enough to fail the name-swap test. If you swap in a different donor's name and the sentence still reads as true, the sentence is too generic. Cut it or sharpen it.`;
 
   // Assemble all five layers
-  return `${layer1}
+  let assembled = `${layer1}
 ${layer2}
 ${layer3}
 ${layer4}
 
 ${layer5}`;
+
+  // Append confidence scoring instructions if provided
+  if (confidencePromptBlock) {
+    assembled += '\n\n---\n' + confidencePromptBlock;
+  }
+
+  return assembled;
 }

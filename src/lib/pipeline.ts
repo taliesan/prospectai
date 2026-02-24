@@ -48,6 +48,7 @@ import { deduplicateSources } from './research/dedup';
 import { runRelevanceFilter } from './research/relevance-filter';
 import { runDimensionScoring, formatCoverageGapReport, formatSourcesForDeepResearch, CONTENT_BUDGET_CHARS } from './prompts/source-scoring';
 import { parseQueryGenerationResponse, generateSupplementaryQueryPrompt, type CategorizedQuery } from './prompts/research';
+import { computeSectionConfidence, buildConfidenceAuditBlock, parseConfidenceBlocks, parseConfidenceAudit, renderConfidenceInProfile, type ConfidenceResult } from './confidence';
 
 const anthropic = new Anthropic();
 
@@ -609,6 +610,7 @@ ${pdfText}`;
   let research: ResearchResult;
   let researchPackage: string;
   let deepResearchResult: DeepResearchResult | null = null;
+  let confidenceResult: ConfidenceResult | null = null;
 
   if (researchProvider === 'openai') {
     // ═══════════════════════════════════════════════════════════════
@@ -900,6 +902,18 @@ ${pdfText}`;
 
     console.log(`[Stage 5] Selected ${selectedSources.length} sources (~${stage5Result.stats.estimatedContentChars} chars)`);
     emit(`${selectedSources.length} sources selected for synthesis (~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars)`, 'research', 15, TOTAL_STEPS);
+
+    // ── Compute confidence floors from Stage 5 attribution data ───
+    confidenceResult = computeSectionConfidence(
+      stage5Result.dimensionAttribution,
+      stage5Result.coverageGaps,
+    );
+    console.log(`[Stage 5] Confidence floors: ${confidenceResult.sections.map(s => `S${s.section}=${s.floor}`).join(', ')}`);
+
+    // Debug save confidence data
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-confidence-floors.json', JSON.stringify(confidenceResult.sections, null, 2));
+    } catch (e) { /* ignore */ }
 
     // ── DEBUG: Source Selection Provenance Report ──────────────────
     // Shows every source that will reach Deep Research, with a
@@ -1506,7 +1520,7 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
     : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
   const extractionForProfile = researchPackagePreamble + researchPackage;
 
-  const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData);
+  const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData, confidenceResult?.promptBlock);
   console.log(`[Profile] Prompt size: ${estimateTokens(profilePromptText)} tokens`);
 
   // Debug save
@@ -1622,6 +1636,10 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   emit('Scoring first draft against production standard...', 'analysis', 27, TOTAL_STEPS);
   console.log('[Pipeline] Step 3b: Editorial pass (Opus)');
 
+  const confidenceAuditBlock = confidenceResult
+    ? buildConfidenceAuditBlock()
+    : undefined;
+
   const critiquePrompt = buildCritiqueRedraftPrompt(
     donorName,
     firstDraftProfile,
@@ -1630,6 +1648,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
     researchPackage,
     linkedinData,
     factCheckBlock,
+    confidenceAuditBlock,
   );
   console.log(`[Editorial] Prompt size: ${estimateTokens(critiquePrompt)} tokens`);
 
@@ -1653,6 +1672,38 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   try {
     writeFileSync('/tmp/prospectai-outputs/DEBUG-profile-final.txt', finalProfile);
   } catch (e) { /* ignore */ }
+
+  // ── Step 3c: Confidence Rendering ──────────────────────────────
+  // Parse confidence metadata from the editorial output and render
+  // visual confidence bars in the final profile markdown.
+  let renderedProfile = finalProfile;
+  if (confidenceResult) {
+    const parsedConfidence = parseConfidenceBlocks(finalProfile);
+    const auditResults = parseConfidenceAudit(finalProfile);
+
+    console.log(`[Confidence] Parsed ${parsedConfidence.length} confidence blocks, ${auditResults.length} audit verdicts`);
+    for (const pc of parsedConfidence) {
+      console.log(`[Confidence] S${pc.section}: score=${pc.score}, floor=${pc.floor}`);
+    }
+    for (const ar of auditResults) {
+      console.log(`[Confidence] S${ar.section}: ${ar.verdict} — ${ar.justification}`);
+    }
+
+    if (parsedConfidence.length > 0) {
+      renderedProfile = renderConfidenceInProfile(finalProfile, parsedConfidence, auditResults);
+      console.log(`[Confidence] Rendered confidence scores in profile`);
+    } else {
+      console.warn('[Confidence] No confidence blocks found in editorial output — skipping render');
+    }
+
+    // Debug save
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-confidence-parsed.json', JSON.stringify({
+        confidence: parsedConfidence,
+        audit: auditResults,
+      }, null, 2));
+    } catch (e) { /* ignore */ }
+  }
 
   // ── Step 4: Meeting Guide Generation (Opus) ─────────────────────
   emit('', 'writing');
@@ -1706,7 +1757,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   return {
     research,
     researchPackage,
-    profile: finalProfile,
+    profile: renderedProfile,
     meetingGuide,
     linkedinData,
   };

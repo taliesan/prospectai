@@ -98,6 +98,12 @@ export interface CoverageGap {
   status: 'SUFFICIENT' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
 }
 
+export interface DimensionAttribution {
+  depth2plus_count: number;
+  max_depth: number;
+  best_attribution: AttributionType | null;
+}
+
 export interface SelectionResult {
   selected: ScoredSource[];
   not_selected: ScoredSource[];
@@ -107,6 +113,8 @@ export interface SelectionResult {
     target: number;
     status: 'SUFFICIENT' | 'GAP' | 'CRITICAL_GAP' | 'ZERO_COVERAGE';
   }>;
+  /** Per-dimension attribution tracking for confidence scoring */
+  dimension_attribution: Record<number, DimensionAttribution>;
   total_chars: number;
 }
 
@@ -114,6 +122,8 @@ export interface Stage5Result {
   selectedSources: ScoredSource[];
   notSelected: Array<{ url: string; reason: string }>;
   coverageGaps: CoverageGap[];
+  /** Per-dimension attribution tracking for confidence scoring */
+  dimensionAttribution: Record<number, DimensionAttribution>;
   stats: {
     totalScored: number;
     selected: number;
@@ -531,11 +541,42 @@ export function selectSources(allScored: ScoredSource[]): SelectionResult {
     gap_report[d] = { coverage_count: count, target, status };
   }
 
+  // Build per-dimension attribution tracking for confidence scoring
+  const ATTRIBUTION_RANK: Record<string, number> = {
+    target_authored: 4,
+    target_coverage: 3,
+    target_reshare: 2,
+    institutional_inference: 1,
+  };
+  const dimension_attribution: Record<number, DimensionAttribution> = {};
+  for (let d = 1; d <= 25; d++) {
+    let depth2plus_count = 0;
+    let max_depth = 0;
+    let best_attribution: AttributionType | null = null;
+    let bestRank = 0;
+
+    for (const src of selected) {
+      const depth = src.depth_scores[d] || 0;
+      if (depth > max_depth) max_depth = depth;
+      if (depth >= 2) {
+        depth2plus_count++;
+        const rank = ATTRIBUTION_RANK[src.attribution || ''] || 0;
+        if (rank > bestRank) {
+          bestRank = rank;
+          best_attribution = src.attribution || null;
+        }
+      }
+    }
+
+    dimension_attribution[d] = { depth2plus_count, max_depth, best_attribution };
+  }
+
   return {
     selected,
     not_selected: remaining,
     coverage,
     gap_report,
+    dimension_attribution,
     total_chars: totalChars,
   };
 }
@@ -705,6 +746,7 @@ export async function runDimensionScoring(
     selectedSources: selectionResult.selected,
     notSelected,
     coverageGaps,
+    dimensionAttribution: selectionResult.dimension_attribution,
     stats: {
       totalScored: allScored.length,
       selected: selectionResult.selected.length,
