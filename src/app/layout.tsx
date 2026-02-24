@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import SessionProvider from '@/components/SessionProvider'
 
 export const metadata: Metadata = {
   title: 'ProspectAI - Premium Donor Profiling',
@@ -22,7 +23,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans min-h-screen">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   )

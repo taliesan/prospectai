@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  approved     Boolean   @default(false)
+  isAdmin      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  profiles     Profile[]
+  jobs         Job[]
+}
+
+model Profile {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id])
+  donorName            String
+  profileMarkdown      String   @db.Text
+  meetingGuideMarkdown String?  @db.Text
+  researchPackageJson  String?  @db.Text
+  linkedinDataJson     String?  @db.Text
+  seedUrlsJson         String?  @db.Text
+  confidenceScores     String?  @db.Text
+  sourceCount          Int?
+  dimensionCoverage    String?  @db.Text
+  status               String   @default("complete") // complete, failed
+  pipelineVersion      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  job                  Job?
+
+  @@index([userId])
+  @@index([donorName])
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  profileId    String?   @unique
+  profile      Profile?  @relation(fields: [profileId], references: [id])
+  donorName    String
+  status       String    @default("running") // running, complete, failed, cancelled
+  progressData String?   @db.Text
+  error        String?   @db.Text
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([userId])
+}

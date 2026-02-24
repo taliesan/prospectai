@@ -1,10 +1,13 @@
 import { NextRequest } from 'next/server';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
-import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity } from '@/lib/job-store';
+import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity, linkJobToProfile } from '@/lib/job-store';
 import type { DeepResearchActivity } from '@/lib/job-store';
 
 // No timeout config needed — Railway doesn't use Next.js route segment config.
@@ -115,6 +118,9 @@ async function webSearch(query: string): Promise<{ url: string; title: string; s
 
 // Fire-and-poll endpoint: starts pipeline in background, returns jobId immediately
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+
   const body = await request.json();
   const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf } = body;
   console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
@@ -127,12 +133,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Create job and start pipeline in background
-  const job = createJob(donorName);
-  console.log(`[API] Created job ${job.id} for: ${donorName}`);
+  const job = await createJob(donorName, userId);
+  console.log(`[API] Created job ${job.id} for: ${donorName} (user: ${userId || 'anonymous'})`);
 
   // Fire-and-forget: run pipeline in background
   // On Railway (persistent container), the process stays alive after response is sent
-  runPipelineInBackground(job.id, donorName, fundraiserName, seedUrls, linkedinPdf).catch((err) => {
+  runPipelineInBackground(job.id, donorName, fundraiserName, seedUrls, linkedinPdf, userId).catch((err) => {
     console.error(`[API] Unhandled error in background pipeline for job ${job.id}:`, err);
     failJob(job.id, err instanceof Error ? err.message : 'Unknown error');
   });
@@ -147,6 +153,7 @@ async function runPipelineInBackground(
   fundraiserName: string,
   seedUrls: string[],
   linkedinPdf?: string,
+  userId?: string,
 ) {
   // Progress callback writes to job store instead of SSE stream
   const sendEvent = (event: ProgressEvent) => {
@@ -317,6 +324,39 @@ async function runPipelineInBackground(
 
         STATUS.pipelineComplete();
         console.log(`[Job ${jobId}] Pipeline complete, storing result`);
+
+        // Save profile to Postgres if user is authenticated
+        let profileId: string | undefined;
+        if (userId) {
+          try {
+            const dbProfile = await prisma.profile.create({
+              data: {
+                userId,
+                donorName,
+                profileMarkdown: pipelineResult.profile,
+                meetingGuideMarkdown: pipelineResult.meetingGuide || null,
+                researchPackageJson: pipelineResult.researchPackage || null,
+                linkedinDataJson: pipelineResult.linkedinData ? JSON.stringify(pipelineResult.linkedinData) : null,
+                seedUrlsJson: seedUrls.length > 0 ? JSON.stringify(seedUrls) : null,
+                confidenceScores: pipelineResult.confidenceScoresJson || null,
+                dimensionCoverage: pipelineResult.dimensionCoverageJson || null,
+                sourceCount: pipelineResult.research?.sources?.length || null,
+                pipelineVersion: 'v6',
+                status: 'complete',
+              },
+            });
+            profileId = dbProfile.id;
+            console.log(`[Job ${jobId}] Saved profile to database: ${dbProfile.id}`);
+            // Link the Job record to this Profile
+            await linkJobToProfile(jobId, dbProfile.id);
+          } catch (dbErr) {
+            console.error(`[Job ${jobId}] Failed to save profile to database:`, dbErr);
+            // Don't fail the job — /tmp persistence is the fallback
+          }
+        }
+
+        // Include profileId in the result so the frontend can navigate by ID
+        result.profileId = profileId;
 
         // Store result in job store for polling retrieval
         completeJob(jobId, result);

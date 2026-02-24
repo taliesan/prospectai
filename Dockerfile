@@ -1,8 +1,8 @@
 FROM node:20-slim
 
-# Install Python 3 for PDF generation
+# Install Python 3 for PDF generation + OpenSSL for Prisma
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip && \
+    apt-get install -y --no-install-recommends python3 python3-pip openssl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -18,9 +18,13 @@ RUN npm ci
 # Copy source and fonts
 COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Build Next.js
 RUN npm run build
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Run migrations then start
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

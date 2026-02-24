@@ -13,6 +13,7 @@ export function buildCritiqueRedraftPrompt(
   extractionOutput: string,
   linkedinData?: LinkedInData | null,
   factCheckBlock?: string,
+  confidenceAuditBlock?: string,
 ): string {
   const promptVersion = process.env.PROMPT_VERSION || 'v2';
 
@@ -78,6 +79,11 @@ ${linkedinData.boards?.length ? `**Board/Advisory Roles:**\n${linkedinData.board
       parts.push('---');
       parts.push(factCheckBlock);
       parts.push('IMPORTANT: The mandatory corrections above are your FIRST priority. Before applying any other editorial instruction, process every mandatory correction. Then proceed with editorial improvements on whatever remains.');
+    }
+
+    if (confidenceAuditBlock) {
+      parts.push('---');
+      parts.push(confidenceAuditBlock);
     }
 
     parts.push('---');
@@ -153,6 +159,11 @@ The following is the first draft of the Persuasion Profile for ${donorName}. You
   // Layer 5b: Fact-Check Mandatory Corrections (if critical items found)
   if (factCheckBlock) {
     prompt += `---\n${factCheckBlock}\n\nIMPORTANT: The mandatory corrections above are your FIRST priority. Before applying any other editorial instruction, process every mandatory correction. Then proceed with editorial improvements on whatever remains.\n\n`;
+  }
+
+  // Layer 5c: Confidence Audit (if confidence scoring is active)
+  if (confidenceAuditBlock) {
+    prompt += `---\n${confidenceAuditBlock}\n\n`;
   }
 
   // Layer 6: Editorial Instructions
