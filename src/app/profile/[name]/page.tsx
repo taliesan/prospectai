@@ -275,6 +275,17 @@ export default function ProfilePage() {
           displayMarkdown = displayMarkdown.replace(original, replacement);
         }
 
+        // Pre-process Format B: convert raw [CONFIDENCE: X/10 | FLOOR: Y] metadata blocks
+        // (appearing as paragraphs after section headings) into Format A heading style
+        // so the h2 component handler can parse the score uniformly.
+        displayMarkdown = displayMarkdown.replace(
+          /(#{2,3}\s*\d+\.\s*[^\n]*)\n+\[CONFIDENCE:\s*(\d+)\/10[^\]]*\]\s*\n?(?:\[EVIDENCE BASIS:[^\]]*\]\s*\n?)?(?:\[INFERRED:[^\]]*\]\s*\n?)?(?:\[EVIDENCE CEILINGS:[^\]]*\]\s*\n?)?/g,
+          (_, header, score) => {
+            const s = parseInt(score, 10);
+            return `${header} ${'■'.repeat(s)}${'□'.repeat(10 - s)}  ${s}/10\n\n`;
+          },
+        );
+
         return (
           <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
@@ -331,6 +342,14 @@ export default function ProfilePage() {
                         return null;
                       }
                       return <blockquote>{children}</blockquote>;
+                    },
+                    p: ({ children }) => {
+                      // Suppress Format B metadata paragraphs that escaped pre-processing
+                      const text = String(children);
+                      if (/^\[CONFIDENCE:|^\[EVIDENCE BASIS:|^\[INFERRED:|^\[EVIDENCE CEILINGS:/i.test(text)) {
+                        return null;
+                      }
+                      return <p>{children}</p>;
                     },
                   }}
                 >
