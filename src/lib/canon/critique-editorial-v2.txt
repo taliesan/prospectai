@@ -97,7 +97,15 @@ This is the single most damaging error a profile can contain. A transplanted quo
 - Section 4 (How to Read Them in Real Time) uses evidence ceiling brackets when meeting behavior is inferred from institutional patterns rather than observed directly.
 - Section 7 (The Dinner Party Test) covers: what bores them, what lights them up, how they move a room (or don't), and what they watch for in other people.
 - Evidence ceiling brackets wherever the evidence can't support the section's analytical ambition.
+- **Confidence metadata blocks.** The first draft contains structured metadata blocks immediately after each section header. These are NOT commentary — they are structured data consumed by downstream systems. Every section in the redrafted profile MUST include these blocks, placed immediately after the section heading, in this exact order:
+  ```
+  [CONFIDENCE: {score}/10 | FLOOR: {structural_floor}]
+  [EVIDENCE BASIS: {which dimensions and source types you drew on}]
+  [INFERRED: {what in this section you had to infer, and from what}]
+  [EVIDENCE CEILINGS: {any ceiling markers that limit this section}]
+  ```
+  If your editorial changes affected the evidence basis for a section (e.g., you removed an unsupported claim or added a ceiling bracket), update the metadata to reflect the change. If you lowered a section's evidentiary ambition, lower its confidence score. If the section is unchanged, preserve the metadata exactly as it appeared in the first draft. Do not omit, reformat, or relocate these blocks.
 
 ## Output
 
-The complete final Persuasion Profile. No commentary, no edit log, no explanation of changes. Just the profile.
+The complete final Persuasion Profile with no commentary, no edit log, no explanation of changes — but DO preserve all [CONFIDENCE: ...], [EVIDENCE BASIS: ...], [INFERRED: ...], and [EVIDENCE CEILINGS: ...] blocks exactly as they appear in the first draft, or updated if the editorial changes affected the evidence basis for that section. These metadata blocks are structural, not commentary.
