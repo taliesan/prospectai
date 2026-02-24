@@ -16,7 +16,7 @@ export async function GET(
     where: { id: params.id },
   });
 
-  if (!profile || profile.userId !== session.user.id) {
+  if (!profile || (profile.userId !== session.user.id && !session.user.isAdmin)) {
     return Response.json({ error: 'Profile not found' }, { status: 404 });
   }
 
@@ -37,7 +37,7 @@ export async function DELETE(
     select: { id: true, userId: true },
   });
 
-  if (!profile || profile.userId !== session.user.id) {
+  if (!profile || (profile.userId !== session.user.id && !session.user.isAdmin)) {
     return Response.json({ error: 'Profile not found' }, { status: 404 });
   }
 
