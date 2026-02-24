@@ -137,7 +137,9 @@ export default function ProfilesPage() {
               <div key={donorName} className="bg-white rounded-2xl border border-dtw-light-gray overflow-hidden"
                    style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
                 <div className="px-6 py-4 border-b border-dtw-light-gray flex items-center justify-between">
-                  <h2 className="font-serif text-xl text-dtw-black">{donorName}</h2>
+                  <a href={`/profile/${donorProfiles[0].id}`} className="font-serif text-xl text-dtw-black hover:text-purple-800 transition-colors">
+                    {donorName}
+                  </a>
                   <span className="text-xs text-dtw-mid-gray">{donorProfiles.length} version{donorProfiles.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="divide-y divide-dtw-light-gray">
