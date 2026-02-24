@@ -115,6 +115,7 @@ export default function AdminPage() {
               <tr className="border-b border-dtw-light-gray">
                 <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Name</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Email</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Created</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Profiles</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Status</th>
                 <th className="text-right px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Actions</th>
@@ -133,6 +134,9 @@ export default function AdminPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-dtw-mid-gray">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-dtw-mid-gray">
+                    {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
                   <td className="px-6 py-4 text-sm text-dtw-mid-gray">{user._count.profiles}</td>
                   <td className="px-6 py-4">
                     {user.approved ? (

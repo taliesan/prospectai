@@ -29,6 +29,7 @@ model Profile {
   meetingGuideMarkdown String?  @db.Text
   researchPackageJson  String?  @db.Text
   linkedinDataJson     String?  @db.Text
+  seedUrlsJson         String?  @db.Text
   confidenceScores     String?  @db.Text
   sourceCount          Int?
   dimensionCoverage    String?  @db.Text

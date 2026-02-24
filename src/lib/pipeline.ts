@@ -501,6 +501,8 @@ export interface CodedPipelineResult {
   profile: string;
   meetingGuide: string;
   linkedinData: LinkedInData | null;
+  confidenceScoresJson?: string;
+  dimensionCoverageJson?: string;
 }
 
 // ── Full Coded Pipeline ───────────────────────────────────────────
@@ -1754,12 +1756,26 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   console.log(`CODED PIPELINE: Complete`);
   console.log(`${'='.repeat(60)}\n`);
 
+  // Build confidence data for storage
+  let confidenceScoresJson: string | undefined;
+  let dimensionCoverageJson: string | undefined;
+  if (confidenceResult) {
+    try {
+      const parsedConfidence = parseConfidenceBlocks(renderedProfile);
+      const auditResults = parseConfidenceAudit(renderedProfile);
+      confidenceScoresJson = JSON.stringify({ sections: parsedConfidence, audit: auditResults });
+      dimensionCoverageJson = JSON.stringify(confidenceResult.sections);
+    } catch (e) { /* ignore */ }
+  }
+
   return {
     research,
     researchPackage,
     profile: renderedProfile,
     meetingGuide,
     linkedinData,
+    confidenceScoresJson,
+    dimensionCoverageJson,
   };
 }
 

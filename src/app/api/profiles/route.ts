@@ -15,6 +15,7 @@ export async function GET() {
       donorName: true,
       status: true,
       sourceCount: true,
+      confidenceScores: true,
       pipelineVersion: true,
       createdAt: true,
     },

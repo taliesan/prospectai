@@ -1,8 +1,9 @@
-// In-memory job store for fire-and-poll pipeline architecture.
-// Jobs are stored in a Map keyed by jobId. Railway runs persistent containers,
-// so in-memory state survives across HTTP requests.
+// Job store with Postgres persistence and in-memory cache for real-time progress.
+// The in-memory Map handles SSE streaming during generation.
+// Postgres provides durable storage for job status and links to Profile records.
 
 import { ProgressEvent } from './progress';
+import { prisma } from './db';
 
 export interface DeepResearchActivity {
   openaiStatus: string;       // raw: queued, in_progress, completed, failed, incomplete
@@ -38,27 +39,38 @@ export interface Job {
 const jobs = new Map<string, Job>();
 const abortControllers = new Map<string, AbortController>();
 
-// Clean up finished jobs after 30 minutes of inactivity.
-// Running jobs are NEVER cleaned up — the pipeline may take 30-45 minutes
-// with large source sets (21 sources / 150K chars).
-const JOB_TTL = 30 * 60 * 1000;
-const CLEANUP_INTERVAL = 5 * 60 * 1000;
+// Clean up in-memory cache for finished jobs after 2 hours.
+// Postgres is the source of truth for completed jobs.
+// Running jobs are NEVER cleaned up from memory.
+const CACHE_TTL = 2 * 60 * 60 * 1000;
+const CLEANUP_INTERVAL = 10 * 60 * 1000;
 
 setInterval(() => {
   const now = Date.now();
   jobs.forEach((job, id) => {
-    // Never clean up a job that's still running
     if (job.status === 'running') return;
-    // For finished/failed/cancelled jobs, clean up after TTL from last poll
-    if (now - job.lastPolledAt > JOB_TTL) {
+    if (now - job.lastPolledAt > CACHE_TTL) {
       jobs.delete(id);
       abortControllers.delete(id);
     }
   });
 }, CLEANUP_INTERVAL);
 
-export function createJob(donorName: string): Job {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export async function createJob(donorName: string, userId?: string): Promise<Job> {
+  // Create in Postgres first to get a cuid
+  let dbId: string | undefined;
+  if (userId) {
+    try {
+      const dbJob = await prisma.job.create({
+        data: { userId, donorName, status: 'running' },
+      });
+      dbId = dbJob.id;
+    } catch (err) {
+      console.warn('[JobStore] Failed to create Postgres job record:', err);
+    }
+  }
+
+  const id = dbId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const job: Job = {
     id,
     status: 'running',
@@ -72,7 +84,6 @@ export function createJob(donorName: string): Job {
   };
   jobs.set(id, job);
 
-  // Create an abort controller for this job (for user-initiated cancellation)
   const controller = new AbortController();
   abortControllers.set(id, controller);
 
@@ -85,6 +96,29 @@ export function getJob(id: string): Job | undefined {
     job.lastPolledAt = Date.now();
   }
   return job;
+}
+
+/** Fetch a completed/failed job from Postgres when it's no longer in memory. */
+export async function getJobFromDb(id: string): Promise<Job | undefined> {
+  try {
+    const dbJob = await prisma.job.findUnique({ where: { id } });
+    if (!dbJob) return undefined;
+
+    return {
+      id: dbJob.id,
+      status: dbJob.status as Job['status'],
+      donorName: dbJob.donorName,
+      progressMessages: [],
+      currentPhase: '',
+      currentStep: 0,
+      totalSteps: 0,
+      error: dbJob.error || undefined,
+      createdAt: dbJob.startedAt.getTime(),
+      lastPolledAt: Date.now(),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 export function getAbortSignal(id: string): AbortSignal | undefined {
@@ -126,6 +160,12 @@ export function completeJob(id: string, result: any): void {
   if (!job) return;
   job.status = 'complete';
   job.result = result;
+
+  // Persist to Postgres (fire-and-forget)
+  prisma.job.update({
+    where: { id },
+    data: { status: 'complete', completedAt: new Date() },
+  }).catch(() => { /* Postgres update failed — in-memory still has the result */ });
 }
 
 export function failJob(id: string, error: string): void {
@@ -133,6 +173,12 @@ export function failJob(id: string, error: string): void {
   if (!job) return;
   job.status = 'failed';
   job.error = error;
+
+  // Persist to Postgres (fire-and-forget)
+  prisma.job.update({
+    where: { id },
+    data: { status: 'failed', error, completedAt: new Date() },
+  }).catch(() => { /* ignore */ });
 }
 
 /** Cancel a job. Returns the responseId (if any) so the caller can cancel the OpenAI job too. */
@@ -142,11 +188,28 @@ export function cancelJob(id: string): { responseId?: string } | undefined {
 
   job.status = 'cancelled';
 
-  // Trigger the abort controller to stop the pipeline
   const controller = abortControllers.get(id);
   if (controller && !controller.signal.aborted) {
     controller.abort();
   }
 
+  // Persist to Postgres (fire-and-forget)
+  prisma.job.update({
+    where: { id },
+    data: { status: 'cancelled', completedAt: new Date() },
+  }).catch(() => { /* ignore */ });
+
   return { responseId: job.responseId };
+}
+
+/** Link a completed Job to its Profile record in Postgres. */
+export async function linkJobToProfile(jobId: string, profileId: string): Promise<void> {
+  try {
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { profileId },
+    });
+  } catch (err) {
+    console.warn(`[JobStore] Failed to link job ${jobId} to profile ${profileId}:`, err);
+  }
 }

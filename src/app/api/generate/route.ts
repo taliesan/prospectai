@@ -7,7 +7,7 @@ import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
 import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
-import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity } from '@/lib/job-store';
+import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity, linkJobToProfile } from '@/lib/job-store';
 import type { DeepResearchActivity } from '@/lib/job-store';
 
 // No timeout config needed — Railway doesn't use Next.js route segment config.
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Create job and start pipeline in background
-  const job = createJob(donorName);
+  const job = await createJob(donorName, userId);
   console.log(`[API] Created job ${job.id} for: ${donorName} (user: ${userId || 'anonymous'})`);
 
   // Fire-and-forget: run pipeline in background
@@ -337,6 +337,9 @@ async function runPipelineInBackground(
                 meetingGuideMarkdown: pipelineResult.meetingGuide || null,
                 researchPackageJson: pipelineResult.researchPackage || null,
                 linkedinDataJson: pipelineResult.linkedinData ? JSON.stringify(pipelineResult.linkedinData) : null,
+                seedUrlsJson: seedUrls.length > 0 ? JSON.stringify(seedUrls) : null,
+                confidenceScores: pipelineResult.confidenceScoresJson || null,
+                dimensionCoverage: pipelineResult.dimensionCoverageJson || null,
                 sourceCount: pipelineResult.research?.sources?.length || null,
                 pipelineVersion: 'v6',
                 status: 'complete',
@@ -344,6 +347,8 @@ async function runPipelineInBackground(
             });
             profileId = dbProfile.id;
             console.log(`[Job ${jobId}] Saved profile to database: ${dbProfile.id}`);
+            // Link the Job record to this Profile
+            await linkJobToProfile(jobId, dbProfile.id);
           } catch (dbErr) {
             console.error(`[Job ${jobId}] Failed to save profile to database:`, dbErr);
             // Don't fail the job — /tmp persistence is the fallback

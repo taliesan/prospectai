@@ -8,8 +8,22 @@ interface ProfileSummary {
   donorName: string;
   status: string;
   sourceCount: number | null;
+  confidenceScores: string | null;
   pipelineVersion: string | null;
   createdAt: string;
+}
+
+function getAvgConfidence(scoresJson: string | null): number | null {
+  if (!scoresJson) return null;
+  try {
+    const data = JSON.parse(scoresJson);
+    const sections = data.sections;
+    if (!Array.isArray(sections) || sections.length === 0) return null;
+    const sum = sections.reduce((acc: number, s: { score: number }) => acc + (s.score || 0), 0);
+    return Math.round((sum / sections.length) * 10) / 10;
+  } catch {
+    return null;
+  }
 }
 
 export default function ProfilesPage() {
@@ -140,6 +154,14 @@ export default function ProfilesPage() {
                           {profile.sourceCount && (
                             <span className="text-xs text-dtw-mid-gray">{profile.sourceCount} sources</span>
                           )}
+                          {(() => {
+                            const avg = getAvgConfidence(profile.confidenceScores);
+                            return avg !== null ? (
+                              <span className="text-xs text-dtw-mid-gray" title="Average confidence score">
+                                {avg}/10
+                              </span>
+                            ) : null;
+                          })()}
                           {profile.pipelineVersion && (
                             <span className="text-[10px] font-semibold tracking-[1px] uppercase text-dtw-mid-gray border border-dtw-light-gray rounded px-1.5 py-0.5">
                               {profile.pipelineVersion}

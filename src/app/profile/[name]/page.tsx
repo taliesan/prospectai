@@ -43,6 +43,7 @@ export default function ProfilePage() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [donorName, setDonorName] = useState(paramValue);
   const [fundraiserName, setFundraiserName] = useState('');
+  const [seedUrls, setSeedUrls] = useState<string[]>([]);
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +62,9 @@ export default function ProfilePage() {
         const { profile } = await res.json();
         setProfileId(profile.id);
         setDonorName(profile.donorName);
+        if (profile.seedUrlsJson) {
+          try { setSeedUrls(JSON.parse(profile.seedUrlsJson)); } catch { /* ignore */ }
+        }
         setData({
           research: {
             rawMarkdown: profile.researchPackageJson || '',
@@ -108,7 +112,11 @@ export default function ProfilePage() {
   };
 
   const handleRegenerate = () => {
-    router.push(`/?donor=${encodeURIComponent(donorName)}`);
+    const params = new URLSearchParams({ donor: donorName });
+    if (seedUrls.length > 0) {
+      params.set('seedUrl', seedUrls[0]);
+    }
+    router.push(`/?${params.toString()}`);
   };
 
   const handleDownload = async (format: 'html' | 'markdown' = 'html') => {

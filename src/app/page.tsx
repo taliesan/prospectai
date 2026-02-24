@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -29,6 +29,15 @@ export default function Home() {
   const [activity, setActivity] = useState<any>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const router = useRouter();
+
+  // Pre-fill form from query params (e.g. from Regenerate button)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const donor = params.get('donor');
+    const seedUrl = params.get('seedUrl');
+    if (donor) setDonorName(donor);
+    if (seedUrl) setSeedUrls(seedUrl);
+  }, []);
 
   // Polish item 5: URL validation state
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
