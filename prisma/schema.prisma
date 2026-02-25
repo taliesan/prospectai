@@ -8,35 +8,72 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  passwordHash String
-  approved     Boolean   @default(false)
-  isAdmin      Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  profiles     Profile[]
-  jobs         Job[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String
+  passwordHash    String
+  approved        Boolean          @default(false)
+  isAdmin         Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  profiles        Profile[]
+  jobs            Job[]
+  projectContexts ProjectContext[]
+}
+
+model ProjectContext {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  name             String
+  rawDescription   String?           @db.Text
+  processedBrief   String            @db.Text
+  issueAreas       String?           @db.Text
+  defaultAsk       String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  profiles         Profile[]
+  materials        ProjectMaterial[]
+
+  @@index([userId])
+}
+
+model ProjectMaterial {
+  id               String         @id @default(cuid())
+  projectContextId String
+  projectContext   ProjectContext  @relation(fields: [projectContextId], references: [id], onDelete: Cascade)
+  type             String         // "file" or "url"
+  filename         String?        // original filename for uploads
+  url              String?        // URL for web sources
+  extractedText    String?        @db.Text
+  charCount        Int?
+  createdAt        DateTime       @default(now())
+
+  @@index([projectContextId])
 }
 
 model Profile {
-  id                   String   @id @default(cuid())
+  id                   String          @id @default(cuid())
   userId               String
-  user                 User     @relation(fields: [userId], references: [id])
+  user                 User            @relation(fields: [userId], references: [id])
   donorName            String
-  profileMarkdown      String   @db.Text
-  meetingGuideMarkdown String?  @db.Text
-  researchPackageJson  String?  @db.Text
-  linkedinDataJson     String?  @db.Text
-  seedUrlsJson         String?  @db.Text
-  confidenceScores     String?  @db.Text
+  profileMarkdown      String          @db.Text
+  meetingGuideMarkdown String?         @db.Text
+  researchPackageJson  String?         @db.Text
+  linkedinDataJson     String?         @db.Text
+  seedUrlsJson         String?         @db.Text
+  confidenceScores     String?         @db.Text
   sourceCount          Int?
-  dimensionCoverage    String?  @db.Text
-  status               String   @default("complete") // complete, failed
+  dimensionCoverage    String?         @db.Text
+  status               String          @default("complete") // complete, failed
   pipelineVersion      String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  projectContextId     String?
+  projectContext       ProjectContext?  @relation(fields: [projectContextId], references: [id])
+  relationshipContext  String?         @db.Text
+  fundraiserName       String?
+  specificAsk          String?         @db.Text
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
   job                  Job?
 
   @@index([userId])

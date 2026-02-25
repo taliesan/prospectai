@@ -1,6 +1,6 @@
 # MEETING GUIDE — ROY BAHAT
 
-*Democracy Takes Work · February 2026 · Internal Use Only*
+*[Client Organization] · February 2026 · Internal Use Only*
 
 ---
 
@@ -18,7 +18,7 @@ Arrive with a problem worth that kind of person's time. Not a deck. Not a vision
 - **Show what you've tested and what failed. Share the numbers.**
   He evaluates by falsification and builds trust through radical transparency. He quotes specific returns ("93 millionaires," "$75M returned"). Match his information density. Unguarded data earns his trust faster than polished narrative.
 - **Surface a cross-domain connection he hasn't seen.**
-  He teaches both media and organized labor at Berkeley — "seemingly unrelated fields" he uses to test theories about power and technology. If you can show him where worker organizing connects to something outside his existing frame — game theory, platform economics, municipal governance — he registers you as someone who thinks the way he does.
+  He teaches both media and organized labor at Berkeley — "seemingly unrelated fields" he uses to test theories about power and technology. If you can show him where the client's issue area connects to something outside his existing frame — game theory, platform economics, municipal governance — he registers you as someone who thinks the way he does.
 - **Frame the moment as an inflection point with a closing window.**
   He focuses on transition periods — 'the knee of the curve.' When something feels like it's about to change and there's a narrow window for action, his attention locks and his commitment deepens.
 
@@ -35,7 +35,7 @@ Arrive with a problem worth that kind of person's time. Not a deck. Not a vision
 
 **AUTHORSHIP THEY NEED** · Intellectual and structural, but in service mode. He needs to see the gap, propose how to test through it, and feel that his contribution made you more capable. The whole meeting should feel like he's helping you build something — not like you're trying to get his approval. When he starts sketching, stop talking. When he names who you should meet, write it down visibly.
 
-**IF THIS COLLAPSES TO 5 MIN:** *Name one testable hypothesis about worker organizing at a closing inflection point — AI displacement, new economy precarity, post-Dobbs labor surge — and show why the window matters now. Ask if you can send him the diligence and get thirty minutes of his reaction. Low-commitment, high-learning. That's how he enters.*
+**IF THIS COLLAPSES TO 5 MIN:** *Name one testable hypothesis about the client's issue area at a closing inflection point — AI displacement, new economy precarity, post-Dobbs labor surge — and show why the window matters now. Ask if you can send him the diligence and get thirty minutes of his reaction. Low-commitment, high-learning. That's how he enters.*
 
 ---
 
@@ -43,13 +43,13 @@ Arrive with a problem worth that kind of person's time. Not a deck. Not a vision
 
 **PRIMARY TERRITORY**
 
-**He runs the only venture fund focused on the future of work. DTW is building the worker-power infrastructure for that future. He's funding one side of the equation — DTW is funding the other.**
-This isn't charity alignment. It's portfolio logic. Bloomberg Beta invests in companies that reshape how work happens. DTW invests in organizations that ensure workers have power as that reshaping occurs. He already chairs the Aspen roundtable on organized labor, invested in Union, teaches labor at Berkeley. You're not asking him to care about a new cause — you're showing him the missing piece of a system he's already building.
+**He runs the only venture fund focused on the future of work. [Client Organization] is building the worker-power infrastructure for that future. He's funding one side of the equation — [Client Organization] is funding the other.**
+This isn't charity alignment. It's portfolio logic. Bloomberg Beta invests in companies that reshape how work happens. [Client Organization] invests in organizations that ensure workers have power as that reshaping occurs. He already chairs the Aspen roundtable on organized labor, invested in Union, teaches labor at Berkeley. You're not asking him to care about a new cause — you're showing him the missing piece of a system he's already building.
 
 **SECONDARY TERRITORIES**
 
 - **The testing gap in labor philanthropy.**
-  Traditional labor funding is ideological, not experimental. DTW's portfolio approach — seeding EWOC, backing new organizing models, funding infrastructure — mirrors how Bloomberg Beta deploys capital. If he asks 'what's different about you,' this is the answer.
+  Traditional labor funding is ideological, not experimental. [Client Organization]'s portfolio approach — seeding EWOC, backing new organizing models, funding infrastructure — mirrors how Bloomberg Beta deploys capital. If he asks 'what's different about you,' this is the answer.
 - **AI and worker power at the knee of the curve.**
   Workers in AI-adjacent industries need organizing infrastructure now, before the transformation is complete. This is his investment thesis applied to a different asset class. The window language will register — he thinks in inflection points, not steady states.
 - **Dignity as a design requirement, not a sentiment.**
@@ -94,4 +94,4 @@ This isn't charity alignment. It's portfolio logic. Bloomberg Beta invests in co
 
 ---
 
-*CONFIDENTIAL · ProspectAI · Generated from Persuasion Profile + DTW Mandate + Fundraising Canon*
+*CONFIDENTIAL · ProspectAI · Generated from Persuasion Profile + Organizational Context + Fundraising Canon*

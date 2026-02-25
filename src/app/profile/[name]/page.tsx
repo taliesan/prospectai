@@ -218,19 +218,19 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
-        <div className="text-dtw-mid-gray font-serif text-xl">Loading...</div>
+      <div className="min-h-screen bg-brand-off-white flex items-center justify-center">
+        <div className="text-brand-mid-gray font-serif text-xl">Loading...</div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
+      <div className="min-h-screen bg-brand-off-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="font-serif text-3xl text-dtw-black mb-4">Profile Not Found</h1>
-          <p className="text-dtw-mid-gray mb-6">No profile data found for {donorName}</p>
-          <a href="/" className="text-dtw-green hover:text-dtw-green-light transition-colors">
+          <h1 className="font-serif text-3xl text-brand-black mb-4">Profile Not Found</h1>
+          <p className="text-brand-mid-gray mb-6">No profile data found for {donorName}</p>
+          <a href="/" className="text-brand-green hover:text-brand-green-light transition-colors">
             &larr; Generate a new profile
           </a>
         </div>
@@ -287,9 +287,9 @@ export default function ProfilePage() {
         );
 
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+          <div className="bg-white rounded-2xl border border-brand-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-purple rounded-b-sm" />
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-purple rounded-b-sm" />
             <div className="p-9 pt-10">
               <article className="prose max-w-none">
                 <ReactMarkdown
@@ -322,18 +322,34 @@ export default function ProfilePage() {
                         const score = parseInt(scoreMatch[2], 10);
                         const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
                         return (
-                          <h2 className="text-xl font-semibold mt-6 mb-3 text-dtw-black flex items-center justify-between gap-3">
+                          <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black flex items-center justify-between gap-3">
                             <span>{heading}</span>
-                            <span
-                              className="flex-shrink-0 text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal"
-                              style={{ background: badgeBg }}
-                            >
-                              {score}/10
+                            <span className="relative flex-shrink-0 group/pill cursor-pointer">
+                              <span
+                                className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block"
+                                style={{ background: badgeBg }}
+                              >
+                                Confidence {score}/10
+                              </span>
+                              <span
+                                className="invisible group-hover/pill:visible opacity-0 group-hover/pill:opacity-100
+                                           transition-opacity duration-150
+                                           absolute right-0 top-full mt-2 z-50
+                                           w-64 px-3 py-2.5 rounded-lg
+                                           text-[11px] leading-relaxed font-normal text-white
+                                           pointer-events-none"
+                                style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}
+                              >
+                                How much direct behavioral evidence supports this section.
+                                <br /><strong>8–10:</strong> Strong sourced evidence.
+                                <br /><strong>5–7:</strong> Mix of evidence and informed inference.
+                                <br /><strong>1–4:</strong> Mostly inferred from limited data.
+                              </span>
                             </span>
                           </h2>
                         );
                       }
-                      return <h2 className="text-xl font-semibold mt-6 mb-3 text-dtw-black">{children}</h2>;
+                      return <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black">{children}</h2>;
                     },
                     blockquote: ({ children }) => {
                       // Suppress evidence/inferred metadata blockquotes
@@ -364,10 +380,10 @@ export default function ProfilePage() {
       case 'meeting-guide': {
         if (!data.meetingGuide) {
           return (
-            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+            <div className="bg-white rounded-2xl border border-brand-light-gray p-12 text-center"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <h2 className="font-serif text-2xl text-dtw-black mb-2">No Meeting Guide Available</h2>
-              <p className="text-dtw-mid-gray max-w-md mx-auto">
+              <h2 className="font-serif text-2xl text-brand-black mb-2">No Meeting Guide Available</h2>
+              <p className="text-brand-mid-gray max-w-md mx-auto">
                 Re-generate this profile to include a Meeting Guide.
               </p>
             </div>
@@ -377,10 +393,10 @@ export default function ProfilePage() {
         // Primary path: render markdown with React component (site-side rendering)
         return (
           <div
-            className="rounded-2xl border border-dtw-light-gray relative overflow-hidden bg-white"
+            className="rounded-2xl border border-brand-light-gray relative overflow-hidden bg-white"
             style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
           >
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-green rounded-b-sm" />
             <MeetingGuideRenderer markdown={data.meetingGuide} />
           </div>
         );
@@ -392,20 +408,20 @@ export default function ProfilePage() {
 
         if (sources.length === 0) {
           return (
-            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+            <div className="bg-white rounded-2xl border border-brand-light-gray p-12 text-center"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <p className="text-dtw-mid-gray">No sources available</p>
+              <p className="text-brand-mid-gray">No sources available</p>
             </div>
           );
         }
 
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+          <div className="bg-white rounded-2xl border border-brand-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-coral rounded-b-sm" />
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-coral rounded-b-sm" />
             <div className="p-9 pt-10 space-y-8">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-dtw-mid-gray">
+                <p className="text-sm text-brand-mid-gray">
                   {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
                 </p>
                 <button
@@ -427,7 +443,7 @@ export default function ProfilePage() {
                       alert('Research data not available. Generate a new profile to capture research data.');
                     }
                   }}
-                  className="text-xs font-medium text-dtw-coral hover:text-dtw-warm-gray transition-colors"
+                  className="text-xs font-medium text-brand-coral hover:text-brand-warm-gray transition-colors"
                 >
                   Download Research Data
                 </button>
@@ -435,24 +451,24 @@ export default function ProfilePage() {
 
               {Array.from(groupedSources.entries()).sort().map(([domain, domainSources]) => (
                 <div key={domain} className="space-y-3">
-                  <h3 className="text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px]">
+                  <h3 className="text-xs font-semibold text-brand-warm-gray uppercase tracking-[1px]">
                     {domain}
                   </h3>
                   <ul className="space-y-2">
                     {domainSources.map((source, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <span className="text-dtw-coral mt-0.5 text-xs font-semibold">{'\u2022'}</span>
+                        <span className="text-brand-coral mt-0.5 text-xs font-semibold">{'\u2022'}</span>
                         <div className="flex-1 min-w-0">
                           <a
                             href={source.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-dtw-coral hover:text-dtw-warm-gray break-all text-sm transition-colors"
+                            className="text-brand-coral hover:text-brand-warm-gray break-all text-sm transition-colors"
                           >
                             {source.title || source.url}
                           </a>
                           {source.title && source.title !== new URL(source.url).hostname.replace('www.', '') && (
-                            <p className="text-xs text-dtw-mid-gray truncate mt-0.5">
+                            <p className="text-xs text-brand-mid-gray truncate mt-0.5">
                               {source.url}
                             </p>
                           )}
@@ -470,12 +486,12 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-dtw-off-white">
+    <div className="min-h-screen bg-brand-off-white">
       {/* Rainbow accent bar */}
       <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #7B2D8E, #2D6A4F, #E07A5F)' }} />
 
       {/* Dark header */}
-      <header className="bg-dtw-black">
+      <header className="bg-brand-black">
         <div className="max-w-4xl mx-auto px-6 pt-5 pb-0">
           {/* Top row: nav + actions */}
           <div className="flex items-center justify-between mb-6">
@@ -522,7 +538,7 @@ export default function ProfilePage() {
               onClick={handleDownloadPDF}
               disabled={isDownloading}
               className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-pill
-                         bg-white text-dtw-black hover:bg-dtw-gold
+                         bg-white text-brand-black hover:bg-brand-gold
                          disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isDownloading ? (
@@ -592,8 +608,8 @@ export default function ProfilePage() {
         {renderContent()}
 
         {/* Debug Downloads */}
-        <details className="mt-8 border-t border-dtw-light-gray pt-4">
-          <summary className="cursor-pointer text-sm text-dtw-mid-gray hover:text-dtw-warm-gray transition-colors">
+        <details className="mt-8 border-t border-brand-light-gray pt-4">
+          <summary className="cursor-pointer text-sm text-brand-mid-gray hover:text-brand-warm-gray transition-colors">
             Debug Files
           </summary>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -624,7 +640,7 @@ export default function ProfilePage() {
                   key={file}
                   href={`/api/debug-dump?file=${file}`}
                   download={`DEBUG-${file}.${ext}`}
-                  className="px-3 py-1.5 text-xs font-medium bg-dtw-off-white hover:bg-dtw-light-gray text-dtw-warm-gray rounded transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium bg-brand-off-white hover:bg-brand-light-gray text-brand-warm-gray rounded transition-colors"
                 >
                   {label}
                 </a>
@@ -635,9 +651,9 @@ export default function ProfilePage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-dtw-black py-6 text-center">
+      <footer className="bg-brand-black py-6 text-center">
         <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/25">
-          Democracy Takes Work &middot; ProspectAI &middot; 2026
+          ProspectAI &middot; 2026
         </span>
       </footer>
     </div>

@@ -46,7 +46,7 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 
 **Issue alignment → Specific overlap.**
 - ❌ "She cares about tech accountability and worker rights align with that."
-- ✅ "She funds antimonopoly organizing. DTW organizes workers against tech monopolies. She funds surveillance resistance. The organizing field depends on tools owned by the companies workers are fighting. The overlap is inside her existing program, not adjacent to it."
+- ✅ "She funds antimonopoly organizing. [Client Organization] organizes workers against tech monopolies. She funds surveillance resistance. The organizing field depends on tools owned by the companies workers are fighting. The overlap is inside her existing program, not adjacent to it."
 
 **Role description → What they'll do.**
 - ❌ "She could serve as an advisor or connector."
@@ -79,7 +79,7 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 - ✅ "Show her where practitioners exist without anything connecting them. Let her see the absence before you present what you'd build."
 
 - ❌ "The field does what the foundation can't say."
-- ✅ "Don't position DTW as adversarial to anyone Ford works with. Show her that DTW builds the capacity for workers to organize on their own terms — and what workers do with that capacity is their decision, not yours."
+- ✅ "Don't position [Client Organization] as adversarial to anyone Ford works with. Show her that [Client Organization] builds the capacity for workers to organize on their own terms — and what workers do with that capacity is their decision, not yours."
 
 - ❌ "No vision — operations."
 - ✅ "He doesn't respond to big ideas or compelling storytelling. He responds to people who can show him their operation works, inside a cause he already believes in."
@@ -107,8 +107,8 @@ The pattern: the meeting guide tells the fundraiser what to DO. Sentences that c
 - ✅ "Lead with who's already doing the work, not what your organization has accomplished. She funds fields — the infrastructure that connects practitioners — not individual programs. If you sound like a program looking for a grant, the meeting stalls."
 
 **Broad mapping → Specific mapping.**
-- ❌ "She builds fields. DTW is building a field. The approach matches."
-- ✅ "She funds antimonopoly organizing. DTW organizes workers against tech monopolies. Same people, same companies, different side of the fight. Start with her named programs and show where the work lands inside them."
+- ❌ "She builds fields. [Client Organization] is building a field. The approach matches."
+- ✅ "She funds antimonopoly organizing. [Client Organization] organizes workers against tech monopolies. Same people, same companies, different side of the fight. Start with her named programs and show where the work lands inside them."
 
 ---
 

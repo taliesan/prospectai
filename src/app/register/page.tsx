@@ -49,7 +49,7 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-dtw-black flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-brand-black flex flex-col items-center justify-center px-4">
         <div
           className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
           style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}
@@ -59,7 +59,7 @@ export default function RegisterPage() {
         </h1>
         <div className="w-full max-w-sm relative z-10 text-center">
           <div className="rounded-lg p-6 border border-white/15" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <svg className="w-12 h-12 mx-auto mb-4 text-dtw-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <svg className="w-12 h-12 mx-auto mb-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
             <h2 className="text-lg font-semibold text-white mb-2">Account Created</h2>
@@ -79,7 +79,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dtw-black flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-brand-black flex flex-col items-center justify-center px-4">
       <div
         className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
         style={{ background: 'radial-gradient(circle at 70% 30%, #7B2D8E, transparent 60%)' }}

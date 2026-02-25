@@ -132,6 +132,7 @@ export function generateResearchQueries(
   identity: any,
   seedUrlExcerpt?: string,
   linkedinJson?: any,
+  projectContext?: { issueAreas?: string; processedBrief?: string },
 ): string {
   const formatIdentity = () => {
     const lines: string[] = [];
@@ -167,13 +168,26 @@ export function generateResearchQueries(
     linkedinSection = `## LinkedIn JSON\n\`\`\`json\n${JSON.stringify(linkedinJson, null, 2)}\n\`\`\`\n\n`;
   }
 
+  // Project context injection for targeted queries
+  let projectContextSection = '';
+  if (projectContext?.issueAreas || projectContext?.processedBrief) {
+    projectContextSection = `## Client Organization Context
+
+The client organization or project works on: ${projectContext.issueAreas || 'Not specified'}
+Their mission / scope: ${(projectContext.processedBrief || '').slice(0, 200)}
+
+Include 1-2 queries in Category A that search for the target's relationship to the client's issue areas. Example: if the client works on climate and the target is a tech executive, search for "[name] climate philanthropy" or "[name] environmental giving."
+
+`;
+  }
+
   return `SUBJECT: ${donorName}
 
 ## Subject Information
 
 ${formatIdentity()}
 
-${linkedinSection}${seedUrlExcerpt ? `## Seed URL Content (excerpt)\n${seedUrlExcerpt.slice(0, 15000)}\n\n` : ''}${QUERY_GENERATION_PROMPT}`;
+${linkedinSection}${seedUrlExcerpt ? `## Seed URL Content (excerpt)\n${seedUrlExcerpt.slice(0, 15000)}\n\n` : ''}${projectContextSection}${QUERY_GENERATION_PROMPT}`;
 }
 
 // ── Supplementary query prompt (for retry when <30 URLs) ────────────
