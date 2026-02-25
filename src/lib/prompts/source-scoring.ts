@@ -68,6 +68,15 @@ export const DOMAIN_PENALTY_THRESHOLDS = [
 /** How many sources per Sonnet scoring batch */
 const SCORING_BATCH_SIZE = 18;
 
+/** Per-source content cap for scoring. Pages above this are mostly nav
+ *  chrome, ads, and related-article links — the actual article fits in 50K. */
+const SCORING_SOURCE_CHAR_CAP = 50_000;
+
+/** Maximum chars of source content per scoring batch.
+ *  Sonnet's 200K token context ≈ 800K chars. We target 600K to leave room
+ *  for the prompt template (~2K), output tokens, and safety margin. */
+const SCORING_BATCH_CHAR_LIMIT = 600_000;
+
 // ══════════════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════════════
@@ -143,8 +152,34 @@ function buildScoringBatchPrompt(
   subjectName: string,
   sources: ResearchSource[],
 ): string {
+  // Calculate total content to decide if we need to truncate
+  const rawContents = sources.map(s => s.content || s.snippet || '');
+  const totalChars = rawContents.reduce((sum, c) => sum + c.length, 0);
+
+  // If total exceeds the batch char limit, truncate each source proportionally.
+  // Each source gets a share of the budget proportional to its original length,
+  // with a minimum of 2000 chars so tiny sources aren't starved.
+  let contents: string[];
+  if (totalChars > SCORING_BATCH_CHAR_LIMIT) {
+    const perSourceMin = 2000;
+    const minReserved = sources.length * perSourceMin;
+    const flexBudget = Math.max(SCORING_BATCH_CHAR_LIMIT - minReserved, 0);
+
+    contents = rawContents.map(raw => {
+      if (raw.length <= perSourceMin) return raw;
+      const share = flexBudget * (raw.length / totalChars);
+      const limit = Math.max(Math.floor(share + perSourceMin), perSourceMin);
+      if (raw.length <= limit) return raw;
+      return raw.slice(0, limit) + `\n\n[...truncated from ${raw.length} to ${limit} chars for scoring]`;
+    });
+    const truncatedTotal = contents.reduce((sum, c) => sum + c.length, 0);
+    console.log(`[Stage 5a] Batch content truncated: ${totalChars} → ${truncatedTotal} chars (limit ${SCORING_BATCH_CHAR_LIMIT})`);
+  } else {
+    contents = rawContents;
+  }
+
   const sourcesText = sources.map((s, i) => {
-    const content = s.content || s.snippet || '';
+    const content = contents[i];
     return `### Source ${i + 1}
 URL: ${s.url}
 Title: ${s.title || 'Untitled'}
@@ -339,10 +374,25 @@ async function scoreAllSources(
   sources: ResearchSource[],
   subjectName: string,
 ): Promise<ScoredSource[]> {
+  // Pre-truncate oversized sources for scoring only — shallow copies so the
+  // original source objects (used downstream in Opus synthesis) stay intact.
+  let truncatedCount = 0;
+  const scoringSources = sources.map(s => {
+    const content = s.content || '';
+    if (content.length > SCORING_SOURCE_CHAR_CAP) {
+      truncatedCount++;
+      return { ...s, content: content.slice(0, SCORING_SOURCE_CHAR_CAP) };
+    }
+    return s;
+  });
+  if (truncatedCount > 0) {
+    console.log(`[Stage 5a] Pre-truncated ${truncatedCount} sources to ${SCORING_SOURCE_CHAR_CAP} chars for scoring`);
+  }
+
   const batches: { batch: ResearchSource[]; offset: number }[] = [];
-  for (let i = 0; i < sources.length; i += SCORING_BATCH_SIZE) {
+  for (let i = 0; i < scoringSources.length; i += SCORING_BATCH_SIZE) {
     batches.push({
-      batch: sources.slice(i, i + SCORING_BATCH_SIZE),
+      batch: scoringSources.slice(i, i + SCORING_BATCH_SIZE),
       offset: i,
     });
   }
@@ -373,6 +423,20 @@ async function scoreAllSources(
 
   // Merge all batch results into one flat array
   const allScored = batchResults.flat();
+
+  // Restore original (un-truncated) content so downstream Opus synthesis
+  // sees the full text. Scoring used truncated copies; the scores are kept.
+  if (truncatedCount > 0) {
+    for (const scored of allScored) {
+      const original = sources[scored.index];
+      if (original && original.content && original.content.length > SCORING_SOURCE_CHAR_CAP) {
+        scored.content = original.content;
+        scored.char_count = original.content.length;
+        scored.contentLength = original.content.length;
+      }
+    }
+  }
+
   console.log(`[Stage 5a] Total scored: ${allScored.length} sources`);
   return allScored;
 }
