@@ -219,7 +219,15 @@ export async function executeDeepResearch(
 
   const openaiApiKey = process.env.OPENAI_API_KEY;
   if (!openaiApiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is not set. Required for deep research.');
+    console.warn('[Deep Research] OPENAI_API_KEY not set — skipping deep research');
+    emit('Deep research skipped (no API key) — continuing with pre-fetched sources', 'research', 14, 38);
+    return {
+      dossier: '',
+      citations: [],
+      searchCount: 0,
+      tokenUsage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
+      durationMs: 0,
+    };
   }
 
   const openai = new OpenAI({ apiKey: openaiApiKey, timeout: 3600 * 1000 });
@@ -589,8 +597,21 @@ export async function executeDeepResearch(
   const durationMin = (durationMs / 60000).toFixed(1);
 
   if (result.status === 'failed' && !timeCapReached) {
+    // Extract error details for logging
+    const errorMsg = result.error?.message || result.error?.code || 'unknown error';
     console.error('[Stage 6] Deep research failed:', JSON.stringify(result, null, 2));
-    throw new Error(`Deep research failed after ${durationMin} minutes`);
+    // Graceful degradation: quota/API failures should not crash the pipeline.
+    // The profile can still be generated from pre-fetched sources alone.
+    console.warn(`[Deep Research] Falling back to no deep research — ${errorMsg}`);
+    emit(`Deep research unavailable (${errorMsg}) — continuing with pre-fetched sources`, 'research', 14, 38);
+
+    return {
+      dossier: '',
+      citations: [],
+      searchCount: 0,
+      tokenUsage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
+      durationMs: Date.now() - startTime,
+    };
   }
 
   // Extract dossier — graceful degradation when time cap reached
