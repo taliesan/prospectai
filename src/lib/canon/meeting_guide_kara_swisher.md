@@ -35,7 +35,7 @@ Arrive with something she hasn't heard framed this way. If you survive three min
 
 **AUTHORSHIP THEY NEED** · Intellectual and connective, with a patron gear. She doesn't want to design your strategy — she wants to see the gap and tell you who should be in the room. But if she decides you're worth investing in, she shifts from prosecutor to champion — and the bar goes up, not down. Follow through on every introduction, every suggestion. If she connects you to someone and you don't follow up within 48 hours, the relationship cools fast.
 
-**IF THIS COLLAPSES TO 5 MIN:** *Land one insight about worker organizing in tech from the inside — not from a report. Position [Client Organization]as an information source she doesn't currently have. Get agreement to a longer conversation. Not the ask — the next meeting.*
+**IF THIS COLLAPSES TO 5 MIN:** *Land one insight about worker organizing in tech from the inside — not from a report. Position [Client Organization] as an information source she doesn't currently have. Get agreement to a longer conversation. Not the ask — the next meeting.*
 
 ---
 
@@ -44,14 +44,14 @@ Arrive with something she hasn't heard framed this way. If you survive three min
 **PRIMARY TERRITORY**
 
 **She's spent thirty years documenting how tech companies accumulate power without accountability. [Client Organization]'s thesis is the structural answer to the story she's already telling.**
-Workers organizing at Amazon, in tech, in AI-adjacent industries are the same people whose exploitation she covers. She just hasn't seen them as a portfolio — or had a source inside the organizing itself. The bridge: this isn't charity — it's the institutional counterweight to the problem she narrates. And [Client Organization]can give her a window she can't get from her existing networks.
+Workers organizing at Amazon, in tech, in AI-adjacent industries are the same people whose exploitation she covers. She just hasn't seen them as a portfolio — or had a source inside the organizing itself. The bridge: this isn't charity — it's the institutional counterweight to the problem she narrates. And [Client Organization] can give her a window she can't get from her existing networks.
 
 **SECONDARY TERRITORIES**
 
 - **Innovation that actually works.**
   EWOC, worker-led organizing, sectoral bargaining workarounds, AI-era labor models. New approaches to an old problem — she responds to genuine novelty the way she responded to early internet coverage. If she asks 'what's actually different,' this is where you go.
 - **Outsider operation, not establishment philanthropy.**
-  [Client Organization]funds insurgent organizing that legacy institutions can't or won't touch. She built her career doing what institutions wouldn't. If [Client Organization]reads as scrappy, strategic, and willing to fail — that's identity alignment, not just issue alignment.
+  [Client Organization] funds insurgent organizing that legacy institutions can't or won't touch. She built her career doing what institutions wouldn't. If [Client Organization] reads as scrappy, strategic, and willing to fail — that's identity alignment, not just issue alignment.
 - **Authoritarianism as a live threat.**
   Worker power as democratic infrastructure maps onto her post-Musk political awakening. She has a personal relationship with institutional exclusion deeper than her professional identity — closed doors, constrained paths, power over people who didn't get a vote. If she goes there, follow her.
 
@@ -90,7 +90,7 @@ Workers organizing at Amazon, in tech, in AI-adjacent industries are the same pe
 
 - **If flat, go concrete.** Name a specific worker, a specific fight, a specific company. She's a reporter. Specifics re-engage her faster than any narrative.
 - **If performing, show her something novel.** A new organizing model she hasn't covered. A data point that surprises her. She still gets excited by genuine innovation — that reflex is older and deeper than her skepticism.
-- **If skeptical about labor, agree and show the insurgent model.** Don't defend unions. 'That's exactly the problem. The old model doesn't work for the people it's supposed to serve. Here's what the new one looks like.' Position [Client Organization]as the outsider operation. That's her frequency.
+- **If skeptical about labor, agree and show the insurgent model.** Don't defend unions. 'That's exactly the problem. The old model doesn't work for the people it's supposed to serve. Here's what the new one looks like.' Position [Client Organization] as the outsider operation. That's her frequency.
 
 ---
 
