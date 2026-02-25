@@ -23,7 +23,6 @@ const meetingGuideOutputTemplateCache = loadCanonFile('meeting-guide-output-temp
 const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md');
 const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
 const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
-const dtwOrgLayerCache = loadCanonFile('dtw-org-layer.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 
@@ -73,8 +72,34 @@ export function loadMeetingGuideExemplars(donorName: string): string {
   return selected.map(e => e.content).join('\n\n---\n\n');
 }
 
-export function loadDTWOrgLayer(): string {
-  return dtwOrgLayerCache;
+export interface ProjectLayerInput {
+  name: string;
+  processedBrief: string;
+  issueAreas?: string;
+  defaultAsk?: string;
+  specificAsk?: string;
+  fundraiserName?: string;
+}
+
+export function buildProjectLayer(projectContext: ProjectLayerInput): string {
+  return `# ORGANIZATION / PROJECT CONTEXT
+
+## ${projectContext.name}
+
+### Mission, Theory of Change, or Project Scope
+${projectContext.processedBrief}
+
+### Issue Areas
+${projectContext.issueAreas || 'Not specified'}
+
+### Default Ask
+${projectContext.defaultAsk || 'Not specified'}
+
+### This Meeting's Specific Ask
+${projectContext.specificAsk || 'Not specified'}
+
+### Fundraiser
+${projectContext.fundraiserName || 'Not specified'}`.trim();
 }
 
 export function loadPromptV2(): string {

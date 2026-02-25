@@ -148,15 +148,15 @@ export default function AdminPage() {
 
   const SortIndicator = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
-      return <span className="text-dtw-light-gray ml-1">&udarr;</span>;
+      return <span className="text-brand-light-gray ml-1">&udarr;</span>;
     }
     return <span className="ml-1">{sortDirection === 'asc' ? '\u2191' : '\u2193'}</span>;
   };
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
-        <div className="text-dtw-mid-gray font-serif text-xl">Loading...</div>
+      <div className="min-h-screen bg-brand-off-white flex items-center justify-center">
+        <div className="text-brand-mid-gray font-serif text-xl">Loading...</div>
       </div>
     );
   }
@@ -165,13 +165,13 @@ export default function AdminPage() {
   const approvedCount = users.filter(u => u.approved).length;
 
   return (
-    <div className="min-h-screen bg-dtw-off-white">
+    <div className="min-h-screen bg-brand-off-white">
       <div className="h-[5px] w-full" style={{
         background: 'linear-gradient(90deg, #7B2D8E, #C77DFF, #2D6A4F, #40916C, #7B2D8E)',
         backgroundSize: '300% 100%',
       }} />
 
-      <nav className="bg-dtw-black px-6 py-4 flex items-center justify-between">
+      <nav className="bg-brand-black px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <a href="/" className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50 hover:text-white transition-colors">
             ProspectAI
@@ -184,14 +184,14 @@ export default function AdminPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="font-serif text-3xl text-dtw-black mb-8">Admin Dashboard</h1>
+        <h1 className="font-serif text-3xl text-brand-black mb-8">Admin Dashboard</h1>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 border-b border-dtw-light-gray">
+        <div className="flex gap-1 mb-8 border-b border-brand-light-gray">
           <button
             onClick={() => setActiveTab('users')}
             className={`px-5 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'users' ? 'text-dtw-black' : 'text-dtw-mid-gray hover:text-dtw-warm-gray'
+              activeTab === 'users' ? 'text-brand-black' : 'text-brand-mid-gray hover:text-brand-warm-gray'
             }`}
           >
             Users
@@ -208,11 +208,11 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('profiles')}
             className={`px-5 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'profiles' ? 'text-dtw-black' : 'text-dtw-mid-gray hover:text-dtw-warm-gray'
+              activeTab === 'profiles' ? 'text-brand-black' : 'text-brand-mid-gray hover:text-brand-warm-gray'
             }`}
           >
             All Profiles
-            <span className="ml-2 text-xs text-dtw-mid-gray">({profiles.length})</span>
+            <span className="ml-2 text-xs text-brand-mid-gray">({profiles.length})</span>
             {activeTab === 'profiles' && (
               <div className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-sm" style={{ background: '#2D6A4F' }} />
             )}
@@ -223,39 +223,39 @@ export default function AdminPage() {
           <>
             {/* Stats */}
             <div className="flex gap-4 mb-8">
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
-                <div className="text-2xl font-semibold text-dtw-black">{users.length}</div>
-                <div className="text-xs text-dtw-mid-gray">Total Users</div>
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
+                <div className="text-2xl font-semibold text-brand-black">{users.length}</div>
+                <div className="text-xs text-brand-mid-gray">Total Users</div>
               </div>
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
                 <div className="text-2xl font-semibold" style={{ color: '#E07A5F' }}>{pendingCount}</div>
-                <div className="text-xs text-dtw-mid-gray">Pending</div>
+                <div className="text-xs text-brand-mid-gray">Pending</div>
               </div>
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
-                <div className="text-2xl font-semibold text-dtw-green">{approvedCount}</div>
-                <div className="text-xs text-dtw-mid-gray">Approved</div>
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
+                <div className="text-2xl font-semibold text-brand-green">{approvedCount}</div>
+                <div className="text-xs text-brand-mid-gray">Approved</div>
               </div>
             </div>
 
             {/* User list */}
-            <div className="bg-white rounded-2xl border border-dtw-light-gray overflow-hidden"
+            <div className="bg-white rounded-2xl border border-brand-light-gray overflow-hidden"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-dtw-light-gray">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Name</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Email</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Created</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Profiles</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Status</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase">Actions</th>
+                  <tr className="border-b border-brand-light-gray">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Name</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Email</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Created</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Profiles</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Status</th>
+                    <th className="text-right px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b border-dtw-light-gray last:border-0 hover:bg-dtw-off-white/50 transition-colors">
+                    <tr key={user.id} className="border-b border-brand-light-gray last:border-0 hover:bg-brand-off-white/50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-dtw-black">{user.name}</div>
+                        <div className="text-sm font-medium text-brand-black">{user.name}</div>
                         {user.isAdmin && (
                           <span className="text-[10px] font-semibold tracking-[1px] uppercase px-1.5 py-0.5 rounded"
                                 style={{ background: '#7B2D8E', color: 'white' }}>
@@ -263,14 +263,14 @@ export default function AdminPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-dtw-mid-gray">{user.email}</td>
-                      <td className="px-6 py-4 text-sm text-dtw-mid-gray">
+                      <td className="px-6 py-4 text-sm text-brand-mid-gray">{user.email}</td>
+                      <td className="px-6 py-4 text-sm text-brand-mid-gray">
                         {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 text-sm text-dtw-mid-gray">{user._count.profiles}</td>
+                      <td className="px-6 py-4 text-sm text-brand-mid-gray">{user._count.profiles}</td>
                       <td className="px-6 py-4">
                         {user.approved ? (
-                          <span className="text-xs font-medium text-dtw-green">Approved</span>
+                          <span className="text-xs font-medium text-brand-green">Approved</span>
                         ) : (
                           <span className="text-xs font-medium" style={{ color: '#E07A5F' }}>Pending</span>
                         )}
@@ -281,14 +281,14 @@ export default function AdminPage() {
                             {!user.approved ? (
                               <button
                                 onClick={() => updateUser(user.id, { approved: true })}
-                                className="px-3 py-1.5 text-xs font-medium rounded bg-dtw-green text-white hover:bg-dtw-green-light transition-colors"
+                                className="px-3 py-1.5 text-xs font-medium rounded bg-brand-green text-white hover:bg-brand-green-light transition-colors"
                               >
                                 Approve
                               </button>
                             ) : (
                               <button
                                 onClick={() => updateUser(user.id, { approved: false })}
-                                className="px-3 py-1.5 text-xs font-medium rounded text-dtw-mid-gray hover:text-dtw-red border border-dtw-light-gray hover:border-dtw-red transition-colors"
+                                className="px-3 py-1.5 text-xs font-medium rounded text-brand-mid-gray hover:text-brand-red border border-brand-light-gray hover:border-brand-red transition-colors"
                               >
                                 Revoke
                               </button>
@@ -308,67 +308,67 @@ export default function AdminPage() {
           <>
             {/* Profile stats */}
             <div className="flex gap-4 mb-8">
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
-                <div className="text-2xl font-semibold text-dtw-black">{profiles.length}</div>
-                <div className="text-xs text-dtw-mid-gray">Total Profiles</div>
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
+                <div className="text-2xl font-semibold text-brand-black">{profiles.length}</div>
+                <div className="text-xs text-brand-mid-gray">Total Profiles</div>
               </div>
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
-                <div className="text-2xl font-semibold text-dtw-green">
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
+                <div className="text-2xl font-semibold text-brand-green">
                   {profiles.filter(p => p.status === 'complete').length}
                 </div>
-                <div className="text-xs text-dtw-mid-gray">Complete</div>
+                <div className="text-xs text-brand-mid-gray">Complete</div>
               </div>
-              <div className="bg-white rounded-xl px-5 py-3 border border-dtw-light-gray">
+              <div className="bg-white rounded-xl px-5 py-3 border border-brand-light-gray">
                 <div className="text-2xl font-semibold" style={{ color: '#E07A5F' }}>
                   {profiles.filter(p => p.status === 'failed').length}
                 </div>
-                <div className="text-xs text-dtw-mid-gray">Failed</div>
+                <div className="text-xs text-brand-mid-gray">Failed</div>
               </div>
             </div>
 
             {/* Profiles table */}
-            <div className="bg-white rounded-2xl border border-dtw-light-gray overflow-hidden"
+            <div className="bg-white rounded-2xl border border-brand-light-gray overflow-hidden"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               {profiles.length === 0 ? (
-                <div className="px-6 py-12 text-center text-dtw-mid-gray">
+                <div className="px-6 py-12 text-center text-brand-mid-gray">
                   No profiles have been generated yet.
                 </div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-dtw-light-gray">
+                    <tr className="border-b border-brand-light-gray">
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('donorName')}
                       >
                         Donor Name<SortIndicator field="donorName" />
                       </th>
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('userName')}
                       >
                         User<SortIndicator field="userName" />
                       </th>
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('userEmail')}
                       >
                         Email<SortIndicator field="userEmail" />
                       </th>
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('createdAt')}
                       >
                         Created<SortIndicator field="createdAt" />
                       </th>
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('status')}
                       >
                         Status<SortIndicator field="status" />
                       </th>
                       <th
-                        className="text-left px-6 py-3 text-xs font-semibold text-dtw-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-dtw-black select-none"
+                        className="text-left px-6 py-3 text-xs font-semibold text-brand-warm-gray tracking-[1px] uppercase cursor-pointer hover:text-brand-black select-none"
                         onClick={() => handleSort('confidenceScores')}
                       >
                         Confidence<SortIndicator field="confidenceScores" />
@@ -379,25 +379,25 @@ export default function AdminPage() {
                     {sortedProfiles.map((profile) => (
                       <tr
                         key={profile.id}
-                        className="border-b border-dtw-light-gray last:border-0 hover:bg-dtw-off-white/50 transition-colors cursor-pointer"
+                        className="border-b border-brand-light-gray last:border-0 hover:bg-brand-off-white/50 transition-colors cursor-pointer"
                         onClick={() => router.push(`/profile/${profile.id}`)}
                       >
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-dtw-black">{profile.donorName}</div>
+                          <div className="text-sm font-medium text-brand-black">{profile.donorName}</div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-dtw-mid-gray">{profile.user.name}</td>
-                        <td className="px-6 py-4 text-sm text-dtw-mid-gray">{profile.user.email}</td>
-                        <td className="px-6 py-4 text-sm text-dtw-mid-gray">
+                        <td className="px-6 py-4 text-sm text-brand-mid-gray">{profile.user.name}</td>
+                        <td className="px-6 py-4 text-sm text-brand-mid-gray">{profile.user.email}</td>
+                        <td className="px-6 py-4 text-sm text-brand-mid-gray">
                           {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
                         <td className="px-6 py-4">
                           {profile.status === 'complete' ? (
-                            <span className="text-xs font-medium text-dtw-green">Complete</span>
+                            <span className="text-xs font-medium text-brand-green">Complete</span>
                           ) : (
                             <span className="text-xs font-medium" style={{ color: '#E07A5F' }}>Failed</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-dtw-mid-gray">
+                        <td className="px-6 py-4 text-sm text-brand-mid-gray">
                           {formatConfidence(profile.confidenceScores)}
                         </td>
                       </tr>

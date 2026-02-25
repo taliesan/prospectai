@@ -21,7 +21,7 @@ import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
 import { buildFactCheckSystemPrompt, buildFactCheckUserMessage, processFactCheckResult } from './prompts/fact-check-prompt';
-import { selectExemplars, loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, loadDTWOrgLayer } from './canon/loader';
+import { selectExemplars, loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, buildProjectLayer, type ProjectLayerInput } from './canon/loader';
 import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -520,6 +520,8 @@ export async function runFullPipeline(
   abortSignal?: AbortSignal,
   onActivity?: ActivityCallback,
   onClearActivity?: () => void,
+  projectContext?: ProjectLayerInput,
+  relationshipContext?: string,
 ): Promise<CodedPipelineResult> {
   const emit = onProgress || (() => {});
   const TOTAL_STEPS = 38;
@@ -683,7 +685,7 @@ ${pdfText}`;
     emit(`Designing search strategy for ${donorName}`, 'research', 4, TOTAL_STEPS);
     console.log('[Stage 1] Generating search queries');
 
-    const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData);
+    const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData, projectContext ? { issueAreas: projectContext.issueAreas, processedBrief: projectContext.processedBrief } : undefined);
     const queryResponse = await complete('You are a research strategist designing search queries for behavioral evidence.', queryPrompt);
     const categorizedQueries = parseQueryGenerationResponse(queryResponse);
 
@@ -1520,7 +1522,12 @@ ANALYSIS — cross-source analytical commentary on the quotes. This commentary i
 
 The quotes are your evidence. The analysis is scaffolding. Build from the evidence.\n\n`
     : `The behavioral evidence below was curated from ${research.sources.length} source pages by an extraction model that read every source in full. Entries preserve the subject's original voice, surrounding context, and source shape.\n\n`;
-  const extractionForProfile = researchPackagePreamble + researchPackage;
+  let extractionForProfile = researchPackagePreamble + researchPackage;
+
+  // Inject user-supplied relationship context if provided
+  if (relationshipContext?.trim()) {
+    extractionForProfile += `\n\n---\n\nUSER-SUPPLIED CONTEXT\nThe fundraiser has provided the following prior knowledge about this person and their existing relationship. Treat this as high-trust context — it comes from direct interaction, not web research. It may contain information no search would surface. Use it, but the fact-checker should flag any profile claims that rest SOLELY on user-supplied context without web corroboration.\n\n---\n${relationshipContext}\n---`;
+  }
 
   const profilePromptText = buildProfilePrompt(donorName, extractionForProfile, geoffreyBlock, exemplars, linkedinData, confidenceResult?.promptBlock);
   console.log(`[Profile] Prompt size: ${estimateTokens(profilePromptText)} tokens`);
@@ -1715,15 +1722,18 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   const meetingGuideBlock = loadMeetingGuideBlockV3();
   const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
   const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
-  const dtwOrgLayer = loadDTWOrgLayer();
+  const projectLayer = projectContext
+    ? buildProjectLayer(projectContext)
+    : '# ORGANIZATION / PROJECT CONTEXT\n\nNo organization or project context was provided for this profile.';
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
     donorName,
     finalProfile,
     meetingGuideBlock,
-    dtwOrgLayer,
+    projectLayer,
     meetingGuideExemplars,
     meetingGuideOutputTemplate,
+    relationshipContext,
   );
 
   try {

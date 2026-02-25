@@ -285,7 +285,7 @@ The civil rights/technology Table is the purest example. She didn't fund individ
 
 **The hardest boundary is institutional: Ford does not accept unsolicited proposals.** All grantmaking is by invitation or through established relationships and networks. If you're approaching cold, the institutional barrier is your primary obstacle — and it exists before any values assessment happens. The pathway in is through organizations Ford already funds (AI Now, EPIC, Data & Society, the PIT network) or through co-funders she works with repeatedly (Open Society Foundations, Craig Newmark Philanthropies, Omidyar, MacArthur, Hewlett).
 
-**The legal boundary matters for DTW specifically.** Ford is a 501(c)(3). It can fund policy advocacy, research, field-building, and organizational capacity. It cannot fund partisan electoral activity or lobbying beyond (c)(3) limits. If your work sits at the intersection of technology accountability and worker organizing, it may fall between Technology and Society and Future of Work(ers) — which could be an opportunity (cross-program funding) or a complication (neither program fully owns it).
+**The legal boundary matters for [Client Organization] specifically.** Ford is a 501(c)(3). It can fund policy advocacy, research, field-building, and organizational capacity. It cannot fund partisan electoral activity or lobbying beyond (c)(3) limits. If your work sits at the intersection of technology accountability and worker organizing, it may fall between Technology and Society and Future of Work(ers) — which could be an opportunity (cross-program funding) or a complication (neither program fully owns it).
 
 **Things that likely misalign with how she works:**
 

@@ -1,7 +1,7 @@
 // Meeting Guide prompt builder — 5-layer architecture (v3)
 // Layer 1: Meeting Guide Block v3 (voice, register, choreography philosophy)
 // Layer 2: Exemplars (2-3 canonical guides, excluding matching donor)
-// Layer 3: Organization Reference Data (DTW org layer)
+// Layer 3: Organization / Project Reference Data (user-supplied)
 // Layer 4: Input Material (Persuasion Profile with transformation directive)
 // Layer 5: Output Template (structural format with hard constraints)
 
@@ -12,18 +12,23 @@ export function buildMeetingGuidePrompt(
   donorName: string,
   profile: string,
   meetingGuideBlock: string,
-  dtwOrgLayer: string,
+  projectLayer: string,
   exemplars: string,
-  outputTemplate: string
+  outputTemplate: string,
+  relationshipContext?: string,
 ): string {
   const currentDate = new Date();
   const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   // --- Layer 1: Meeting Guide Block v3 (full, unmodified) ---
   // --- Layer 2: Exemplars (2-3 guides, matching donor excluded) ---
-  // --- Layer 3: Organization Reference Data ---
+  // --- Layer 3: Organization / Project Reference Data ---
   // --- Layer 4: Input Material (Persuasion Profile) ---
   // --- Layer 5: Output Template ---
+
+  const relationshipBlock = relationshipContext?.trim()
+    ? `\n\n---\n\n# FUNDRAISER'S PRIOR KNOWLEDGE\n\nThe fundraiser has provided the following context about their existing relationship with this donor. This is high-trust information from direct interaction. The meeting guide should build on this — if the fundraiser already knows the donor's communication style, the guide should deepen that knowledge rather than starting from zero.\n\n${relationshipContext}\n`
+    : '';
 
   return `${meetingGuideBlock}
 
@@ -39,7 +44,7 @@ ${exemplars}
 
 # ORGANIZATION REFERENCE DATA
 
-${dtwOrgLayer}
+${projectLayer}
 
 ---
 
@@ -54,7 +59,7 @@ The following is a Persuasion Profile — an analytical document about the donor
 5. If the profile identifies a risk, convert it to a tripwire with an observable tell and a recovery move.
 6. Every section of the profile should contribute to the guide, but no section should be restated — only translated.
 
-${profile}
+${profile}${relationshipBlock}
 
 ---
 

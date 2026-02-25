@@ -106,12 +106,15 @@ For FICTIONAL EXEMPLAR TERMS: any match is automatic EXEMPLAR_LEAK — fictional
 
 **UNSUPPORTED** — The claim is plausible and could be a reasonable inference, but no specific source text confirms it. It may be true but the evidence doesn't establish it.
 
+**USER_PROVIDED** — The claim traces to user-supplied context (prior meetings, direct knowledge from the fundraiser) but not to web research. These claims are acceptable in the profile — they don't need web corroboration. Only flag as UNSUPPORTED if user-supplied context CONTRADICTS web evidence.
+
 ## Severity
 
 - EXEMPLAR_LEAK → always CRITICAL
 - FABRICATED → always CRITICAL
 - UNSUPPORTED with specific numbers or quotes → HIGH
 - UNSUPPORTED analytical inference → LOW
+- USER_PROVIDED → LOW (informational, not a failure)
 
 ## CRITICAL: Distinguish FOUND vs PREVENTIVE
 

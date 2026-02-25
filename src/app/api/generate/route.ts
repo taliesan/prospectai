@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
   const userId = session?.user?.id;
 
   const body = await request.json();
-  const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf } = body;
+  const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf, relationshipContext, projectContextId, specificAsk } = body;
   console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
 
   if (!donorName || typeof donorName !== 'string') {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 
   // Fire-and-forget: run pipeline in background
   // On Railway (persistent container), the process stays alive after response is sent
-  runPipelineInBackground(job.id, donorName, fundraiserName, seedUrls, linkedinPdf, userId).catch((err) => {
+  runPipelineInBackground(job.id, donorName, fundraiserName, seedUrls, linkedinPdf, userId, relationshipContext, projectContextId, specificAsk).catch((err) => {
     console.error(`[API] Unhandled error in background pipeline for job ${job.id}:`, err);
     failJob(job.id, err instanceof Error ? err.message : 'Unknown error');
   });
@@ -154,6 +154,9 @@ async function runPipelineInBackground(
   seedUrls: string[],
   linkedinPdf?: string,
   userId?: string,
+  relationshipContext?: string,
+  projectContextId?: string,
+  specificAsk?: string,
 ) {
   // Progress callback writes to job store instead of SSE stream
   const sendEvent = (event: ProgressEvent) => {
@@ -259,6 +262,29 @@ async function runPipelineInBackground(
         const exemplars = loadExemplars();
         console.log(`[Job ${jobId}] Loaded ${exemplars.length} characters of exemplar profiles`);
 
+        // Load project context from database if provided
+        let projectContextData: import('@/lib/canon/loader').ProjectLayerInput | undefined;
+        if (projectContextId && userId) {
+          try {
+            const pc = await prisma.projectContext.findFirst({
+              where: { id: projectContextId, userId },
+            });
+            if (pc) {
+              projectContextData = {
+                name: pc.name,
+                processedBrief: pc.processedBrief,
+                issueAreas: pc.issueAreas || undefined,
+                defaultAsk: pc.defaultAsk || undefined,
+                specificAsk: specificAsk || undefined,
+                fundraiserName: fundraiserName || undefined,
+              };
+              console.log(`[Job ${jobId}] Loaded project context: ${pc.name} (${pc.processedBrief.length} chars)`);
+            }
+          } catch (err) {
+            console.warn(`[Job ${jobId}] Failed to load project context:`, err);
+          }
+        }
+
         // Abort signal from job store — used for user-initiated cancellation
         const abortSignal = getAbortSignal(jobId);
 
@@ -284,6 +310,8 @@ async function runPipelineInBackground(
           abortSignal,
           onActivity,
           () => clearActivity(jobId),
+          projectContextData,
+          relationshipContext,
         );
 
         // Save outputs
@@ -341,6 +369,10 @@ async function runPipelineInBackground(
                 confidenceScores: pipelineResult.confidenceScoresJson || null,
                 dimensionCoverage: pipelineResult.dimensionCoverageJson || null,
                 sourceCount: pipelineResult.research?.sources?.length || null,
+                projectContextId: projectContextId || null,
+                relationshipContext: relationshipContext || null,
+                fundraiserName: fundraiserName || null,
+                specificAsk: specificAsk || null,
                 pipelineVersion: 'v6',
                 status: 'complete',
               },
