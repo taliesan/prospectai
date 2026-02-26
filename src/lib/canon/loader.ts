@@ -25,6 +25,7 @@ const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
 const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
+const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
 
 export function loadExemplars(): string {
   return exemplarsCache;
@@ -79,6 +80,7 @@ export interface ProjectLayerInput {
   defaultAsk?: string;
   specificAsk?: string;
   fundraiserName?: string;
+  strategicFrame?: string;
 }
 
 export function buildProjectLayer(projectContext: ProjectLayerInput): string {
@@ -108,6 +110,10 @@ export function loadPromptV2(): string {
 
 export function loadCritiqueEditorialV2(): string {
   return critiqueEditorialV2Cache;
+}
+
+export function loadStage0OrgIntakePrompt(): string {
+  return stage0OrgIntakeCache;
 }
 
 /**

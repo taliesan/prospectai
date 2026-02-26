@@ -970,7 +970,7 @@ export default function Home() {
                     Generate Profile
                   </button>
                   <p className="text-center text-xs text-brand-mid-gray mt-3">
-                    Takes 2 – 4 minutes. You&apos;ll see progress in real time.
+                    Takes 20 – 30 minutes. You&apos;ll see progress in real time.
                   </p>
                 </div>
               </form>

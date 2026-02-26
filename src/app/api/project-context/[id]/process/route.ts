@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
+import { runOrgExtraction } from '@/lib/stages/stage-0-org-extraction';
 
 const PROCESSING_THRESHOLD = 8_000;
 
@@ -91,6 +92,29 @@ export async function POST(
     where: { id },
     data: { processedBrief },
   });
+
+  // Run Stage 0 org extraction async — don't block the response
+  const materialTexts = context.materials
+    .map(m => m.extractedText)
+    .filter((t): t is string => Boolean(t));
+
+  runOrgExtraction({
+    name: context.name,
+    processedBrief,
+    issueAreas: context.issueAreas || undefined,
+    defaultAsk: context.defaultAsk || undefined,
+    materials: materialTexts.length > 0 ? materialTexts : undefined,
+  })
+    .then(async (strategicFrame) => {
+      await prisma.projectContext.update({
+        where: { id },
+        data: { strategicFrame },
+      });
+      console.log(`[Stage 0] Strategic frame saved for ${context.name} (${strategicFrame.length} chars)`);
+    })
+    .catch((err) => {
+      console.error(`[Stage 0] Failed for ${context.name}:`, err);
+    });
 
   return Response.json({ context: updated });
 }

@@ -277,6 +277,7 @@ async function runPipelineInBackground(
                 defaultAsk: pc.defaultAsk || undefined,
                 specificAsk: specificAsk || undefined,
                 fundraiserName: fundraiserName || undefined,
+                strategicFrame: pc.strategicFrame || undefined,
               };
               console.log(`[Job ${jobId}] Loaded project context: ${pc.name} (${pc.processedBrief.length} chars)`);
             }

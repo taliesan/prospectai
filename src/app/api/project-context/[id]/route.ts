@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { runOrgExtraction } from '@/lib/stages/stage-0-org-extraction';
 
 // GET /api/project-context/[id] — get a single project context
 export async function GET(
@@ -56,7 +57,36 @@ export async function PUT(
       ...(issueAreas !== undefined && { issueAreas }),
       ...(defaultAsk !== undefined && { defaultAsk }),
     },
+    include: { materials: true },
   });
+
+  // Re-run Stage 0 if any org-relevant fields changed
+  const orgFieldsChanged =
+    rawDescription !== undefined || issueAreas !== undefined || defaultAsk !== undefined;
+
+  if (orgFieldsChanged && context.processedBrief) {
+    const materialTexts = context.materials
+      .map(m => m.extractedText)
+      .filter((t): t is string => Boolean(t));
+
+    runOrgExtraction({
+      name: context.name,
+      processedBrief: context.processedBrief,
+      issueAreas: context.issueAreas || undefined,
+      defaultAsk: context.defaultAsk || undefined,
+      materials: materialTexts.length > 0 ? materialTexts : undefined,
+    })
+      .then(async (strategicFrame) => {
+        await prisma.projectContext.update({
+          where: { id },
+          data: { strategicFrame },
+        });
+        console.log(`[Stage 0] Strategic frame updated for ${context.name} (${strategicFrame.length} chars)`);
+      })
+      .catch((err) => {
+        console.error(`[Stage 0] Re-extraction failed for ${context.name}:`, err);
+      });
+  }
 
   return Response.json({ context });
 }
