@@ -127,12 +127,83 @@ Return a JSON object:
 
 // ── Build the full Stage 1 prompt ───────────────────────────────────
 
+/**
+ * Extract THE 1-2-3 labels and FIELD POSITION from a strategic frame for query generation.
+ * Pure string parsing — no LLM call.
+ */
+export function extractQueryContext(strategicFrame: string): string {
+  const lines = strategicFrame.split('\n');
+  const parts: string[] = [];
+
+  // Extract THE 1-2-3 section
+  let inSection = false;
+  let currentSection = '';
+  const sectionLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.match(/^## THE 1-2-3/)) {
+      inSection = true;
+      currentSection = '1-2-3';
+      continue;
+    }
+    if (line.match(/^FIELD POSITION:/)) {
+      if (sectionLines.length > 0 && currentSection === '1-2-3') {
+        parts.push(`Strategic pillars:\n${sectionLines.join('\n')}`);
+        sectionLines.length = 0;
+      }
+      // FIELD POSITION is a single labeled line/paragraph
+      const fieldPos = line.replace(/^FIELD POSITION:\s*/, '').trim();
+      if (fieldPos) {
+        parts.push(`Field position: ${fieldPos}`);
+      }
+      inSection = false;
+      currentSection = '';
+      continue;
+    }
+    if (inSection && line.match(/^## /)) {
+      // Hit next section heading
+      if (sectionLines.length > 0 && currentSection === '1-2-3') {
+        parts.push(`Strategic pillars:\n${sectionLines.join('\n')}`);
+        sectionLines.length = 0;
+      }
+      inSection = false;
+      currentSection = '';
+
+      // Check if this new heading is FIELD POSITION's parent
+      if (line.match(/^## WHAT THEY DO/)) {
+        // FIELD POSITION lives inside WHAT THEY DO — keep scanning
+        inSection = true;
+        currentSection = 'what-they-do';
+      }
+      continue;
+    }
+    if (inSection && currentSection === '1-2-3' && line.trim()) {
+      sectionLines.push(line.trim());
+    }
+    if (currentSection === 'what-they-do' && line.match(/^FIELD POSITION:/)) {
+      const fieldPos = line.replace(/^FIELD POSITION:\s*/, '').trim();
+      if (fieldPos) {
+        parts.push(`Field position: ${fieldPos}`);
+      }
+      inSection = false;
+      currentSection = '';
+    }
+  }
+
+  // Flush any remaining 1-2-3 lines
+  if (sectionLines.length > 0 && currentSection === '1-2-3') {
+    parts.push(`Strategic pillars:\n${sectionLines.join('\n')}`);
+  }
+
+  return parts.join('\n\n') || strategicFrame.slice(0, 400);
+}
+
 export function generateResearchQueries(
   donorName: string,
   identity: any,
   seedUrlExcerpt?: string,
   linkedinJson?: any,
-  projectContext?: { issueAreas?: string; processedBrief?: string },
+  projectContext?: { issueAreas?: string; processedBrief?: string; strategicFrame?: string },
 ): string {
   const formatIdentity = () => {
     const lines: string[] = [];
@@ -170,7 +241,16 @@ export function generateResearchQueries(
 
   // Project context injection for targeted queries
   let projectContextSection = '';
-  if (projectContext?.issueAreas || projectContext?.processedBrief) {
+  if (projectContext?.strategicFrame) {
+    const queryContext = extractQueryContext(projectContext.strategicFrame);
+    projectContextSection = `## Client Organization Context
+
+${queryContext}
+
+Include 1-2 queries in Category A that search for the target's relationship to the client's issue areas. Example: if the client works on climate and the target is a tech executive, search for "[name] climate philanthropy" or "[name] environmental giving."
+
+`;
+  } else if (projectContext?.issueAreas || projectContext?.processedBrief) {
     projectContextSection = `## Client Organization Context
 
 The client organization or project works on: ${projectContext.issueAreas || 'Not specified'}

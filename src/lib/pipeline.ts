@@ -685,7 +685,7 @@ ${pdfText}`;
     emit(`Designing search strategy for ${donorName}`, 'research', 4, TOTAL_STEPS);
     console.log('[Stage 1] Generating search queries');
 
-    const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData, projectContext ? { issueAreas: projectContext.issueAreas, processedBrief: projectContext.processedBrief } : undefined);
+    const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData, projectContext ? { issueAreas: projectContext.issueAreas, processedBrief: projectContext.processedBrief, strategicFrame: projectContext.strategicFrame } : undefined);
     const queryResponse = await complete('You are a research strategist designing search queries for behavioral evidence.', queryPrompt);
     const categorizedQueries = parseQueryGenerationResponse(queryResponse);
 
@@ -1722,9 +1722,11 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   const meetingGuideBlock = loadMeetingGuideBlockV3();
   const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
   const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
-  const projectLayer = projectContext
-    ? buildProjectLayer(projectContext)
-    : '# ORGANIZATION / PROJECT CONTEXT\n\nNo organization or project context was provided for this profile.';
+  const projectLayer = projectContext?.strategicFrame
+    ? projectContext.strategicFrame
+    : projectContext
+      ? buildProjectLayer(projectContext)
+      : '# ORGANIZATION / PROJECT CONTEXT\n\nNo organization or project context was provided for this profile.';
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
     donorName,
