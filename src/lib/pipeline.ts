@@ -1722,11 +1722,20 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   const meetingGuideBlock = loadMeetingGuideBlockV3();
   const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
   const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
-  const projectLayer = projectContext?.strategicFrame
-    ? projectContext.strategicFrame
-    : projectContext
-      ? buildProjectLayer(projectContext)
-      : '# ORGANIZATION / PROJECT CONTEXT\n\nNo organization or project context was provided for this profile.';
+
+  console.log(`[Stage 0] Meeting guide org layer: strategicFrame=${!!projectContext?.strategicFrame} (${projectContext?.strategicFrame?.length || 0} chars), processedBrief=${!!projectContext?.processedBrief} (${projectContext?.processedBrief?.length || 0} chars)`);
+
+  let projectLayer: string;
+  if (projectContext?.strategicFrame) {
+    console.log(`[Stage 0] Using strategicFrame for meeting guide`);
+    projectLayer = projectContext.strategicFrame;
+  } else if (projectContext) {
+    console.log(`[Stage 0] Falling back to buildProjectLayer()`);
+    projectLayer = buildProjectLayer(projectContext);
+  } else {
+    console.log(`[Stage 0] WARNING: No org context available for meeting guide`);
+    projectLayer = '# ORGANIZATION / PROJECT CONTEXT\n\nNo organization or project context was provided for this profile.';
+  }
 
   const meetingGuidePrompt = buildMeetingGuidePrompt(
     donorName,

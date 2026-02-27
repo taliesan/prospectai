@@ -44,5 +44,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  console.log(`[Stage 0] ProjectContext POST created id=${context.id}, name="${context.name}" — Stage 0 will run after /process distillation`);
+
   return Response.json({ context }, { status: 201 });
 }

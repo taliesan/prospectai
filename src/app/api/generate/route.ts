@@ -264,6 +264,7 @@ async function runPipelineInBackground(
 
         // Load project context from database if provided
         let projectContextData: import('@/lib/canon/loader').ProjectLayerInput | undefined;
+        console.log(`[Stage 0] Pipeline start: projectContextId=${projectContextId || 'none'}, userId=${userId || 'none'}`);
         if (projectContextId && userId) {
           try {
             const pc = await prisma.projectContext.findFirst({
@@ -280,10 +281,15 @@ async function runPipelineInBackground(
                 strategicFrame: pc.strategicFrame || undefined,
               };
               console.log(`[Job ${jobId}] Loaded project context: ${pc.name} (${pc.processedBrief.length} chars)`);
+              console.log(`[Stage 0] Pipeline context loaded: strategicFrame=${!!pc.strategicFrame} (${pc.strategicFrame?.length || 0} chars), processedBrief=${pc.processedBrief.length} chars, issueAreas=${pc.issueAreas?.length || 0} chars`);
+            } else {
+              console.log(`[Stage 0] ProjectContext id=${projectContextId} not found for user=${userId}`);
             }
           } catch (err) {
             console.warn(`[Job ${jobId}] Failed to load project context:`, err);
           }
+        } else {
+          console.log(`[Stage 0] No projectContextId provided — pipeline will run without org context`);
         }
 
         // Abort signal from job store — used for user-initiated cancellation

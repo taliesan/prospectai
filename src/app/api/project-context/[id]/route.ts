@@ -64,11 +64,15 @@ export async function PUT(
   const orgFieldsChanged =
     rawDescription !== undefined || issueAreas !== undefined || defaultAsk !== undefined;
 
+  console.log(`[Stage 0] ProjectContext PUT detected for id=${id}, name="${context.name}"`);
+  console.log(`[Stage 0] orgFieldsChanged=${orgFieldsChanged}, has processedBrief=${!!context.processedBrief} (${context.processedBrief?.length || 0} chars)`);
+
   if (orgFieldsChanged && context.processedBrief) {
     const materialTexts = context.materials
       .map(m => m.extractedText)
       .filter((t): t is string => Boolean(t));
 
+    console.log(`[Stage 0] Calling runOrgExtraction...`);
     runOrgExtraction({
       name: context.name,
       processedBrief: context.processedBrief,
@@ -77,15 +81,19 @@ export async function PUT(
       materials: materialTexts.length > 0 ? materialTexts : undefined,
     })
       .then(async (strategicFrame) => {
+        console.log(`[Stage 0] Writing strategicFrame to ProjectContext id=${id}...`);
         await prisma.projectContext.update({
           where: { id },
           data: { strategicFrame },
         });
-        console.log(`[Stage 0] Strategic frame updated for ${context.name} (${strategicFrame.length} chars)`);
+        console.log(`[Stage 0] strategicFrame updated for ${context.name} (${strategicFrame.length} chars)`);
       })
       .catch((err) => {
-        console.error(`[Stage 0] Re-extraction failed for ${context.name}:`, err);
+        console.error(`[Stage 0] ERROR in PUT trigger: ${err instanceof Error ? err.message : err}`);
+        console.error(`[Stage 0] Stack: ${err instanceof Error ? err.stack : 'N/A'}`);
       });
+  } else {
+    console.log(`[Stage 0] Skipping re-extraction (orgFieldsChanged=${orgFieldsChanged}, processedBrief=${!!context.processedBrief})`);
   }
 
   return Response.json({ context });
