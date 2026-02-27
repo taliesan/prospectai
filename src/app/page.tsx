@@ -118,7 +118,10 @@ export default function Home() {
       // 1. Handle project context — create new or use existing
       let projectContextId: string | undefined;
 
-      if (orgName.trim()) {
+      // Gate: either the user typed an org name (new context) or selected a saved one
+      const hasOrgInput = orgName.trim() || (selectedContextId !== '__new__');
+
+      if (hasOrgInput) {
         if (selectedContextId === '__new__') {
           // Create new project context
           const createRes = await fetch('/api/project-context', {
@@ -156,6 +159,11 @@ export default function Home() {
             await fetch(`/api/project-context/${projectContextId}/process`, {
               method: 'POST',
             });
+          } else {
+            // Surface the failure so the pipeline doesn't silently run without org context
+            console.error(`[Submit] Failed to create project context: ${createRes.status}`);
+            const errBody = await createRes.json().catch(() => ({}));
+            console.error('[Submit] Response:', errBody);
           }
         } else {
           projectContextId = selectedContextId;
@@ -188,6 +196,7 @@ export default function Home() {
       }
 
       // 3. Submit pipeline job
+      console.log(`[Submit] projectContextId=${projectContextId || 'none'}, selectedContextId=${selectedContextId}, hasOrgInput=${hasOrgInput}`);
       const submitResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
