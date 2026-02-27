@@ -80,23 +80,26 @@ export default function Home() {
       .catch(err => console.warn('Failed to load project contexts:', err));
   }, [session]);
 
-  // When selecting a saved context, pre-fill fields
-  useEffect(() => {
-    if (selectedContextId === '__new__') {
+  // When user explicitly changes the context dropdown, pre-fill or clear fields.
+  // This must NOT be a useEffect on [selectedContextId, savedContexts] because
+  // savedContexts can change on session refresh, which would clear orgName mid-typing.
+  const handleContextChange = useCallback((contextId: string) => {
+    setSelectedContextId(contextId);
+    if (contextId === '__new__') {
       setOrgName('');
       setOrgDescription('');
       setIssueAreas('');
       setOrgDefaultAsk('');
-      return;
+    } else {
+      const ctx = savedContexts.find(c => c.id === contextId);
+      if (ctx) {
+        setOrgName(ctx.name);
+        setOrgDescription(ctx.rawDescription || '');
+        setIssueAreas(ctx.issueAreas || '');
+        setOrgDefaultAsk(ctx.defaultAsk || '');
+      }
     }
-    const ctx = savedContexts.find(c => c.id === selectedContextId);
-    if (ctx) {
-      setOrgName(ctx.name);
-      setOrgDescription(ctx.rawDescription || '');
-      setIssueAreas(ctx.issueAreas || '');
-      setOrgDefaultAsk(ctx.defaultAsk || '');
-    }
-  }, [selectedContextId, savedContexts]);
+  }, [savedContexts]);
 
   // URL validation
   const hasValidUrl = /^https?:\/\/.+\..+/m.test(seedUrls);
@@ -204,7 +207,7 @@ export default function Home() {
       }
 
       // 3. Submit pipeline job
-      console.log(`[Submit] projectContextId=${projectContextId || 'none'}, selectedContextId=${selectedContextId}, hasOrgInput=${hasOrgInput}`);
+      console.log(`[Submit] projectContextId=${projectContextId || 'none'}, selectedContextId=${selectedContextId}, hasOrgInput=${hasOrgInput}, orgName="${orgName}"`);
       const submitResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -785,7 +788,7 @@ export default function Home() {
                     </label>
                     <select
                       value={selectedContextId}
-                      onChange={(e) => setSelectedContextId(e.target.value)}
+                      onChange={(e) => handleContextChange(e.target.value)}
                       className="w-full text-[15px] text-brand-black border border-brand-light-gray border-b-2 rounded px-4 py-3.5 focus:border-brand-green focus:outline-none transition-all"
                       style={{ ...inputStyle, appearance: 'auto' as const }}
                     >
