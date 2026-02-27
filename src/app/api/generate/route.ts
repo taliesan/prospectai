@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf, relationshipContext, projectContextId, specificAsk } = body;
-  console.log(`[API] Received linkedinPdf: ${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}`);
+  console.log(`[API] Received projectContextId=${projectContextId || 'MISSING'}, linkedinPdf=${linkedinPdf ? `${linkedinPdf.length} chars` : 'none'}, bodyKeys=[${Object.keys(body).join(',')}]`);
 
   if (!donorName || typeof donorName !== 'string') {
     return Response.json(

@@ -160,10 +160,13 @@ export default function Home() {
               method: 'POST',
             });
           } else {
-            // Surface the failure so the pipeline doesn't silently run without org context
-            console.error(`[Submit] Failed to create project context: ${createRes.status}`);
+            // Context creation failed — abort, don't run pipeline without org context
             const errBody = await createRes.json().catch(() => ({}));
-            console.error('[Submit] Response:', errBody);
+            console.error(`[Submit] Failed to create project context: ${createRes.status}`, errBody);
+            throw new Error(
+              `Failed to create organization context (${createRes.status}). ` +
+              (errBody.error || 'Please try again or check that you are signed in.')
+            );
           }
         } else {
           projectContextId = selectedContextId;
@@ -179,6 +182,11 @@ export default function Home() {
             }),
           });
         }
+      }
+
+      // Safety check: if user provided org data but we couldn't resolve a projectContextId, abort
+      if (hasOrgInput && !projectContextId) {
+        throw new Error('Organization context could not be resolved. Please try again.');
       }
 
       setIsProcessing(false);
@@ -348,9 +356,10 @@ export default function Home() {
       };
     } catch (error) {
       console.error('Error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Generation failed. Please try again.';
       setProgressMessages(prev => [...prev, {
         type: 'error' as const,
-        message: 'Error: Generation failed. Please try again.'
+        message: `Error: ${errorMsg}`
       }]);
       setIsLoading(false);
       setIsProcessing(false);
