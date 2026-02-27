@@ -94,10 +94,14 @@ export async function POST(
   });
 
   // Run Stage 0 org extraction async — don't block the response
+  console.log(`[Stage 0] ProjectContext POST /process detected for id=${id}, name="${context.name}"`);
+  console.log(`[Stage 0] Has processedBrief: true (${processedBrief.length} chars)`);
+
   const materialTexts = context.materials
     .map(m => m.extractedText)
     .filter((t): t is string => Boolean(t));
 
+  console.log(`[Stage 0] Calling runOrgExtraction...`);
   runOrgExtraction({
     name: context.name,
     processedBrief,
@@ -106,14 +110,16 @@ export async function POST(
     materials: materialTexts.length > 0 ? materialTexts : undefined,
   })
     .then(async (strategicFrame) => {
+      console.log(`[Stage 0] Writing strategicFrame to ProjectContext id=${id}...`);
       await prisma.projectContext.update({
         where: { id },
         data: { strategicFrame },
       });
-      console.log(`[Stage 0] Strategic frame saved for ${context.name} (${strategicFrame.length} chars)`);
+      console.log(`[Stage 0] strategicFrame saved for ${context.name} (${strategicFrame.length} chars)`);
     })
     .catch((err) => {
-      console.error(`[Stage 0] Failed for ${context.name}:`, err);
+      console.error(`[Stage 0] ERROR in /process trigger: ${err instanceof Error ? err.message : err}`);
+      console.error(`[Stage 0] Stack: ${err instanceof Error ? err.stack : 'N/A'}`);
     });
 
   return Response.json({ context: updated });

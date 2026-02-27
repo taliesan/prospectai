@@ -18,6 +18,9 @@ export interface OrgExtractionInput {
 export async function runOrgExtraction(
   input: OrgExtractionInput,
 ): Promise<string> {
+  console.log(`[Stage 0] Running org extraction for "${input.name}"`);
+  console.log(`[Stage 0] Input: processedBrief=${input.processedBrief?.length || 0} chars, issueAreas=${input.issueAreas?.length || 0} chars, defaultAsk=${input.defaultAsk?.length || 0} chars, materials=${input.materials?.length || 0} items`);
+
   const systemPrompt = loadStage0OrgIntakePrompt();
 
   const parts: string[] = [];
@@ -34,11 +37,16 @@ export async function runOrgExtraction(
   }
 
   const userMessage = parts.join('\n\n');
+  console.log(`[Stage 0] Assembled input block: ${userMessage.length} chars`);
+  console.log(`[Stage 0] Sending to model (prompt: ${systemPrompt.length} chars, input: ${userMessage.length} chars)...`);
 
   const result = await complete(systemPrompt, userMessage, {
     maxTokens: 2000,
     temperature: 0,
   });
+
+  console.log(`[Stage 0] Received strategicFrame: ${result.length} chars`);
+  console.log(`[Stage 0] First 200 chars: ${result.slice(0, 200)}`);
 
   return result;
 }
