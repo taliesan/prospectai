@@ -5,7 +5,6 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { runFullPipeline } from '@/lib/pipeline';
 import { sanitizeForClaude } from '@/lib/sanitize';
-import { loadExemplars } from '@/lib/canon/loader';
 import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
 import { createJob, addProgress, completeJob, failJob, getAbortSignal, updateActivity, clearActivity, linkJobToProfile } from '@/lib/job-store';
 import type { DeepResearchActivity } from '@/lib/job-store';
@@ -258,9 +257,9 @@ async function runPipelineInBackground(
         // CODED PIPELINE — no agent loops, no LLM driving searches
         console.log(`[Job ${jobId}] Running coded pipeline (no agentic loops)...`);
 
-        // Load exemplars
-        const exemplars = loadExemplars();
-        console.log(`[Job ${jobId}] Loaded ${exemplars.length} characters of exemplar profiles`);
+        // V2 pipeline — exemplars loaded internally via prompt-v2.txt
+        const exemplars = '';
+        console.log(`[Job ${jobId}] V2 pipeline active — exemplars loaded from prompt-v2.txt`);
 
         // Load project context from database if provided
         let projectContextData: import('@/lib/canon/loader').ProjectLayerInput | undefined;

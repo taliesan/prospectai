@@ -36,7 +36,7 @@ export function buildMeetingGuidePrompt(
 
 # EXEMPLAR GUIDES
 
-The following are complete Meeting Guides at the target quality level. Study the voice, the register, the density, and the way every observation lands in an instruction. Your output must match this standard.
+The following three guides were all written for the same organization. The organization's strategic frame is provided first, followed by three meeting guides — each for a different donor with a different psychology. Study how the same org context produces different tactical approaches depending on who's across the table.
 
 ${exemplars}
 

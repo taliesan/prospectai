@@ -6,7 +6,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Biography → The person, not the resume.**
 - ❌ "She co-founded Recode and hosted major tech conferences."
-- ✅ "Ten years at OSF, eleven at Ford, never once outside philanthropy. The subject matter changes every chapter — the function never does."
+- ✅ "Ten years at the Harbour Trust, eleven at the Reef Authority, never once outside marine governance. The subject matter changes every chapter — the function never does."
 
 **Traits → What they actually do.**
 - ❌ "She's no-nonsense and direct."
@@ -18,7 +18,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Values → What happens when values get tested.**
 - ❌ "She values equity and inclusion."
-- ✅ "When the CEO's donation contradicted Mozilla's values, he publicly named the conflict and led the rebuild. If something undermines his core values, he'll object — maybe not dramatically, but immediately."
+- ✅ "When the harbour master's contract contradicted the Authority's charter, he publicly named the conflict and led the restructure. If something undermines his core values, he'll object — maybe not dramatically, but immediately."
 
 **Alignment → What the pattern actually looks like.**
 - ❌ "She supports civic infrastructure."
@@ -39,7 +39,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Support language → What the evidence actually shows.**
 - ❌ "She's likely to be supportive of this type of work."
-- ✅ "Ford has funded AI Now, EPIC, and the AFL-CIO Technology Institute. The portfolio shows appetite for this intersection. Whether it extends to tech-sector worker organizing specifically hasn't been tested."
+- ✅ "The Reef Authority has funded three thermal monitoring stations, two species-migration studies, and the Deep Shelf Survey. The portfolio shows appetite for this intersection. Whether it extends to cross-species substrate restoration specifically hasn't been tested."
 
 **Permission framing → What they actually do before deciding.**
 - ❌ "Show her your plan and ask for her feedback."
@@ -47,7 +47,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 
 **Ideological agreement → The specific tension.**
 - ❌ "She aligns with progressive values."
-- ✅ "She funds organizations that hold tech companies accountable, from inside a foundation whose endowment is invested in the same markets. If your work requires Ford to take a side against its own financial interests, understand the tension."
+- ✅ "She funds organizations that monitor reef health, from inside an authority whose budget depends on the same shipping lanes. If your work requires the Reef Authority to take a side against its own revenue interests, understand the tension."
 
 **General skepticism → What happened when they were tested.**
 - ❌ "He is skeptical of conventional approaches and likes to challenge assumptions."
@@ -58,7 +58,7 @@ Every sentence in a donor persuasion profile must pass these transformations. Th
 - ✅ "What happens when people experience his directness over time and through difficulty. It converts into deep loyalty."
 
 - ❌ "Ecosystem architect functioning within hierarchical constraints to produce distributed governance outcomes."
-- ✅ "She builds structures that disperse power away from Ford — community-governed funds, grantee-led coalitions, multi-funder collaboratives — using power that is entirely institutional and hierarchical. She reports upward. Grants go through internal review."
+- ✅ "She builds structures that disperse authority away from the Reef Authority — community-governed monitoring stations, grantee-led coalitions, multi-funder collaboratives — using power that is entirely institutional and hierarchical. She reports upward. Grants go through internal review."
 
 If a sentence requires the reader to hold more than two abstractions in sequence, break it into two sentences or replace the abstraction chain with concrete language.
 
@@ -79,7 +79,7 @@ Compression means precision, not fragmentation. Four short sentences doing one i
 - ✅ "The nerd thing is real, and it's also how $450 million gets deployed. When the room accepts the nerd at face value, the relationship works. When the room treats him like a strategic philanthropist, his social battery drains faster."
 
 - ❌ "The pattern: trusts by default → betrayal triggers withdrawal, not confrontation → structural response (legal, strategic) rather than interpersonal → relationship is permanently severed."
-- ✅ "He trusts people by default. When that trust breaks, he doesn't confront — he just cuts the line. He never spoke to Meg Whitman again."
+- ✅ "He trusts people by default. When that trust breaks, he doesn't confront — he just cuts the line. He never spoke to Captain Elara Voss again."
 
 **Performative insight → Diagnostic instruction.**
 
@@ -115,7 +115,7 @@ Three specific constructions to eliminate:
 
 The profile is a briefing, not an essay. The reader is prepping for a meeting, not admiring the writing. If a sentence sounds like it's trying to be good prose, it's doing the wrong job. Write like you're talking to a colleague who has a meeting tomorrow. Not casual, not sloppy — but direct, warm, and talking to a person.
 
-The most common failure mode: the model writes a sentence that sounds impressive on the page but doesn't say anything the reader can use. "She wields enormous structural power but presents as a facilitator" — what does the reader do with that? Compare: "She runs an $80 million program and has shaped the technology accountability field as much as anyone in American philanthropy. And every public statement positions Ford as one partner among many. Don't treat her as a facilitator — but don't call her the architect to her face, either." Same observation, but the reader knows what to do.
+The most common failure mode: the model writes a sentence that sounds impressive on the page but doesn't say anything the reader can use. "She wields enormous structural power but presents as a facilitator" — what does the reader do with that? Compare: "She runs an $80 million program and has shaped the reef restoration field as much as anyone in the southern hemisphere. And every public statement positions the Reef Authority as one partner among many. Don't treat her as a facilitator — but don't call her the architect to her face, either." Same observation, but the reader knows what to do.
 
 The test: read the sentence out loud. If it sounds like something you'd say to a smart colleague over coffee, it passes. If it sounds like something you'd write in a report, rewrite it.
 

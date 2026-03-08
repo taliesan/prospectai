@@ -16,27 +16,16 @@ function loadCanonFile(filename: string): string {
 }
 
 // Eagerly load all canon documents at module initialization
-const exemplarsCache = loadCanonFile('exemplars.md');
 const geoffreyBlockCache = loadCanonFile('geoffrey-block.md');
 const meetingGuideBlockV3Cache = loadCanonFile('meeting-guide-block-v3.md');
 const meetingGuideOutputTemplateCache = loadCanonFile('meeting-guide-output-template.md');
-const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md');
-const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
-const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
+const meetingGuideInesCache = loadCanonFile('meeting-guide-ines-de-la-cerda.md');
+const meetingGuideLumaCache = loadCanonFile('meeting-guide-luma-orekh.md');
+const meetingGuideYmmraCache = loadCanonFile('meeting-guide-ymmra.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
-
-export function loadExemplars(): string {
-  return exemplarsCache;
-}
-
-/**
- * Returns all exemplars. No selection logic - the model needs to see the full range.
- */
-export function selectExemplars(_researchPackage: string, allExemplars: string): string {
-  return allExemplars;
-}
+const tidebreakStrategicFrameCache = loadCanonFile('org-strategic-frame-tidebreak.md');
 
 export function loadGeoffreyBlock(): string {
   return geoffreyBlockCache;
@@ -51,26 +40,30 @@ export function loadMeetingGuideOutputTemplate(): string {
 }
 
 /**
- * Returns meeting guide exemplars for the prompt, excluding the exemplar
- * that matches the current donor (by lowercase last-name match in filename).
+ * Returns the Tidebreak org frame + all fictional meeting guide exemplars for the prompt.
  */
-export function loadMeetingGuideExemplars(donorName: string): string {
-  const allExemplars = [
-    { name: 'newmark', content: meetingGuideNewmarkCache },
-    { name: 'bahat', content: meetingGuideBahatCache },
-    { name: 'mcglinchey', content: meetingGuideMcGlincheyCache },
-  ];
+export function loadMeetingGuideExemplars(): string {
+  return `## EXEMPLAR ORG FRAME
 
-  const donorLower = donorName.toLowerCase();
-  const selected = allExemplars.filter(e => !donorLower.includes(e.name));
+${tidebreakStrategicFrameCache}
 
-  if (selected.length === allExemplars.length) {
-    // No match found — return all 3
-    return selected.map(e => e.content).join('\n\n---\n\n');
-  }
+---
 
-  // Excluded one — return the remaining 2
-  return selected.map(e => e.content).join('\n\n---\n\n');
+## EXEMPLAR GUIDE 1
+
+${meetingGuideInesCache}
+
+---
+
+## EXEMPLAR GUIDE 2
+
+${meetingGuideLumaCache}
+
+---
+
+## EXEMPLAR GUIDE 3
+
+${meetingGuideYmmraCache}`;
 }
 
 export interface ProjectLayerInput {
@@ -116,33 +109,6 @@ export function loadStage0OrgIntakePrompt(): string {
   return stage0OrgIntakeCache;
 }
 
-/**
- * Returns the three exemplar profiles as separate strings for fact-checking.
- * Each profile is extracted by splitting on the "# PERSUASION PROFILE —" heading.
- */
-export function loadExemplarProfilesSeparate(): {
-  bahat: string;
-  newmark: string;
-  mcglinchey: string;
-} {
-  const full = exemplarsCache;
-  // Split on the profile headings, keeping the heading with its content
-  const profileStarts = [
-    { name: 'newmark' as const, marker: '# PERSUASION PROFILE — CRAIG NEWMARK' },
-    { name: 'bahat' as const, marker: '# PERSUASION PROFILE — ROY BAHAT' },
-    { name: 'mcglinchey' as const, marker: '# PERSUASION PROFILE — LORI McGLINCHEY' },
-  ];
-
-  const result: Record<string, string> = { bahat: '', newmark: '', mcglinchey: '' };
-
-  for (let i = 0; i < profileStarts.length; i++) {
-    const startIdx = full.indexOf(profileStarts[i].marker);
-    if (startIdx === -1) continue;
-    const nextStart = i + 1 < profileStarts.length
-      ? full.indexOf(profileStarts[i + 1].marker)
-      : full.length;
-    result[profileStarts[i].name] = full.slice(startIdx, nextStart !== -1 ? nextStart : full.length).trim();
-  }
-
-  return result as { bahat: string; newmark: string; mcglinchey: string };
+export function loadTidebreakStrategicFrame(): string {
+  return tidebreakStrategicFrameCache;
 }

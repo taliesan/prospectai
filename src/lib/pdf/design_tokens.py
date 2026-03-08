@@ -1,4 +1,4 @@
-"""DTW Design System tokens for PDF generation."""
+"""ProspectAI Design System tokens for PDF generation."""
 
 from reportlab.lib.colors import HexColor
 

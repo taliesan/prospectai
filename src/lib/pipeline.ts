@@ -21,7 +21,7 @@ import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
 import { buildFactCheckSystemPrompt, buildFactCheckUserMessage, processFactCheckResult } from './prompts/fact-check-prompt';
-import { selectExemplars, loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, buildProjectLayer, type ProjectLayerInput } from './canon/loader';
+import { loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, buildProjectLayer, type ProjectLayerInput } from './canon/loader';
 import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -513,7 +513,7 @@ export async function runFullPipeline(
   donorName: string,
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
-  canonDocs: { exemplars: string },
+  _canonDocs: { exemplars: string },
   onProgress?: ResearchProgressCallback,
   linkedinPdfBase64?: string,
   fetchFunction?: (url: string) => Promise<string>,
@@ -696,6 +696,12 @@ ${pdfText}`;
     console.log(`[Stage 1] Generated ${categorizedQueries.length} queries: A=${catCounts['A'] || 0}, B=${catCounts['B'] || 0}, C=${catCounts['C'] || 0}`);
     emit(`${categorizedQueries.length} search queries designed (A:${catCounts['A'] || 0}, B:${catCounts['B'] || 0}, C:${catCounts['C'] || 0})`, 'research', 5, TOTAL_STEPS);
 
+    // Debug save query generation
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-1-query-generation-prompt.txt', queryPrompt);
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-1-query-generation-response.txt', queryResponse);
+    } catch (e) { /* ignore */ }
+
     // ── Stage 2: Search Execution ────────────────────────────────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
     emit(`Executing ${categorizedQueries.length} searches`, 'research', 6, TOTAL_STEPS);
@@ -759,6 +765,25 @@ ${pdfText}`;
     const allSources = [...tier1Sources, ...allSearchSources];
     console.log(`[Stage 2] ${allSources.length} total sources (${tier1Sources.length} blog, ${allSearchSources.length} Tavily)`);
     emit(`${allSources.length} sources found — ${tier1Sources.length} blog posts, ${allSearchSources.length} from search`, 'research', 8, TOTAL_STEPS);
+
+    // Debug save search results
+    try {
+      const searchLines: string[] = [
+        `STAGE 2: SOURCE DISCOVERY — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Queries: ${categorizedQueries.length}`,
+        `Blog sources: ${tier1Sources.length}`,
+        `Tavily sources: ${allSearchSources.length}`,
+        `Total: ${allSources.length}`,
+        '',
+        '=== QUERIES ===',
+        ...categorizedQueries.map((q, i) => `  ${i + 1}. [Cat ${q.category}] ${q.query}\n      Rationale: ${q.rationale}\n      Dimensions: ${q.targetDimensions?.join(', ') || 'n/a'}`),
+        '',
+        '=== SOURCES FOUND ===',
+        ...allSources.map((s, i) => `  ${i + 1}. ${s.url}\n      Title: ${s.title}\n      Source: ${s.source || 'tavily'}\n      Query: ${s.query || 'n/a'}\n      Snippet: ${(s.snippet || '').slice(0, 200)}`),
+      ];
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-2-source-discovery.txt', searchLines.join('\n'));
+    } catch (e) { /* ignore */ }
 
     // ── Stage 3: Screening & Attribution ─────────────────────────
     if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
@@ -914,9 +939,22 @@ ${pdfText}`;
     );
     console.log(`[Stage 5] Confidence floors: ${confidenceResult.sections.map(s => `S${s.section}=${s.floor}`).join(', ')}`);
 
-    // Debug save confidence data
+    // Debug save confidence data and scoring summary
     try {
       writeFileSync('/tmp/prospectai-outputs/DEBUG-confidence-floors.json', JSON.stringify(confidenceResult.sections, null, 2));
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-5-dimension-scoring.txt', [
+        `STAGE 5: DIMENSION SCORING & SELECTION — ${donorName}`,
+        `Generated: ${new Date().toISOString()}`,
+        `Sources scored: ${stage5Result.stats.totalScored}`,
+        `Sources selected: ${stage5Result.stats.selected}`,
+        `Estimated content: ~${Math.round(stage5Result.stats.estimatedContentChars / 1000)}K chars`,
+        '',
+        '=== COVERAGE GAPS ===',
+        coverageGapReport,
+        '',
+        '=== CONFIDENCE FLOORS ===',
+        ...confidenceResult.sections.map(s => `  Section ${s.section} (${s.sectionName}): floor=${s.floor}`),
+      ].join('\n'));
     } catch (e) { /* ignore */ }
 
     // ── DEBUG: Source Selection Provenance Report ──────────────────
@@ -1284,7 +1322,7 @@ MEDIOCRE: "MacDougall values transparency and openness in his work. He has been 
 
 This is mediocre because it's personality description, not behavioral prediction. It uses adjectives instead of observable behavior. It doesn't synthesize across sources or identify tensions. Nobody can act on it.
 
-GREAT CONDITIONAL: "If you lead with transparency about your problems and uncertainties, he'll lean in — that's his language (Bloomberg Beta Manual: 'transparency is the first step to trust'). If you lead with polish and manage impressions, he'll start questioning and the dynamic will shift to interrogation (anti-sell document: 'quick to question — often comes across as criticism')."
+GREAT CONDITIONAL: "If you lead with transparency about your problems and uncertainties, he'll lean in — that's his language (Harbour Trust Annual Report: 'transparency is the first step to trust'). If you lead with polish and manage impressions, he'll start questioning and the dynamic will shift to interrogation (field notes: 'quick to question — often comes across as criticism')."
 
 This is great because both branches are evidence-based, predict observable behavior, and tell the reader what to do.
 
@@ -1511,7 +1549,7 @@ ${gapFillEssay}`;
   console.log('[Pipeline] Step 3: Profile generation (Opus)');
 
   const geoffreyBlock = loadGeoffreyBlock();
-  const exemplars = loadExemplars();
+  const exemplars = ''; // V1 exemplars archived — V2 uses prompt-v2.txt internally
 
   const researchPackagePreamble = deepResearchResult
     ? `The behavioral evidence below is an analytical dossier produced by Opus reading ${research.sources.length} pre-fetched sources in full plus a supplementary gap-fill research essay (${deepResearchResult.searchCount} additional web searches). Each behavioral dimension contains two blocks:
@@ -1578,6 +1616,12 @@ The quotes are your evidence. The analysis is scaffolding. Build from the eviden
     const factCheckUserMsg = buildFactCheckUserMessage(firstDraftProfile, researchPackage, linkedinData);
 
     console.log(`[Fact-Check] Prompt size: ~${estimateTokens(factCheckUserMsg)} tokens`);
+
+    // Debug save fact-check prompt
+    try {
+      writeFileSync('/tmp/prospectai-outputs/DEBUG-fact-check-prompt.txt',
+        `=== SYSTEM PROMPT ===\n\n${factCheckSystemPrompt}\n\n=== USER MESSAGE (${factCheckUserMsg.length} chars) ===\n\n${factCheckUserMsg.slice(0, 5000)}\n\n... [TRUNCATED — ${factCheckUserMsg.length} chars total]`);
+    } catch (e) { /* ignore */ }
 
     const factCheckResponse = await complete(
       factCheckSystemPrompt,
@@ -1661,8 +1705,11 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   );
   console.log(`[Editorial] Prompt size: ${estimateTokens(critiquePrompt)} tokens`);
 
+  const critiqueSystemPrompt = 'You are an editorial critic reviewing a donor persuasion profile against exacting production standards. Your job is to find where the draft fails — weak analysis, register violations, restatement, unsupported claims — and produce a stronger redraft.';
+
   try {
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt', critiquePrompt);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-critique-prompt.txt',
+      `=== SYSTEM PROMPT ===\n\n${critiqueSystemPrompt}\n\n=== USER MESSAGE (${critiquePrompt.length} chars) ===\n\n${critiquePrompt}`);
   } catch (e) { /* ignore */ }
 
   if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
@@ -1671,7 +1718,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
     maxTokens: 16000,
     abortSignal,
     model: 'claude-opus-4-20250514',
-    systemPrompt: 'You are an editorial critic reviewing a donor persuasion profile against exacting production standards. Your job is to find where the draft fails — weak analysis, register violations, restatement, unsupported claims — and produce a stronger redraft.',
+    systemPrompt: critiqueSystemPrompt,
   });
 
   const reduction = Math.round((1 - finalProfile.length / firstDraftProfile.length) * 100);
@@ -1720,7 +1767,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   console.log('[Pipeline] Step 4: Meeting guide (Sonnet)');
 
   const meetingGuideBlock = loadMeetingGuideBlockV3();
-  const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
+  const meetingGuideExemplars = loadMeetingGuideExemplars();
   const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
 
   console.log(`[Stage 0] Meeting guide org layer: strategicFrame=${!!projectContext?.strategicFrame} (${projectContext?.strategicFrame?.length || 0} chars), processedBrief=${!!projectContext?.processedBrief} (${projectContext?.processedBrief?.length || 0} chars)`);
@@ -1748,7 +1795,8 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   );
 
   try {
-    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt', meetingGuidePrompt);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-prompt.txt',
+      `=== SYSTEM PROMPT ===\n\n${MEETING_GUIDE_SYSTEM_PROMPT}\n\n=== USER MESSAGE (${meetingGuidePrompt.length} chars) ===\n\n${meetingGuidePrompt}`);
   } catch (e) { /* ignore */ }
 
   if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
@@ -1764,6 +1812,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   const meetingGuideHtmlFull = formatMeetingGuide(meetingGuide);
 
   try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide-response.txt', meetingGuide);
     writeFileSync('/tmp/prospectai-outputs/DEBUG-meeting-guide.md', meetingGuide);
   } catch (e) { /* ignore */ }
 
