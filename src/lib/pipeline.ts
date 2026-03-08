@@ -1720,7 +1720,7 @@ ${JSON.stringify(criticalItemsForEditorial, null, 2)}
   console.log('[Pipeline] Step 4: Meeting guide (Sonnet)');
 
   const meetingGuideBlock = loadMeetingGuideBlockV3();
-  const meetingGuideExemplars = loadMeetingGuideExemplars(donorName);
+  const meetingGuideExemplars = loadMeetingGuideExemplars();
   const meetingGuideOutputTemplate = loadMeetingGuideOutputTemplate();
 
   console.log(`[Stage 0] Meeting guide org layer: strategicFrame=${!!projectContext?.strategicFrame} (${projectContext?.strategicFrame?.length || 0} chars), processedBrief=${!!projectContext?.processedBrief} (${projectContext?.processedBrief?.length || 0} chars)`);

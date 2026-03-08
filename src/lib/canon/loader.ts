@@ -19,9 +19,9 @@ function loadCanonFile(filename: string): string {
 const geoffreyBlockCache = loadCanonFile('geoffrey-block.md');
 const meetingGuideBlockV3Cache = loadCanonFile('meeting-guide-block-v3.md');
 const meetingGuideOutputTemplateCache = loadCanonFile('meeting-guide-output-template.md');
-const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md');
-const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
-const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
+const meetingGuideInesCache = loadCanonFile('meeting-guide-ines-de-la-cerda.md');
+const meetingGuideLumaCache = loadCanonFile('meeting-guide-luma-orekh.md');
+const meetingGuideYmmraCache = loadCanonFile('meeting-guide-ymmra.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
@@ -39,26 +39,14 @@ export function loadMeetingGuideOutputTemplate(): string {
 }
 
 /**
- * Returns meeting guide exemplars for the prompt, excluding the exemplar
- * that matches the current donor (by lowercase last-name match in filename).
+ * Returns all fictional meeting guide exemplars for the prompt.
  */
-export function loadMeetingGuideExemplars(donorName: string): string {
-  const allExemplars = [
-    { name: 'newmark', content: meetingGuideNewmarkCache },
-    { name: 'bahat', content: meetingGuideBahatCache },
-    { name: 'mcglinchey', content: meetingGuideMcGlincheyCache },
-  ];
-
-  const donorLower = donorName.toLowerCase();
-  const selected = allExemplars.filter(e => !donorLower.includes(e.name));
-
-  if (selected.length === allExemplars.length) {
-    // No match found — return all 3
-    return selected.map(e => e.content).join('\n\n---\n\n');
-  }
-
-  // Excluded one — return the remaining 2
-  return selected.map(e => e.content).join('\n\n---\n\n');
+export function loadMeetingGuideExemplars(): string {
+  return [
+    meetingGuideInesCache,
+    meetingGuideLumaCache,
+    meetingGuideYmmraCache,
+  ].join('\n\n---\n\n');
 }
 
 export interface ProjectLayerInput {
