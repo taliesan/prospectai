@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        dtw: {
+        brand: {
           black: '#1A1A1A',
           charcoal: '#2D2D2D',
           'warm-gray': '#4A4A4A',

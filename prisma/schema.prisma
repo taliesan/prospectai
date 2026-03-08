@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String
+  passwordHash    String
+  approved        Boolean          @default(false)
+  isAdmin         Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  profiles        Profile[]
+  jobs            Job[]
+  projectContexts ProjectContext[]
+}
+
+model ProjectContext {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  name             String
+  rawDescription   String?           @db.Text
+  processedBrief   String            @db.Text
+  issueAreas       String?           @db.Text
+  defaultAsk       String?           @db.Text
+  strategicFrame   String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  profiles         Profile[]
+  materials        ProjectMaterial[]
+
+  @@index([userId])
+}
+
+model ProjectMaterial {
+  id               String         @id @default(cuid())
+  projectContextId String
+  projectContext   ProjectContext  @relation(fields: [projectContextId], references: [id], onDelete: Cascade)
+  type             String         // "file" or "url"
+  filename         String?        // original filename for uploads
+  url              String?        // URL for web sources
+  extractedText    String?        @db.Text
+  charCount        Int?
+  createdAt        DateTime       @default(now())
+
+  @@index([projectContextId])
+}
+
+model Profile {
+  id                   String          @id @default(cuid())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id])
+  donorName            String
+  profileMarkdown      String          @db.Text
+  meetingGuideMarkdown String?         @db.Text
+  researchPackageJson  String?         @db.Text
+  linkedinDataJson     String?         @db.Text
+  seedUrlsJson         String?         @db.Text
+  confidenceScores     String?         @db.Text
+  sourceCount          Int?
+  dimensionCoverage    String?         @db.Text
+  status               String          @default("complete") // complete, failed
+  pipelineVersion      String?
+  projectContextId     String?
+  projectContext       ProjectContext?  @relation(fields: [projectContextId], references: [id])
+  relationshipContext  String?         @db.Text
+  fundraiserName       String?
+  specificAsk          String?         @db.Text
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  job                  Job?
+
+  @@index([userId])
+  @@index([donorName])
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  profileId    String?   @unique
+  profile      Profile?  @relation(fields: [profileId], references: [id])
+  donorName    String
+  status       String    @default("running") // running, complete, failed, cancelled
+  progressData String?   @db.Text
+  error        String?   @db.Text
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([userId])
+}

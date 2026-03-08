@@ -63,7 +63,7 @@ export const STATUS = {
     message: `✓ Research complete: ${count} sources`
   }),
 
-  // Dossier stage
+  // Research package stage (legacy pipeline)
   tiersPrioritized: (t1: number, t2: number, t3: number, t4: number) => emitProgress({
     type: 'status',
     phase: 'analysis',
@@ -99,10 +99,10 @@ export const STATUS = {
     phase: 'analysis',
     message: `Identifying contradictions and patterns...`
   }),
-  dossierComplete: () => emitProgress({
+  researchPackageComplete: () => emitProgress({
     type: 'status',
     phase: 'analysis',
-    message: `✓ Behavioral dossier complete`
+    message: `✓ Research package complete`
   }),
 
   // Profile stage

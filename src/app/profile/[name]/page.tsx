@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
 import { parseProfileForPDF } from '@/lib/pdf/parse-profile';
+import MeetingGuideRenderer from '@/components/MeetingGuideRenderer';
 
 interface Source {
   url: string;
@@ -18,9 +20,10 @@ interface ProfileData {
     rawMarkdown: string;
     sources?: Source[];
   };
-  dossier: { rawMarkdown: string };
+  researchProfile: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
   meetingGuide?: string;
+  meetingGuideHtml?: string;
 }
 
 type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
@@ -34,29 +37,96 @@ const tabAccents: Record<Tab, { border: string; color: string; bg: string }> = {
 
 export default function ProfilePage() {
   const params = useParams();
-  const donorName = decodeURIComponent(params.name as string);
+  const router = useRouter();
+  const { data: session } = useSession();
+  const paramValue = decodeURIComponent(params.name as string);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [donorName, setDonorName] = useState(paramValue);
+  const [fundraiserName, setFundraiserName] = useState('');
+  const [seedUrls, setSeedUrls] = useState<string[]>([]);
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadProfile = async () => {
+    // Try DB fetch first (param could be a database ID)
+    try {
+      const res = await fetch(`/api/profiles/${paramValue}`);
+      if (res.ok) {
+        const { profile } = await res.json();
+        setProfileId(profile.id);
+        setDonorName(profile.donorName);
+        if (profile.seedUrlsJson) {
+          try { setSeedUrls(JSON.parse(profile.seedUrlsJson)); } catch { /* ignore */ }
+        }
+        setData({
+          research: {
+            rawMarkdown: profile.researchPackageJson || '',
+            sources: [],
+          },
+          researchProfile: { rawMarkdown: profile.profileMarkdown },
+          profile: { profile: profile.profileMarkdown, status: 'complete', validationPasses: 0 },
+          meetingGuide: profile.meetingGuideMarkdown || undefined,
+        });
+        setIsLoading(false);
+        return;
+      }
+    } catch {
+      // DB fetch failed, fall through to localStorage
+    }
+
+    // Fall back to localStorage (for just-generated or legacy profiles)
+    const stored = localStorage.getItem('lastProfile');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setData(parsed);
+        if (parsed.fundraiserName) setFundraiserName(parsed.fundraiserName);
+      } catch (e) {
+        console.error('Failed to parse stored profile:', e);
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!profileId) return;
+    if (!confirm('Delete this profile? This cannot be undone.')) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/profiles/${profileId}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/profiles');
+      }
+    } catch (err) {
+      console.error('Failed to delete profile:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    const params = new URLSearchParams({ donor: donorName });
+    if (seedUrls.length > 0) {
+      params.set('seedUrl', seedUrls[0]);
+    }
+    router.push(`/?${params.toString()}`);
+  };
 
   const handleDownload = async (format: 'html' | 'markdown' = 'html') => {
     if (!data) return;
     setIsDownloading(true);
     try {
-      let fundraiserName = '';
-      try {
-        const raw = localStorage.getItem('lastProfile');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          fundraiserName = parsed.fundraiserName || '';
-        }
-      } catch { /* ignore */ }
-
       const downloadData: DownloadableProfile = {
         donorName,
         fundraiserName,
-        profile: data.dossier.rawMarkdown,
+        profile: data.researchProfile.rawMarkdown,
         meetingGuide: data.meetingGuide,
         sources: extractSources(),
       };
@@ -73,20 +143,11 @@ export default function ProfilePage() {
     if (!data) return;
     setIsDownloading(true);
     try {
-      let fundraiserName = '';
-      try {
-        const raw = localStorage.getItem('lastProfile');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          fundraiserName = parsed.fundraiserName || '';
-        }
-      } catch { /* ignore */ }
-
       const sources = extractSources();
       const profileData = parseProfileForPDF(
         donorName,
         fundraiserName,
-        data.dossier.rawMarkdown,
+        data.researchProfile.rawMarkdown,
         data.meetingGuide,
         sources
       );
@@ -120,18 +181,6 @@ export default function ProfilePage() {
       setTimeout(() => setIsDownloading(false), 800);
     }
   };
-
-  useEffect(() => {
-    const stored = localStorage.getItem('lastProfile');
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse stored profile:', e);
-      }
-    }
-    setIsLoading(false);
-  }, []);
 
   const extractSources = (): Source[] => {
     if (!data) return [];
@@ -169,20 +218,20 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
-        <div className="text-dtw-mid-gray font-serif text-xl">Loading...</div>
+      <div className="min-h-screen bg-brand-off-white flex items-center justify-center">
+        <div className="text-brand-mid-gray font-serif text-xl">Loading...</div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-dtw-off-white flex items-center justify-center">
+      <div className="min-h-screen bg-brand-off-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="font-serif text-3xl text-dtw-black mb-4">Profile Not Found</h1>
-          <p className="text-dtw-mid-gray mb-6">No profile data found for {donorName}</p>
-          <a href="/" className="text-dtw-green hover:text-dtw-green-light transition-colors">
-            ← Generate a new profile
+          <h1 className="font-serif text-3xl text-brand-black mb-4">Profile Not Found</h1>
+          <p className="text-brand-mid-gray mb-6">No profile data found for {donorName}</p>
+          <a href="/" className="text-brand-green hover:text-brand-green-light transition-colors">
+            &larr; Generate a new profile
           </a>
         </div>
       </div>
@@ -221,18 +270,105 @@ export default function ProfilePage() {
           "Contradiction Patterns": "Where to Start",
         };
 
-        let displayMarkdown = data.dossier.rawMarkdown;
+        let displayMarkdown = data.researchProfile.rawMarkdown;
         for (const [original, replacement] of Object.entries(headingMap)) {
           displayMarkdown = displayMarkdown.replace(original, replacement);
         }
 
+        // Pre-process Format B: convert raw [CONFIDENCE: X/10 | FLOOR: Y] metadata blocks
+        // (appearing as paragraphs after section headings) into Format A heading style
+        // so the h2 component handler can parse the score uniformly.
+        displayMarkdown = displayMarkdown.replace(
+          /(#{2,3}\s*\d+\.\s*[^\n]*)\n+\[CONFIDENCE:\s*(\d+)\/10[^\]]*\]\s*\n?(?:\[EVIDENCE BASIS:[^\]]*\]\s*\n?)?(?:\[INFERRED:[^\]]*\]\s*\n?)?(?:\[EVIDENCE CEILINGS:[^\]]*\]\s*\n?)?/g,
+          (_, header, score) => {
+            const s = parseInt(score, 10);
+            return `${header} ${'■'.repeat(s)}${'□'.repeat(10 - s)}  ${s}/10\n\n`;
+          },
+        );
+
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+          <div className="bg-white rounded-2xl border border-brand-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-purple rounded-b-sm" />
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-purple rounded-b-sm" />
             <div className="p-9 pt-10">
               <article className="prose max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => {
+                      const text = String(children);
+                      const match = text.match(/^PERSUASION PROFILE\s*[—–-]\s*(.+)$/i);
+                      if (match) {
+                        return (
+                          <div className="not-prose mb-12 relative">
+                            <div className="text-xs font-medium tracking-[0.12em] uppercase text-stone-500 mb-1.5">
+                              Persuasion Profile
+                            </div>
+                            <div className="font-serif text-[32px] font-bold tracking-tight leading-tight text-stone-900 uppercase">
+                              {match[1]}
+                            </div>
+                            <div className="mt-5 h-0.5 bg-stone-900" />
+                          </div>
+                        );
+                      }
+                      return <h1>{children}</h1>;
+                    },
+                    h2: ({ children }) => {
+                      const text = String(children);
+                      // Parse out confidence score: "1. THE OPERATING SYSTEM  ■■■■■■■■□□  8/10"
+                      const scoreMatch = text.match(/^(.+?)\s*[■□]+\s+(\d+)\/10\s*$/);
+                      if (scoreMatch) {
+                        const heading = scoreMatch[1].trim();
+                        const score = parseInt(scoreMatch[2], 10);
+                        const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
+                        return (
+                          <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black flex items-center justify-between gap-3">
+                            <span>{heading}</span>
+                            <span className="relative flex-shrink-0 group/pill cursor-pointer">
+                              <span
+                                className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block"
+                                style={{ background: badgeBg }}
+                              >
+                                Confidence {score}/10
+                              </span>
+                              <span
+                                className="invisible group-hover/pill:visible opacity-0 group-hover/pill:opacity-100
+                                           transition-opacity duration-150
+                                           absolute right-0 top-full mt-2 z-50
+                                           w-64 px-3 py-2.5 rounded-lg
+                                           text-[11px] leading-relaxed font-normal text-white
+                                           pointer-events-none"
+                                style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}
+                              >
+                                How much direct behavioral evidence supports this section.
+                                <br /><strong>8–10:</strong> Strong sourced evidence.
+                                <br /><strong>5–7:</strong> Mix of evidence and informed inference.
+                                <br /><strong>1–4:</strong> Mostly inferred from limited data.
+                              </span>
+                            </span>
+                          </h2>
+                        );
+                      }
+                      return <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black">{children}</h2>;
+                    },
+                    blockquote: ({ children }) => {
+                      // Suppress evidence/inferred metadata blockquotes
+                      const text = String(children);
+                      if (/Evidence:|Inferred:/i.test(text)) {
+                        return null;
+                      }
+                      return <blockquote>{children}</blockquote>;
+                    },
+                    p: ({ children }) => {
+                      // Suppress Format B metadata paragraphs that escaped pre-processing
+                      const text = String(children);
+                      if (/^\[CONFIDENCE:|^\[EVIDENCE BASIS:|^\[INFERRED:|^\[EVIDENCE CEILINGS:/i.test(text)) {
+                        return null;
+                      }
+                      return <p>{children}</p>;
+                    },
+                  }}
+                >
                   {displayMarkdown}
                 </ReactMarkdown>
               </article>
@@ -244,26 +380,24 @@ export default function ProfilePage() {
       case 'meeting-guide': {
         if (!data.meetingGuide) {
           return (
-            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+            <div className="bg-white rounded-2xl border border-brand-light-gray p-12 text-center"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <h2 className="font-serif text-2xl text-dtw-black mb-2">No Meeting Guide Available</h2>
-              <p className="text-dtw-mid-gray max-w-md mx-auto">
+              <h2 className="font-serif text-2xl text-brand-black mb-2">No Meeting Guide Available</h2>
+              <p className="text-brand-mid-gray max-w-md mx-auto">
                 Re-generate this profile to include a Meeting Guide.
               </p>
             </div>
           );
         }
+
+        // Primary path: render markdown with React component (site-side rendering)
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
-               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-green rounded-b-sm" />
-            <div className="p-9 pt-10">
-              <article className="prose prose-green max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {data.meetingGuide}
-                </ReactMarkdown>
-              </article>
-            </div>
+          <div
+            className="rounded-2xl border border-brand-light-gray relative overflow-hidden bg-white"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+          >
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-green rounded-b-sm" />
+            <MeetingGuideRenderer markdown={data.meetingGuide} />
           </div>
         );
       }
@@ -274,20 +408,20 @@ export default function ProfilePage() {
 
         if (sources.length === 0) {
           return (
-            <div className="bg-white rounded-2xl border border-dtw-light-gray p-12 text-center"
+            <div className="bg-white rounded-2xl border border-brand-light-gray p-12 text-center"
                  style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <p className="text-dtw-mid-gray">No sources available</p>
+              <p className="text-brand-mid-gray">No sources available</p>
             </div>
           );
         }
 
         return (
-          <div className="bg-white rounded-2xl border border-dtw-light-gray relative overflow-hidden"
+          <div className="bg-white rounded-2xl border border-brand-light-gray relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-dtw-coral rounded-b-sm" />
+            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-coral rounded-b-sm" />
             <div className="p-9 pt-10 space-y-8">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-dtw-mid-gray">
+                <p className="text-sm text-brand-mid-gray">
                   {sources.length} source{sources.length !== 1 ? 's' : ''} used to generate this profile
                 </p>
                 <button
@@ -309,7 +443,7 @@ export default function ProfilePage() {
                       alert('Research data not available. Generate a new profile to capture research data.');
                     }
                   }}
-                  className="text-xs font-medium text-dtw-coral hover:text-dtw-warm-gray transition-colors"
+                  className="text-xs font-medium text-brand-coral hover:text-brand-warm-gray transition-colors"
                 >
                   Download Research Data
                 </button>
@@ -317,24 +451,24 @@ export default function ProfilePage() {
 
               {Array.from(groupedSources.entries()).sort().map(([domain, domainSources]) => (
                 <div key={domain} className="space-y-3">
-                  <h3 className="text-xs font-semibold text-dtw-warm-gray uppercase tracking-[1px]">
+                  <h3 className="text-xs font-semibold text-brand-warm-gray uppercase tracking-[1px]">
                     {domain}
                   </h3>
                   <ul className="space-y-2">
                     {domainSources.map((source, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <span className="text-dtw-coral mt-0.5 text-xs font-semibold">{'\u2022'}</span>
+                        <span className="text-brand-coral mt-0.5 text-xs font-semibold">{'\u2022'}</span>
                         <div className="flex-1 min-w-0">
                           <a
                             href={source.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-dtw-coral hover:text-dtw-warm-gray break-all text-sm transition-colors"
+                            className="text-brand-coral hover:text-brand-warm-gray break-all text-sm transition-colors"
                           >
                             {source.title || source.url}
                           </a>
                           {source.title && source.title !== new URL(source.url).hostname.replace('www.', '') && (
-                            <p className="text-xs text-dtw-mid-gray truncate mt-0.5">
+                            <p className="text-xs text-brand-mid-gray truncate mt-0.5">
                               {source.url}
                             </p>
                           )}
@@ -352,23 +486,59 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-dtw-off-white">
+    <div className="min-h-screen bg-brand-off-white">
       {/* Rainbow accent bar */}
       <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #7B2D8E, #2D6A4F, #E07A5F)' }} />
 
       {/* Dark header */}
-      <header className="bg-dtw-black">
+      <header className="bg-brand-black">
         <div className="max-w-4xl mx-auto px-6 pt-5 pb-0">
-          {/* Top row: back link + download button */}
+          {/* Top row: nav + actions */}
           <div className="flex items-center justify-between mb-6">
-            <a href="/" className="text-[13px] text-white/50 hover:text-white transition-colors">
-              ← New Profile
-            </a>
+            <div className="flex items-center gap-4">
+              <a href="/" className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50 hover:text-white transition-colors">
+                ProspectAI
+              </a>
+              <span className="text-white/20">/</span>
+              <a href="/profiles" className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50 hover:text-white transition-colors">
+                Profiles
+              </a>
+              <span className="text-white/20">/</span>
+              <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/50">
+                {donorName}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {session?.user?.name && (
+                <span className="text-xs text-white/40">{session.user.name}</span>
+              )}
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+
+          {/* Overline */}
+          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
+            Donor Intelligence Report
+          </p>
+
+          {/* Donor name */}
+          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
+
+          {/* Date */}
+          <p className="text-[15px] text-white/40 mb-4">{date}</p>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 mb-8">
             <button
               onClick={handleDownloadPDF}
               disabled={isDownloading}
               className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-pill
-                         bg-white text-dtw-black hover:bg-dtw-gold
+                         bg-white text-brand-black hover:bg-brand-gold
                          disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isDownloading ? (
@@ -388,18 +558,24 @@ export default function ProfilePage() {
                 </>
               )}
             </button>
+            <button
+              onClick={handleRegenerate}
+              className="px-4 py-2 text-sm font-medium rounded-pill text-white/70 border border-white/20
+                         hover:text-white hover:border-white/40 transition-all"
+            >
+              Regenerate
+            </button>
+            {profileId && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium rounded-pill text-red-400/70 border border-red-400/20
+                           hover:text-red-400 hover:border-red-400/40 disabled:opacity-50 transition-all"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            )}
           </div>
-
-          {/* Overline */}
-          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
-            Donor Intelligence Report
-          </p>
-
-          {/* Donor name */}
-          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
-
-          {/* Date */}
-          <p className="text-[15px] text-white/40 mb-8">{date}</p>
 
           {/* Tabs */}
           <div className="flex gap-1">
@@ -430,12 +606,54 @@ export default function ProfilePage() {
       {/* Content */}
       <main className="max-w-[800px] mx-auto px-4 py-10">
         {renderContent()}
+
+        {/* Debug Downloads */}
+        <details className="mt-8 border-t border-brand-light-gray pt-4">
+          <summary className="cursor-pointer text-sm text-brand-mid-gray hover:text-brand-warm-gray transition-colors">
+            Debug Files
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { file: 'screening-audit', label: 'Screening Audit' },
+              { file: 'source-selection', label: 'Source Selection' },
+              { file: 'source-packet-manifest', label: 'Source Packet Manifest' },
+              { file: 'deep-research-developer-msg', label: 'Deep Research Dev Msg' },
+              { file: 'deep-research-user-msg', label: 'Deep Research User Msg' },
+              { file: 'fact-check', label: 'Fact Check' },
+              { file: 'research-package', label: 'Research Package' },
+              { file: 'research-conversation', label: 'Agent Conversation' },
+              { file: 'prompt', label: 'Profile Prompt' },
+              { file: 'first-draft', label: 'First Draft' },
+              { file: 'critique-prompt', label: 'Critique Prompt' },
+              { file: 'final', label: 'Final Profile' },
+              { file: 'meeting-guide-prompt', label: 'Meeting Guide Prompt' },
+              { file: 'meeting-guide', label: 'Meeting Guide (MD)' },
+              { file: 'meeting-guide-html', label: 'Meeting Guide (HTML)' },
+              { file: 'linkedin', label: 'LinkedIn Data' },
+            ].map(({ file, label }) => {
+              const ext = file === 'linkedin' || file === 'fact-check' ? 'json'
+                : file === 'meeting-guide-html' ? 'html'
+                : file === 'meeting-guide' ? 'md'
+                : 'txt';
+              return (
+                <a
+                  key={file}
+                  href={`/api/debug-dump?file=${file}`}
+                  download={`DEBUG-${file}.${ext}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-brand-off-white hover:bg-brand-light-gray text-brand-warm-gray rounded transition-colors"
+                >
+                  {label}
+                </a>
+              );
+            })}
+          </div>
+        </details>
       </main>
 
       {/* Footer */}
-      <footer className="bg-dtw-black py-6 text-center">
+      <footer className="bg-brand-black py-6 text-center">
         <span className="text-[11px] font-semibold tracking-[3px] uppercase text-white/25">
-          Democracy Takes Work &middot; ProspectAI &middot; 2026
+          ProspectAI &middot; 2026
         </span>
       </footer>
     </div>

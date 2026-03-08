@@ -16,35 +16,90 @@ function loadCanonFile(filename: string): string {
 }
 
 // Eagerly load all canon documents at module initialization
-const exemplarsCache = loadCanonFile('exemplars.md');
 const geoffreyBlockCache = loadCanonFile('geoffrey-block.md');
-const meetingGuideBlockCache = loadCanonFile('meeting-guide-block.md');
-const meetingGuideExemplarsCache = loadCanonFile('meeting-guide-exemplars.md');
-const dtwOrgLayerCache = loadCanonFile('dtw-org-layer.md');
-
-export function loadExemplars(): string {
-  return exemplarsCache;
-}
-
-/**
- * Returns all exemplars. No selection logic - the model needs to see the full range.
- */
-export function selectExemplars(_dossier: string, allExemplars: string): string {
-  return allExemplars;
-}
+const meetingGuideBlockV3Cache = loadCanonFile('meeting-guide-block-v3.md');
+const meetingGuideOutputTemplateCache = loadCanonFile('meeting-guide-output-template.md');
+const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md');
+const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
+const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
+const promptV2Cache = loadCanonFile('prompt-v2.txt');
+const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
+const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
 
 export function loadGeoffreyBlock(): string {
   return geoffreyBlockCache;
 }
 
-export function loadMeetingGuideBlock(): string {
-  return meetingGuideBlockCache;
+export function loadMeetingGuideBlockV3(): string {
+  return meetingGuideBlockV3Cache;
 }
 
-export function loadMeetingGuideExemplars(): string {
-  return meetingGuideExemplarsCache;
+export function loadMeetingGuideOutputTemplate(): string {
+  return meetingGuideOutputTemplateCache;
 }
 
-export function loadDTWOrgLayer(): string {
-  return dtwOrgLayerCache;
+/**
+ * Returns meeting guide exemplars for the prompt, excluding the exemplar
+ * that matches the current donor (by lowercase last-name match in filename).
+ */
+export function loadMeetingGuideExemplars(donorName: string): string {
+  const allExemplars = [
+    { name: 'newmark', content: meetingGuideNewmarkCache },
+    { name: 'bahat', content: meetingGuideBahatCache },
+    { name: 'mcglinchey', content: meetingGuideMcGlincheyCache },
+  ];
+
+  const donorLower = donorName.toLowerCase();
+  const selected = allExemplars.filter(e => !donorLower.includes(e.name));
+
+  if (selected.length === allExemplars.length) {
+    // No match found — return all 3
+    return selected.map(e => e.content).join('\n\n---\n\n');
+  }
+
+  // Excluded one — return the remaining 2
+  return selected.map(e => e.content).join('\n\n---\n\n');
+}
+
+export interface ProjectLayerInput {
+  name: string;
+  processedBrief: string;
+  issueAreas?: string;
+  defaultAsk?: string;
+  specificAsk?: string;
+  fundraiserName?: string;
+  strategicFrame?: string;
+}
+
+export function buildProjectLayer(projectContext: ProjectLayerInput): string {
+  return `# ORGANIZATION / PROJECT CONTEXT
+
+## ${projectContext.name}
+
+### Mission, Theory of Change, or Project Scope
+${projectContext.processedBrief}
+
+### Issue Areas
+${projectContext.issueAreas || 'Not specified'}
+
+### Default Ask
+${projectContext.defaultAsk || 'Not specified'}
+
+### This Meeting's Specific Ask
+${projectContext.specificAsk || 'Not specified'}
+
+### Fundraiser
+${projectContext.fundraiserName || 'Not specified'}`.trim();
+}
+
+export function loadPromptV2(): string {
+  return promptV2Cache;
+}
+
+export function loadCritiqueEditorialV2(): string {
+  return critiqueEditorialV2Cache;
+}
+
+export function loadStage0OrgIntakePrompt(): string {
+  return stage0OrgIntakeCache;
 }
