@@ -21,7 +21,7 @@ import { buildProfilePrompt } from './prompts/profile-prompt';
 import { buildCritiqueRedraftPrompt } from './prompts/critique-redraft-prompt';
 import { buildMeetingGuidePrompt, MEETING_GUIDE_SYSTEM_PROMPT } from './prompts/meeting-guide';
 import { buildFactCheckSystemPrompt, buildFactCheckUserMessage, processFactCheckResult } from './prompts/fact-check-prompt';
-import { loadExemplars, loadExemplarProfilesSeparate, loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, buildProjectLayer, type ProjectLayerInput } from './canon/loader';
+import { loadGeoffreyBlock, loadMeetingGuideBlockV3, loadMeetingGuideExemplars, loadMeetingGuideOutputTemplate, buildProjectLayer, type ProjectLayerInput } from './canon/loader';
 import { formatMeetingGuide } from './formatters/meeting-guide-formatter';
 import { executeWebSearch, executeFetchPage } from './research/tools';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -513,7 +513,7 @@ export async function runFullPipeline(
   donorName: string,
   seedUrls: string[] = [],
   searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
-  canonDocs: { exemplars: string },
+  _canonDocs: { exemplars: string },
   onProgress?: ResearchProgressCallback,
   linkedinPdfBase64?: string,
   fetchFunction?: (url: string) => Promise<string>,
@@ -1511,7 +1511,7 @@ ${gapFillEssay}`;
   console.log('[Pipeline] Step 3: Profile generation (Opus)');
 
   const geoffreyBlock = loadGeoffreyBlock();
-  const exemplars = loadExemplars();
+  const exemplars = ''; // V1 exemplars archived — V2 uses prompt-v2.txt internally
 
   const researchPackagePreamble = deepResearchResult
     ? `The behavioral evidence below is an analytical dossier produced by Opus reading ${research.sources.length} pre-fetched sources in full plus a supplementary gap-fill research essay (${deepResearchResult.searchCount} additional web searches). Each behavioral dimension contains two blocks:
