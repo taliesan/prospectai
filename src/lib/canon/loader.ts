@@ -25,6 +25,7 @@ const meetingGuideYmmraCache = loadCanonFile('meeting-guide-ymmra.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
+const tidebreakStrategicFrameCache = loadCanonFile('org-strategic-frame-tidebreak.md');
 
 export function loadGeoffreyBlock(): string {
   return geoffreyBlockCache;
@@ -39,14 +40,30 @@ export function loadMeetingGuideOutputTemplate(): string {
 }
 
 /**
- * Returns all fictional meeting guide exemplars for the prompt.
+ * Returns the Tidebreak org frame + all fictional meeting guide exemplars for the prompt.
  */
 export function loadMeetingGuideExemplars(): string {
-  return [
-    meetingGuideInesCache,
-    meetingGuideLumaCache,
-    meetingGuideYmmraCache,
-  ].join('\n\n---\n\n');
+  return `## EXEMPLAR ORG FRAME
+
+${tidebreakStrategicFrameCache}
+
+---
+
+## EXEMPLAR GUIDE 1
+
+${meetingGuideInesCache}
+
+---
+
+## EXEMPLAR GUIDE 2
+
+${meetingGuideLumaCache}
+
+---
+
+## EXEMPLAR GUIDE 3
+
+${meetingGuideYmmraCache}`;
 }
 
 export interface ProjectLayerInput {
@@ -90,4 +107,8 @@ export function loadCritiqueEditorialV2(): string {
 
 export function loadStage0OrgIntakePrompt(): string {
   return stage0OrgIntakeCache;
+}
+
+export function loadTidebreakStrategicFrame(): string {
+  return tidebreakStrategicFrameCache;
 }
