@@ -6,6 +6,7 @@
 
 import { complete } from '../anthropic';
 import { loadStage0OrgIntakePrompt, loadTidebreakStrategicFrame } from '../canon/loader';
+import { writeFileSync, mkdirSync } from 'fs';
 
 export interface OrgExtractionInput {
   name: string;
@@ -56,6 +57,13 @@ ${tidebreakFrame}
   console.log(`[Stage 0] Assembled input block: ${userMessage.length} chars`);
   console.log(`[Stage 0] Sending to model (prompt: ${systemPrompt.length} chars, input: ${userMessage.length} chars)...`);
 
+  // Debug save prompt
+  try {
+    mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-0-org-extraction-prompt.txt',
+      `=== SYSTEM PROMPT (${systemPrompt.length} chars) ===\n\n${systemPrompt}\n\n=== USER MESSAGE (${userMessage.length} chars) ===\n\n${userMessage}`);
+  } catch (e) { /* ignore */ }
+
   const result = await complete(systemPrompt, userMessage, {
     maxTokens: 2000,
     temperature: 0,
@@ -63,6 +71,11 @@ ${tidebreakFrame}
 
   console.log(`[Stage 0] Received strategicFrame: ${result.length} chars`);
   console.log(`[Stage 0] First 200 chars: ${result.slice(0, 200)}`);
+
+  // Debug save response
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-0-org-extraction-response.txt', result);
+  } catch (e) { /* ignore */ }
 
   return result;
 }
