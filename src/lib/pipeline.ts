@@ -1284,7 +1284,7 @@ MEDIOCRE: "MacDougall values transparency and openness in his work. He has been 
 
 This is mediocre because it's personality description, not behavioral prediction. It uses adjectives instead of observable behavior. It doesn't synthesize across sources or identify tensions. Nobody can act on it.
 
-GREAT CONDITIONAL: "If you lead with transparency about your problems and uncertainties, he'll lean in — that's his language (Bloomberg Beta Manual: 'transparency is the first step to trust'). If you lead with polish and manage impressions, he'll start questioning and the dynamic will shift to interrogation (anti-sell document: 'quick to question — often comes across as criticism')."
+GREAT CONDITIONAL: "If you lead with transparency about your problems and uncertainties, he'll lean in — that's his language (Harbour Trust Annual Report: 'transparency is the first step to trust'). If you lead with polish and manage impressions, he'll start questioning and the dynamic will shift to interrogation (field notes: 'quick to question — often comes across as criticism')."
 
 This is great because both branches are evidence-based, predict observable behavior, and tell the reader what to do.
 

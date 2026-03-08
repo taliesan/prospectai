@@ -636,7 +636,7 @@ export default function Home() {
                     id="donorName"
                     value={donorName}
                     onChange={(e) => setDonorName(e.target.value)}
-                    placeholder="e.g., Craig Newmark"
+                    placeholder="e.g., Jane Smith"
                     className={inputClasses}
                     style={inputStyle}
                     onFocus={onFocusInput}
@@ -809,7 +809,7 @@ export default function Home() {
                     id="orgName"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="e.g., ACLU, Ford Foundation Climate Initiative, $5M Litigation Campaign"
+                    placeholder="e.g., ACLU, Reef Authority Conservation Initiative, $5M Litigation Campaign"
                     className={inputClasses}
                     style={inputStyle}
                     onFocus={onFocusInput}

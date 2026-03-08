@@ -4,7 +4,7 @@
 // Revert by setting PROMPT_VERSION=v1 in environment
 
 import type { LinkedInData } from './extraction-prompt';
-import { loadExemplarProfilesSeparate, loadPromptV2 } from '../canon/loader';
+import { loadPromptV2 } from '../canon/loader';
 
 // ── Bleed-check word lists ──────────────────────────────────────────
 
@@ -171,7 +171,7 @@ You will receive:
 1. FIRST DRAFT — the profile text to verify
 2. RESEARCH PACKAGE — the only permitted source of facts about this person
 3. CANONICAL BIOGRAPHICAL DATA — LinkedIn career history (authoritative for dates, titles, employers)
-4. EXEMPLAR PROFILES — profiles of OTHER donors (Bahat, Newmark, McGlinchey) used as writing examples. NO facts from these profiles should appear in the draft.
+4. EXEMPLAR PROFILES — profiles of fictional exemplars (Inés de la Cerda, Luma Orekh, Ymmra) used as writing examples. NO facts from these profiles should appear in the draft.
 
 ## What counts as a "specific factual claim"
 
@@ -195,7 +195,7 @@ For each claim, assign one verdict:
 
 **SUPPORTED** — The claim traces to specific text in the research package or canonical biographical data. Provide the source quote.
 
-**EXEMPLAR_LEAK** — The claim matches biographical content from an exemplar profile (Bahat, Newmark, or McGlinchey) AND does not independently appear in the research package or canonical biographical data for this person. This includes:
+**EXEMPLAR_LEAK** — The claim matches content from a fictional exemplar profile (Inés de la Cerda, Luma Orekh, or Ymmra) AND does not independently appear in the research package or canonical biographical data for this person. This includes:
 - Specific facts from an exemplar (numbers, events, named organizations) projected onto the target
 - Behavioral patterns described in an exemplar that were projected onto the target without independent evidence
 - Phrases or framings distinctive to an exemplar that were transferred to the target
@@ -205,7 +205,7 @@ IMPORTANT — AVOIDING FALSE POSITIVES:
 Before classifying ANY claim as EXEMPLAR_LEAK, you MUST check whether the specific fact appears in the research package OR the LinkedIn JSON for this target.
 
 Examples of what is NOT contamination:
-- A dollar figure that appears in both an exemplar AND in this target's career history (e.g. "$6M gift from Craig Newmark Philanthropies" — this is in the target's LinkedIn description of their time at Consumer Reports, even though "Newmark" is also an exemplar name)
+- A dollar figure that appears in both an exemplar AND in this target's career history (e.g. a gift amount mentioned in the target's LinkedIn that also happens to appear in an exemplar)
 - An organizational fact about a company where both the target and an exemplar worked, if the target's involvement is documented in the research package
 - A behavioral pattern that appears in an exemplar AND is independently supported by evidence in the research package for this target
 
@@ -247,7 +247,7 @@ Return ONLY valid JSON. No markdown, no preamble, no explanation outside the JSO
       "verdict": "SUPPORTED | UNSUPPORTED | EXEMPLAR_LEAK | FABRICATED",
       "severity": "CRITICAL | HIGH | LOW",
       "evidence": "if SUPPORTED: quote from research package. if EXEMPLAR_LEAK: quote from the exemplar it matches plus confirmation it's absent from research package. if FABRICATED: note that no source contains this. if UNSUPPORTED: note what's missing.",
-      "exemplar_source": "Bahat | Newmark | McGlinchey | null",
+      "exemplar_source": "Inés de la Cerda | Luma Orekh | Ymmra | null",
       "fix": "suggested replacement text using only research package evidence, or 'REMOVE' if no replacement possible"
     }
   ]
@@ -267,13 +267,13 @@ The "pass" field is false if critical_count > 0.
 
 5. LinkedIn claims: "Lists unemployment periods on LinkedIn" — verify against the canonical biographical data JSON. If the LinkedIn JSON doesn't show this, check if the research package mentions it. If neither does but an exemplar profile describes this behavior, EXEMPLAR_LEAK.
 
-6. Named connections: "Ford Foundation connections", "Bloomberg Beta network" — verify these organizations appear in the target's research package or LinkedIn, not just in an exemplar's profile.
+6. Named connections: verify that named organizations appear in the target's research package or LinkedIn, not just in an exemplar's profile.
 
 7. Institutional affiliations (CRITICAL): Every board seat, committee membership, roundtable chair, fellowship, advisory role, or named initiative in the profile must appear in EITHER:
    (a) The canonical biographical data (LinkedIn JSON) — specifically the boards/advisory array and career history, OR
    (b) A source in the research package that explicitly names this target in connection with that institution.
 
-   If an affiliation appears in the profile but NOT in (a) or (b), check whether it appears in an exemplar profile. If it does, classify as EXEMPLAR_LEAK with CRITICAL severity. The exemplar donors (Newmark, Bahat, McGlinchey) sit on different boards, chair different roundtables, and hold different advisory roles than the target. Common exemplar affiliations that MUST NOT leak include: Aspen Roundtable on Organized Labor, Blue Star Families, Aspen Digital, Bob Woodruff Foundation, Bloomberg Beta, Partnership on AI, National Domestic Workers Alliance, Public Interest Technology University Network, and any other institution mentioned in the exemplar profiles.
+   If an affiliation appears in the profile but NOT in (a) or (b), check whether it appears in an exemplar profile. If it does, classify as EXEMPLAR_LEAK with CRITICAL severity. The fictional exemplars (Inés de la Cerda, Luma Orekh, Ymmra) have their own affiliations and institutions that MUST NOT leak into real donor profiles. Any institution, organization, or named initiative mentioned in the exemplar profiles that does not independently appear in the target's sources is EXEMPLAR_LEAK.
 
    This rule also applies to role titles, organization names, and named initiatives that belong to exemplar donors — not just formal board seats. If someone "chairs" or "co-convened" or "advises" something, verify the claim the same way.
 
@@ -292,13 +292,10 @@ export function buildFactCheckUserMessage(
   researchPackage: string,
   linkedinData: LinkedInData | null | undefined,
 ): string {
-  const promptVersion = process.env.PROMPT_VERSION || 'v2';
   const linkedinJSON = linkedinData ? JSON.stringify(linkedinData, null, 2) : 'No LinkedIn data available.';
+  const exemplarZone = extractExemplarZone();
 
-  if (promptVersion === 'v2') {
-    const exemplarZone = extractExemplarZone();
-
-    return `<fact_check_input>
+  return `<fact_check_input>
 <first_draft>
 ${firstDraftProfile}
 </first_draft>
@@ -324,37 +321,6 @@ FICTIONAL EXEMPLAR TERMS (flag if found in draft — automatic failure):
 ${FICTIONAL_EXEMPLAR_TERMS.join(', ')}
 
 </bleed_check_word_lists>
-</fact_check_input>`;
-  }
-
-  // V1: use real exemplar profiles
-  const exemplarProfiles = loadExemplarProfilesSeparate();
-
-  return `<fact_check_input>
-<first_draft>
-${firstDraftProfile}
-</first_draft>
-
-<research_package>
-${researchPackage}
-</research_package>
-
-<canonical_biographical_data>
-${linkedinJSON}
-</canonical_biographical_data>
-
-<exemplar_profiles>
-
-=== EXEMPLAR PROFILE: ROY BAHAT (NOT the profiling target) ===
-${exemplarProfiles.bahat}
-
-=== EXEMPLAR PROFILE: CRAIG NEWMARK (NOT the profiling target) ===
-${exemplarProfiles.newmark}
-
-=== EXEMPLAR PROFILE: LORI McGLINCHEY (NOT the profiling target) ===
-${exemplarProfiles.mcglinchey}
-
-</exemplar_profiles>
 </fact_check_input>`;
 }
 

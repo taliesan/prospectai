@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-ProspectAI PDF Generator — DTW Design System
+ProspectAI PDF Generator — ProspectAI Design System
 
 Generates a professionally designed PDF from profile JSON data.
-Content-agnostic layout engine that applies the DTW design system
+Content-agnostic layout engine that applies the ProspectAI design system
 to whatever structured data the AI produces.
 
 Usage: python3 generator.py <input.json> <output.pdf>
