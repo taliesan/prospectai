@@ -286,7 +286,8 @@ async function runV5PipelineInBackground(
         const sourcePacket = buildSourcePacket(selectedSources);
         const linkedinJson = formatLinkedInData(linkedinData);
 
-        const turn1Msg = `Here are the pre-screened, scored sources for ${donorName}. They were selected from ${stageResult.categorizedQueries.length} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
+        const totalCandidates = stageResult.stage5Result.stats.totalScored;
+        const turn1Msg = `Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
 
 Your job: read all sources carefully. Produce a behavioral research package organized by the 25 dimensions in your instructions.
 
@@ -564,6 +565,8 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
             totals: conv1.getUsage(),
           };
           debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
           console.log(`[V5] No org context provided — skipping meeting guide`);
         }
 

@@ -73,7 +73,7 @@ export class ConversationManager {
       const textBlocks = finalMessage.content
         .filter((block): block is Anthropic.TextBlock => block.type === 'text')
         .map(block => block.text);
-      const fullText = textBlocks.join('\n');
+      const fullText = textBlocks.join('');
 
       // Use the concatenated text blocks as the canonical response
       const assistantText = fullText || responseText;
