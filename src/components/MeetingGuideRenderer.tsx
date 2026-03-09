@@ -46,7 +46,7 @@ function PhaseBox({ type, label, children }: {
   const s = phaseStyles[type];
   return (
     <div className="mb-4 last:mb-0 rounded-md overflow-hidden">
-      <div className={`${s.labelBg} text-white text-xs font-semibold tracking-widest uppercase px-3.5 py-1.5 inline-block rounded-t-md`}>
+      <div className={`${s.labelBg} text-white text-xs font-semibold uppercase px-3.5 py-1.5 inline-block rounded-t-md`} style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}>
         {label}
       </div>
       <div className={`${s.contentBg} border ${s.contentBorder} border-t-0 rounded-b-md px-4 py-3 text-[14.5px] leading-[1.7]`}>
@@ -64,11 +64,14 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
       <div className="mb-11 last:mb-0">
         {/* Header */}
         <div className="flex items-center gap-4 py-3 mb-2.5">
-          <div className="w-10 h-10 rounded-full bg-stone-900 text-stone-50 flex items-center justify-center font-serif text-lg font-bold shrink-0">
+          <div
+            className="w-10 h-10 rounded-full bg-stone-900 text-stone-50 flex items-center justify-center text-lg font-bold shrink-0"
+            style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+          >
             {beat.number}
           </div>
           <div className="flex-1">
-            <div className="font-serif text-lg font-semibold leading-tight">
+            <div className="text-lg font-semibold leading-tight" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>
               <InlineMarkdown text={beat.title} />
             </div>
             {beat.goal && (
@@ -110,7 +113,7 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
             )}
             {beat.stallingText && (
               <div className="mt-3.5 pt-3 border-t border-dashed border-blue-300 text-[14.5px]">
-                <span className="font-semibold text-amber-700 text-xs uppercase tracking-wide">Stalling:</span>{' '}
+                <span className="font-semibold text-amber-700 text-xs uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Stalling:</span>{' '}
                 <InlineMarkdown text={beat.stallingText} />
               </div>
             )}
@@ -140,11 +143,11 @@ function TripwireCard({ tripwire }: { tripwire: Tripwire }) {
         <InlineMarkdown text={tripwire.name} />.
       </div>
       <div className="text-[14.5px] leading-relaxed mb-1">
-        <span className="text-[10px] font-semibold tracking-wide uppercase text-red-800 mr-1">Tell:</span>
+        <span className="text-[10px] font-semibold uppercase text-red-800 mr-1" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Tell:</span>
         <em className="italic text-stone-500"><InlineMarkdown text={tripwire.tell} /></em>
       </div>
       <div className="text-[14.5px] leading-relaxed">
-        <span className="text-[10px] font-semibold tracking-wide uppercase text-red-800 mr-1">Recovery:</span>
+        <span className="text-[10px] font-semibold uppercase text-red-800 mr-1" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Recovery:</span>
         <InlineMarkdown text={tripwire.recovery} />
       </div>
     </div>
@@ -155,7 +158,10 @@ function TripwireCard({ tripwire }: { tripwire: Tripwire }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-semibold tracking-widest uppercase text-stone-500 mb-8 pb-2 border-b border-stone-300">
+    <div
+      className="text-[11px] font-medium uppercase text-stone-500 mb-8 pb-2 border-b border-stone-300"
+      style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
+    >
       {children}
     </div>
   );
@@ -167,13 +173,22 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
   const guide: ParsedGuide = parseMarkdown(markdown);
 
   return (
-    <div className="max-w-[820px] mx-auto px-8 pt-9 pb-14 font-sans text-stone-900 leading-relaxed text-[14.5px]">
+    <div
+      className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
+      style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
+    >
       {/* Header */}
       <div className="mb-12 relative">
-        <div className="text-xs font-medium tracking-[0.12em] uppercase text-stone-500 mb-1.5">
+        <div
+          className="text-xs font-medium uppercase text-stone-500 mb-1.5"
+          style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
+        >
           Meeting Guide
         </div>
-        <h1 className="font-serif text-[32px] font-bold tracking-tight leading-tight">
+        <h1
+          className="text-[32px] font-bold tracking-tight leading-tight"
+          style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+        >
           {guide.donorName}
         </h1>
         <div className="mt-5 h-0.5 bg-stone-900" />
@@ -230,7 +245,7 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
         <div>
           <SectionLabel>One Line</SectionLabel>
           <div className="bg-stone-900 text-stone-50 px-8 py-7 rounded-lg text-center">
-            <p className="font-serif text-lg font-semibold leading-relaxed italic tracking-tight">
+            <p className="text-lg font-semibold leading-relaxed italic tracking-tight" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>
               {guide.oneLine}
             </p>
           </div>

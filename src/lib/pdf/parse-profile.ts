@@ -8,6 +8,8 @@
  * Content-agnostic: handles whatever sections the AI produces.
  */
 
+import { stripEvidenceMetadata } from '@/lib/strip-evidence-metadata';
+
 interface Source {
   url: string;
   title: string;
@@ -81,13 +83,16 @@ export function parseProfileForPDF(
     day: 'numeric',
   });
 
+  // Strip evidence metadata before parsing for PDF
+  const cleanedProfile = stripEvidenceMetadata(profileMarkdown);
+
   return {
     donorName,
     preparedFor,
     date,
     sourceCount: sources.length,
     persuasionProfile: {
-      sections: parsePersuasionProfile(profileMarkdown),
+      sections: parsePersuasionProfile(cleanedProfile),
     },
     meetingGuide: meetingGuideMarkdown ? parseMeetingGuide(meetingGuideMarkdown) : null,
     sources,
