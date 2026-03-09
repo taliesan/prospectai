@@ -1,0 +1,659 @@
+import { NextRequest } from 'next/server';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { runResearchStages } from '@/lib/pipeline';
+import { sanitizeForClaude } from '@/lib/sanitize';
+import { withProgressCallback, ProgressEvent, STATUS } from '@/lib/progress';
+import { createJob, addProgress, completeJob, failJob, getAbortSignal, linkJobToProfile } from '@/lib/job-store';
+import { ConversationManager } from '@/lib/conversation';
+import {
+  loadGeoffreyBlock,
+  loadPromptV2,
+  loadMeetingGuideBlockV3,
+  loadMeetingGuideOutputTemplate,
+  loadStage0OrgIntakePrompt,
+  loadTidebreakStrategicFrame,
+  loadMeetingGuideInes,
+  loadMeetingGuideLuma,
+  loadMeetingGuideYmmra,
+  type ProjectLayerInput,
+} from '@/lib/canon/loader';
+import { formatDimensionsForPrompt } from '@/lib/dimensions';
+import { formatSourcesForDeepResearch } from '@/lib/prompts/source-scoring';
+
+// Tavily API for web search (same as /api/generate)
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+
+interface TavilySearchResponse {
+  results: { url: string; title: string; content: string; score: number }[];
+}
+interface TavilyExtractResponse {
+  results: { url: string; raw_content: string }[];
+}
+
+async function webSearch(query: string): Promise<{ url: string; title: string; snippet: string; content?: string }[]> {
+  if (!TAVILY_API_KEY) return [];
+  try {
+    const searchResponse = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: TAVILY_API_KEY, query, search_depth: 'advanced', include_answer: false, max_results: 10 }),
+    });
+    if (!searchResponse.ok) return [];
+    const searchData: TavilySearchResponse = await searchResponse.json();
+    const topResults = searchData.results.sort((a, b) => b.score - a.score).slice(0, 3);
+    let extractedContent: Record<string, string> = {};
+    if (topResults.length > 0) {
+      try {
+        const extractResponse = await fetch('https://api.tavily.com/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: TAVILY_API_KEY, urls: topResults.map(r => r.url) }),
+        });
+        if (extractResponse.ok) {
+          const extractData: TavilyExtractResponse = await extractResponse.json();
+          extractedContent = extractData.results.reduce((acc, item) => {
+            acc[item.url] = sanitizeForClaude(item.raw_content);
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      } catch { /* continue with snippets */ }
+    }
+    return searchData.results.map(result => ({
+      url: result.url,
+      title: result.title,
+      snippet: result.content,
+      fullContent: extractedContent[result.url],
+    }));
+  } catch { return []; }
+}
+
+const OUTPUT_DIR = '/tmp/prospectai-outputs';
+
+function ensureOutputDir() {
+  if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
+function debugWrite(filename: string, content: string) {
+  try {
+    ensureOutputDir();
+    writeFileSync(`${OUTPUT_DIR}/${filename}`, content);
+    console.log(`[V5] Wrote ${OUTPUT_DIR}/${filename} (${content.length} chars)`);
+  } catch (e) { /* ignore */ }
+}
+
+// ── Extract prompt-v2.txt sections for conversation mode ──────────
+function getTaskSection(): string {
+  const promptV2 = loadPromptV2();
+  const lines = promptV2.split('\n');
+  // Lines 460-552 (1-indexed) → array index 459-551
+  return lines.slice(459).join('\n');
+}
+
+function getExemplarSection(): string {
+  const promptV2 = loadPromptV2();
+  const lines = promptV2.split('\n');
+  // Lines 135-444 (1-indexed) → array index 134-443
+  return lines.slice(134, 444).join('\n');
+}
+
+// ── Build source packet for conversation mode ─────────────────────
+function buildSourcePacket(selectedSources: any[]): string {
+  return formatSourcesForDeepResearch(selectedSources);
+}
+
+// ── Build LinkedIn summary ────────────────────────────────────────
+function formatLinkedInData(linkedinData: any): string {
+  if (!linkedinData) return 'No LinkedIn data available.';
+  return JSON.stringify({
+    currentTitle: linkedinData.currentTitle,
+    currentEmployer: linkedinData.currentEmployer,
+    linkedinSlug: linkedinData.linkedinSlug,
+    websites: linkedinData.websites,
+    careerHistory: linkedinData.careerHistory,
+    education: linkedinData.education,
+    boards: linkedinData.boards,
+  }, null, 2);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// POST handler — fire-and-poll, same pattern as /api/generate
+// ══════════════════════════════════════════════════════════════════════
+
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+
+  const body = await request.json();
+  const { donorName, fundraiserName = '', seedUrls = [], linkedinPdf, relationshipContext, projectContextId, specificAsk } = body;
+
+  if (!donorName || typeof donorName !== 'string') {
+    return Response.json({ error: 'Donor name is required' }, { status: 400 });
+  }
+
+  const job = await createJob(donorName, userId);
+  console.log(`[V5] Created job ${job.id} for: ${donorName} (conversation mode)`);
+
+  runV5PipelineInBackground(job.id, donorName, fundraiserName, seedUrls, linkedinPdf, userId, relationshipContext, projectContextId, specificAsk).catch((err) => {
+    console.error(`[V5] Unhandled error in background pipeline for job ${job.id}:`, err);
+    failJob(job.id, err instanceof Error ? err.message : 'Unknown error');
+  });
+
+  return Response.json({ jobId: job.id });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// V5 Conversation Mode Pipeline
+// ══════════════════════════════════════════════════════════════════════
+
+async function runV5PipelineInBackground(
+  jobId: string,
+  donorName: string,
+  fundraiserName: string,
+  seedUrls: string[],
+  linkedinPdf?: string,
+  userId?: string,
+  relationshipContext?: string,
+  projectContextId?: string,
+  specificAsk?: string,
+) {
+  const sendEvent = (event: ProgressEvent) => {
+    addProgress(jobId, event);
+    if (event.message) {
+      const prefix = event.phase ? `[${event.phase.toUpperCase()}]` : '[V5]';
+      console.log(`[Job ${jobId}] ${prefix} ${event.message}`);
+    }
+  };
+
+  try {
+    await withProgressCallback(sendEvent, async () => {
+      try {
+        STATUS.pipelineStarted(donorName);
+        sendEvent({ type: 'status', message: '[V5] Conversation mode active' });
+
+        const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+
+        // Load project context from database
+        let projectContextData: ProjectLayerInput | undefined;
+        if (projectContextId && userId) {
+          try {
+            const pc = await prisma.projectContext.findFirst({
+              where: { id: projectContextId, userId },
+            });
+            if (pc) {
+              projectContextData = {
+                name: pc.name,
+                processedBrief: pc.processedBrief,
+                issueAreas: pc.issueAreas || undefined,
+                defaultAsk: pc.defaultAsk || undefined,
+                specificAsk: specificAsk || undefined,
+                fundraiserName: fundraiserName || undefined,
+                strategicFrame: pc.strategicFrame || undefined,
+              };
+              console.log(`[V5] Loaded project context: ${pc.name}`);
+            }
+          } catch (err) {
+            console.warn(`[V5] Failed to load project context:`, err);
+          }
+        }
+
+        const abortSignal = getAbortSignal(jobId);
+
+        const fetchUrl = async (url: string): Promise<string> => {
+          if (!TAVILY_API_KEY) {
+            const res = await fetch(url);
+            return sanitizeForClaude(await res.text());
+          }
+          try {
+            const extractResponse = await fetch('https://api.tavily.com/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ api_key: TAVILY_API_KEY, urls: [url] }),
+            });
+            if (extractResponse.ok) {
+              const extractData: TavilyExtractResponse = await extractResponse.json();
+              if (extractData.results.length > 0) {
+                return sanitizeForClaude(extractData.results[0].raw_content);
+              }
+            }
+          } catch { /* fallback */ }
+          const res = await fetch(url);
+          return sanitizeForClaude(await res.text());
+        };
+
+        // ═══════════════════════════════════════════════════════════
+        // STAGES 1-5: Identical research pipeline
+        // ═══════════════════════════════════════════════════════════
+
+        const TOTAL_STEPS = 38;
+
+        const stageResult = await runResearchStages(
+          donorName,
+          seedUrls,
+          webSearch,
+          (message: string, phase?: string, step?: number, totalSteps?: number) => {
+            if (phase && !message) {
+              sendEvent({ type: 'phase', message: '', phase: phase as any });
+            } else {
+              sendEvent({ type: 'status', phase: phase as any, message, step, totalSteps });
+            }
+          },
+          linkedinPdf,
+          fetchUrl,
+          abortSignal,
+          undefined, // onActivity — no DR in V5
+          undefined, // onClearActivity
+          projectContextData,
+          TOTAL_STEPS,
+        );
+
+        const { selectedSources, coverageGapReport, confidenceResult, linkedinData, identity, research } = stageResult;
+
+        const sourceChars = selectedSources.reduce((sum, s) => sum + (s.content?.length || 0), 0);
+        console.log(`[V5] Stages 1-5 complete: ${selectedSources.length} sources selected, ${sourceChars} chars`);
+        sendEvent({ type: 'status', message: `[V5] Stages 1-5 complete: ${selectedSources.length} sources selected, ${sourceChars} chars` });
+
+        // ═══════════════════════════════════════════════════════════
+        // CONVERSATION 1: Research Package + Profile
+        // ═══════════════════════════════════════════════════════════
+
+        sendEvent({ type: 'status', phase: 'analysis', message: '[V5] Starting conversation mode — research & profile' });
+
+        // Build system prompt for Conversation 1
+        const geoffreyBlock = loadGeoffreyBlock();
+        const taskSection = getTaskSection();
+        const dimensionDefs = formatDimensionsForPrompt();
+
+        const conv1SystemPrompt = [
+          geoffreyBlock,
+          '---',
+          taskSection,
+          '---',
+          '# BEHAVIORAL DIMENSIONS\n\n' + dimensionDefs,
+        ].join('\n\n');
+
+        console.log(`[V5] Conversation 1 starting — system prompt: ${conv1SystemPrompt.length} chars`);
+        debugWrite('V5-conversation-1-system-prompt.txt', conv1SystemPrompt);
+
+        const conv1 = new ConversationManager(conv1SystemPrompt);
+
+        // ── Turn 1: Research Package ──────────────────────────────
+        sendEvent({ type: 'status', phase: 'analysis', message: '[V5] Turn 1: Producing research package...',  step: 18, totalSteps: TOTAL_STEPS });
+
+        const sourcePacket = buildSourcePacket(selectedSources);
+        const linkedinJson = formatLinkedInData(linkedinData);
+
+        const totalCandidates = stageResult.stage5Result.stats.totalScored;
+        const turn1Msg = `Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
+
+Your job: read all sources carefully. Produce a behavioral research package organized by the 25 dimensions in your instructions.
+
+For each dimension:
+- Extract direct quotes (with source URL attribution)
+- Note observed behavioral patterns
+- Write a brief analysis of what the evidence reveals about how this person operates
+
+Prioritize the target's own voice. First-person quotes are your primary evidence. Third-party descriptions are supporting. When a dimension is thin, say so plainly — do not fill gaps with inference.
+
+COVERAGE GAPS FROM SCORING:
+${coverageGapReport}
+
+CONFIDENCE FLOORS:
+${confidenceResult ? confidenceResult.sections.map(s => `Section ${s.section} (${s.sectionName}): floor=${s.floor}`).join('\n') : 'Not available'}
+
+CANONICAL BIOGRAPHICAL DATA:
+${linkedinJson}
+
+---
+
+SOURCES:
+${sourcePacket}`;
+
+        console.log(`[V5] Turn 1 (RESEARCH): sending ${turn1Msg.length} chars, source packet: ${selectedSources.length} sources`);
+        debugWrite('V5-turn-1-research-user.txt', turn1Msg);
+
+        const turn1Result = await conv1.turn(turn1Msg, 'RESEARCH', (text) => {
+          // Stream callback — periodic progress updates
+        }, abortSignal);
+
+        console.log(`[V5] Turn 1 (RESEARCH): response received, ${turn1Result.text.length} chars, ${turn1Result.inputTokens} input tokens, ${turn1Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-1-research-response.txt', turn1Result.text);
+        sendEvent({ type: 'status', phase: 'analysis', message: `[V5] Turn 1 complete — research package: ${turn1Result.text.length} chars`, step: 20, totalSteps: TOTAL_STEPS });
+
+        // ── Turn 2: Research Critique ─────────────────────────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'analysis', message: '[V5] Turn 2: Critiquing research package...', step: 22, totalSteps: TOTAL_STEPS });
+
+        const turn2Msg = `Critique this research package. Check:
+- Thin dimensions that need more evidence pulled from the sources
+- Claims without source attribution
+- Inference presented as evidence — if you wrote "this suggests..." without a quote backing it, flag it
+- Missing first-person voice — did you extract what the target actually said, or only what others said about them?
+- Dimensions where you have institutional patterns but no direct quotes
+- Any source content you skimmed past that contains behavioral evidence you missed on the first pass
+
+Re-read the sources for the thinnest gaps. Revise the package. Acknowledge remaining gaps honestly.`;
+
+        console.log(`[V5] Turn 2 (RESEARCH_CRITIQUE): sending ${turn2Msg.length} chars`);
+        debugWrite('V5-turn-2-critique-user.txt', turn2Msg);
+
+        const turn2Result = await conv1.turn(turn2Msg, 'RESEARCH_CRITIQUE', undefined, abortSignal);
+
+        console.log(`[V5] Turn 2 (RESEARCH_CRITIQUE): response received, ${turn2Result.text.length} chars, ${turn2Result.inputTokens} input tokens, ${turn2Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-2-critique-response.txt', turn2Result.text);
+        sendEvent({ type: 'status', phase: 'analysis', message: `[V5] Turn 2 complete — revised research: ${turn2Result.text.length} chars`, step: 24, totalSteps: TOTAL_STEPS });
+
+        // ── Turn 3: Profile Draft ─────────────────────────────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 3: Writing profile draft...', step: 26, totalSteps: TOTAL_STEPS });
+
+        const exemplarSection = getExemplarSection();
+
+        const turn3Msg = `Write the persuasion profile for ${donorName}.
+
+Here are three exemplar profiles at the target quality. These are FICTIONAL CHARACTERS — a 16th-century pirate captain, a sentient octopus cartographer, and a mycorrhizal network consciousness. Learn the architecture — section rhythm, paragraph density, how quotes deploy, how contradictions land, how evidence ceilings work. Nothing from these exemplars belongs in your output.
+
+${exemplarSection}
+
+Now write the profile using the research package from this conversation. Follow the profile structure and writing principles in your instructions.`;
+
+        console.log(`[V5] Turn 3 (PROFILE_DRAFT): sending ${turn3Msg.length} chars, exemplars injected: ${exemplarSection.length} chars`);
+        debugWrite('V5-turn-3-profile-user.txt', turn3Msg);
+
+        const turn3Result = await conv1.turn(turn3Msg, 'PROFILE_DRAFT', undefined, abortSignal);
+
+        console.log(`[V5] Turn 3 (PROFILE_DRAFT): response received, ${turn3Result.text.length} chars, ${turn3Result.inputTokens} input tokens, ${turn3Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-3-profile-response.txt', turn3Result.text);
+        sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 3 complete — profile draft: ${turn3Result.text.length} chars`, step: 28, totalSteps: TOTAL_STEPS });
+
+        // ── Turn 4: Profile Critique & Final ──────────────────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 4: Critiquing and finalizing profile...', step: 30, totalSteps: TOTAL_STEPS });
+
+        const turn4Msg = `Critique this profile against the register spec and the exemplars you just read. Check every sentence:
+
+- Name-swap test: swap in a different donor's name. Does the sentence still work? If yes, it's too generic. Sharpen it with evidence specific to this person.
+- Performative insight: sounds impressive but tells the reader nothing actionable. "The limitation became the superpower" — what does the reader DO with that in the meeting? If nothing, cut it.
+- Repeated deployment: the same insight re-derived across multiple sections. Find where it first deploys with full treatment. Keep that. Every other appearance becomes a one-sentence reference or gets cut entirely.
+- Literary construction: mirrored parallelism ("He's not X. He's Y."), compressed aphorisms, matched sentence pairs. Just say the thing.
+- Methodology vocabulary: "trust calibration," "substrate reconstruction," "compartmentalized," "subroutine," "defensive processing." These are internal terms. If one appears in the profile, rewrite in plain behavioral language.
+- Quotes as decoration: a quote appears because the analysis that follows unpacks it. If the insight stands without the quote, cut the quote.
+- Every factual claim must trace to the research package in this conversation. If you can't point to where a claim comes from, delete it. No exceptions.
+- Section length proportional to evidence density. One paragraph of evidence does not support three paragraphs of analysis.
+
+Apply all corrections. Produce the final profile with no commentary, no edit log, no explanation of changes.`;
+
+        console.log(`[V5] Turn 4 (PROFILE_FINAL): sending ${turn4Msg.length} chars`);
+        debugWrite('V5-turn-4-critique-user.txt', turn4Msg);
+
+        const turn4Result = await conv1.turn(turn4Msg, 'PROFILE_FINAL', undefined, abortSignal);
+
+        console.log(`[V5] Turn 4 (PROFILE_FINAL): response received, ${turn4Result.text.length} chars, ${turn4Result.inputTokens} input tokens, ${turn4Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-4-critique-response.txt', turn4Result.text);
+
+        const conv1Usage = conv1.getUsage();
+        console.log(`[V5] Conversation 1 complete — total: ${conv1Usage.inputTokens} input, ${conv1Usage.outputTokens} output tokens`);
+        sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 4 complete — final profile: ${turn4Result.text.length} chars`, step: 32, totalSteps: TOTAL_STEPS });
+
+        const finalProfile = turn4Result.text;
+
+        // ═══════════════════════════════════════════════════════════
+        // CONVERSATION 2: Meeting Guide (only if org context provided)
+        // ═══════════════════════════════════════════════════════════
+
+        let meetingGuide = '';
+
+        if (projectContextData) {
+          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Starting conversation 2 — meeting guide' });
+
+          const conv2SystemPrompt = [
+            loadMeetingGuideBlockV3(),
+            '---',
+            loadMeetingGuideOutputTemplate(),
+            '---',
+            loadStage0OrgIntakePrompt(),
+            '---',
+            '# EXEMPLAR ORG FRAME\n\nThe following is a complete strategic frame at the target quality and register.\n\n' + loadTidebreakStrategicFrame(),
+          ].join('\n\n');
+
+          console.log(`[V5] Conversation 2 starting — system prompt: ${conv2SystemPrompt.length} chars`);
+          debugWrite('V5-conversation-2-system-prompt.txt', conv2SystemPrompt);
+
+          const conv2 = new ConversationManager(conv2SystemPrompt);
+
+          // ── Turn 5: Org Frame ─────────────────────────────────
+          let orgFrame = '';
+
+          if (projectContextData.strategicFrame) {
+            // Strategic frame already exists — skip Turn 5
+            orgFrame = projectContextData.strategicFrame;
+            console.log(`[V5] Turn 5 (ORG_FRAME): SKIPPED — using existing frame (${orgFrame.length} chars)`);
+            debugWrite('V5-turn-5-org-user.txt', 'SKIPPED — used existing frame');
+            debugWrite('V5-turn-5-org-response.txt', orgFrame);
+
+            // Still need to add to conversation history for context
+            // We'll inject it as a user+assistant pair
+            const skipMsg = `The organization's strategic frame has already been prepared. Here it is:\n\n${orgFrame}`;
+            // Add as a "turn" so the conversation has context
+            await conv2.turn(skipMsg, 'ORG_FRAME_EXISTING', undefined, abortSignal);
+            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 5: Using existing org frame (${orgFrame.length} chars)`, step: 33, totalSteps: TOTAL_STEPS });
+          } else {
+            if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+            sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 5: Processing org materials...', step: 33, totalSteps: TOTAL_STEPS });
+
+            const turn5Msg = `Process the following org materials into an Org Strategic Frame.
+
+Organization: ${projectContextData.name}
+
+Description: ${projectContextData.processedBrief}
+
+Issue areas: ${projectContextData.issueAreas || 'Not specified'}
+
+The ask: ${specificAsk || projectContextData.defaultAsk || 'Not specified'}`;
+
+            console.log(`[V5] Turn 5 (ORG_FRAME): sending ${turn5Msg.length} chars`);
+            debugWrite('V5-turn-5-org-user.txt', turn5Msg);
+
+            const turn5Result = await conv2.turn(turn5Msg, 'ORG_FRAME', undefined, abortSignal);
+            orgFrame = turn5Result.text;
+
+            console.log(`[V5] Turn 5 (ORG_FRAME): response received, ${turn5Result.text.length} chars, ${turn5Result.inputTokens} input tokens, ${turn5Result.outputTokens} output tokens`);
+            debugWrite('V5-turn-5-org-response.txt', turn5Result.text);
+            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 5 complete — org frame: ${orgFrame.length} chars`, step: 34, totalSteps: TOTAL_STEPS });
+          }
+
+          // ── Turn 6: Meeting Guide Draft ────────────────────────
+          if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 6: Writing meeting guide...', step: 35, totalSteps: TOTAL_STEPS });
+
+          const inesExemplar = loadMeetingGuideInes();
+          const lumaExemplar = loadMeetingGuideLuma();
+          const ymmraExemplar = loadMeetingGuideYmmra();
+
+          const turn6Msg = `Write the meeting guide for ${donorName} at ${projectContextData.name}.
+
+# DONOR PROFILE
+
+${finalProfile}
+
+# ORG STRATEGIC FRAME
+
+${orgFrame}
+
+# EXEMPLAR GUIDES
+
+The following three guides were all written for the same organization (Tidebreak). Study how the same org context produces different tactical approaches depending on who's across the table.
+
+## EXEMPLAR GUIDE 1
+${inesExemplar}
+
+---
+
+## EXEMPLAR GUIDE 2
+${lumaExemplar}
+
+---
+
+## EXEMPLAR GUIDE 3
+${ymmraExemplar}
+
+Now write the meeting guide following the template and voice spec in your instructions.`;
+
+          console.log(`[V5] Turn 6 (MEETING_GUIDE_DRAFT): sending ${turn6Msg.length} chars, profile: ${finalProfile.length} chars, frame: ${orgFrame.length} chars, exemplars: ${inesExemplar.length + lumaExemplar.length + ymmraExemplar.length} chars`);
+          debugWrite('V5-turn-6-guide-user.txt', turn6Msg);
+
+          const turn6Result = await conv2.turn(turn6Msg, 'MEETING_GUIDE_DRAFT', undefined, abortSignal);
+
+          console.log(`[V5] Turn 6 (MEETING_GUIDE_DRAFT): response received, ${turn6Result.text.length} chars, ${turn6Result.inputTokens} input tokens, ${turn6Result.outputTokens} output tokens`);
+          debugWrite('V5-turn-6-guide-response.txt', turn6Result.text);
+          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 6 complete — meeting guide draft: ${turn6Result.text.length} chars`, step: 36, totalSteps: TOTAL_STEPS });
+
+          // ── Turn 7: Meeting Guide Critique & Final ─────────────
+          if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 7: Critiquing meeting guide...', step: 37, totalSteps: TOTAL_STEPS });
+
+          const turn7Msg = `Critique this meeting guide against the voice spec and the exemplars. Check:
+
+- Beat titles and goals must be verbatim from the template — do not modify them
+- Every bulleted section has exactly 3 or 5 bullets — never 2, 4, or 6+
+- STAY sections include at least one stalling indicator with a recovery move
+- Where to Focus references the organization's actual strategic components by name
+- Logistics rationales are tied to this donor's psychology, not generic meeting advice
+- At least one tripwire is about the fundraiser's likely mistake, not the donor's behavior
+- CONTINUE signals are observable states, not internal feelings
+- One Line contains a tension or paradox specific to this donor
+- No content from the fictional exemplars (Tidebreak, Inés, Orekh, Ymmra, pirate, octopus, reef, substrate, mycorrhizal) appears in the output
+
+Apply all corrections. Produce the final meeting guide with no commentary.`;
+
+          console.log(`[V5] Turn 7 (MEETING_GUIDE_FINAL): sending ${turn7Msg.length} chars`);
+          debugWrite('V5-turn-7-critique-user.txt', turn7Msg);
+
+          const turn7Result = await conv2.turn(turn7Msg, 'MEETING_GUIDE_FINAL', undefined, abortSignal);
+
+          console.log(`[V5] Turn 7 (MEETING_GUIDE_FINAL): response received, ${turn7Result.text.length} chars, ${turn7Result.inputTokens} input tokens, ${turn7Result.outputTokens} output tokens`);
+          debugWrite('V5-turn-7-critique-response.txt', turn7Result.text);
+
+          meetingGuide = turn7Result.text;
+
+          const conv2Usage = conv2.getUsage();
+          console.log(`[V5] Conversation 2 complete — total: ${conv2Usage.inputTokens} input, ${conv2Usage.outputTokens} output tokens`);
+          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 7 complete — final meeting guide: ${meetingGuide.length} chars`, step: 38, totalSteps: TOTAL_STEPS });
+
+          // Write token usage for both conversations
+          const tokenUsage = {
+            conversation1: conv1Usage,
+            conversation2: conv2Usage,
+            totals: {
+              inputTokens: conv1Usage.inputTokens + conv2Usage.inputTokens,
+              outputTokens: conv1Usage.outputTokens + conv2Usage.outputTokens,
+            },
+          };
+          debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
+
+          // Estimate cost (Opus rates: $15/M input, $75/M output)
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
+        } else {
+          // No org context — write token usage for conversation 1 only
+          const tokenUsage = {
+            conversation1: conv1.getUsage(),
+            conversation2: null,
+            totals: conv1.getUsage(),
+          };
+          debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
+          console.log(`[V5] No org context provided — skipping meeting guide`);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // Save outputs
+        // ═══════════════════════════════════════════════════════════
+
+        // Save debug output files
+        ensureOutputDir();
+        writeFileSync(`${OUTPUT_DIR}/${requestId}-${safeName}-profile.md`, finalProfile);
+        if (meetingGuide) {
+          writeFileSync(`${OUTPUT_DIR}/${requestId}-${safeName}-meeting-guide.md`, meetingGuide);
+        }
+
+        // Format result for frontend compatibility
+        const result: any = {
+          research: {
+            ...research,
+            rawMarkdown: `[V5 conversation mode — no research package, see debug files]`,
+            sources: research.sources || [],
+          },
+          researchProfile: { rawMarkdown: finalProfile },
+          profile: {
+            donorName,
+            profile: finalProfile,
+            validationPasses: 0,
+            status: 'complete',
+          },
+          meetingGuide,
+          fundraiserName,
+        };
+
+        STATUS.pipelineComplete();
+        console.log(`[V5] Pipeline complete, storing result`);
+
+        // Save to Postgres
+        let profileId: string | undefined;
+        if (userId) {
+          try {
+            const dbProfile = await prisma.profile.create({
+              data: {
+                userId,
+                donorName,
+                profileMarkdown: finalProfile,
+                meetingGuideMarkdown: meetingGuide || null,
+                researchPackageJson: null,
+                linkedinDataJson: linkedinData ? JSON.stringify(linkedinData) : null,
+                seedUrlsJson: seedUrls.length > 0 ? JSON.stringify(seedUrls) : null,
+                confidenceScores: confidenceResult ? JSON.stringify(confidenceResult.sections) : null,
+                dimensionCoverage: null,
+                sourceCount: selectedSources.length,
+                projectContextId: projectContextId || null,
+                relationshipContext: relationshipContext || null,
+                fundraiserName: fundraiserName || null,
+                specificAsk: specificAsk || null,
+                pipelineVersion: 'v5-conversation',
+                status: 'complete',
+              },
+            });
+            profileId = dbProfile.id;
+            console.log(`[V5] Saved profile to database: ${dbProfile.id}`);
+            await linkJobToProfile(jobId, dbProfile.id);
+          } catch (dbErr) {
+            console.error(`[V5] Failed to save profile to database:`, dbErr);
+          }
+        }
+
+        result.profileId = profileId;
+        completeJob(jobId, result);
+
+      } catch (error) {
+        const isAbort = error instanceof Error && (
+          error.name === 'AbortError' ||
+          error.message === 'Pipeline aborted by client'
+        );
+        if (isAbort) {
+          console.log(`[V5] Pipeline cancelled by user`);
+          return;
+        }
+        console.error(`[V5] Pipeline error:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        STATUS.pipelineError(errorMessage);
+        failJob(jobId, errorMessage);
+      }
+    });
+  } catch (outerError) {
+    console.error(`[V5] Outer pipeline error:`, outerError);
+    failJob(jobId, outerError instanceof Error ? outerError.message : 'Unknown error');
+  }
+}

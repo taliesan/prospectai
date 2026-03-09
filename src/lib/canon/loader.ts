@@ -97,6 +97,17 @@ ${projectContext.specificAsk || 'Not specified'}
 ${projectContext.fundraiserName || 'Not specified'}`.trim();
 }
 
+/** Individual meeting guide exemplars for conversation mode */
+export function loadMeetingGuideInes(): string {
+  return meetingGuideInesCache;
+}
+export function loadMeetingGuideLuma(): string {
+  return meetingGuideLumaCache;
+}
+export function loadMeetingGuideYmmra(): string {
+  return meetingGuideYmmraCache;
+}
+
 export function loadPromptV2(): string {
   return promptV2Cache;
 }

@@ -1885,3 +1885,376 @@ function extractLinkedInCodedFields(pdfText: string): { linkedinSlug: string | n
 
   return { linkedinSlug, websites: dedupedWebsites };
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// REUSABLE RESEARCH STAGES (0-5) — shared between pipeline and V5 conversation mode
+// ══════════════════════════════════════════════════════════════════════
+
+export interface ResearchStagesResult {
+  linkedinData: LinkedInData | null;
+  identity: any;
+  selectedSources: import('./prompts/source-scoring').ScoredSource[];
+  coverageGapReport: string;
+  confidenceResult: ConfidenceResult | null;
+  stage5Result: import('./prompts/source-scoring').Stage5Result;
+  screenedSources: ResearchSource[];
+  categorizedQueries: CategorizedQuery[];
+  research: ResearchResult;
+}
+
+/**
+ * Run stages 0-5 of the research pipeline: LinkedIn parsing, identity extraction,
+ * query generation, search execution, screening, content fetch, dedup, relevance
+ * filter, dimension scoring & selection.
+ *
+ * Used by both the standard pipeline (runFullPipeline) and V5 conversation mode.
+ */
+export async function runResearchStages(
+  donorName: string,
+  seedUrls: string[],
+  searchFunction: (query: string) => Promise<{ url: string; title: string; snippet: string; fullContent?: string }[]>,
+  onProgress: ResearchProgressCallback,
+  linkedinPdfBase64?: string,
+  fetchFunction?: (url: string) => Promise<string>,
+  abortSignal?: AbortSignal,
+  onActivity?: ActivityCallback,
+  onClearActivity?: () => void,
+  projectContext?: ProjectLayerInput,
+  totalSteps: number = 38,
+): Promise<ResearchStagesResult> {
+  const emit = onProgress;
+
+  // ── Step 0: LinkedIn PDF Parsing ────────────────────────────────
+  let linkedinData: LinkedInData | null = null;
+
+  if (linkedinPdfBase64) {
+    console.log(`[LinkedIn] PDF received, length: ${linkedinPdfBase64.length}`);
+    emit('Parsing LinkedIn profile...', undefined, 1, totalSteps);
+
+    try {
+      const pdfBuffer = Buffer.from(linkedinPdfBase64, 'base64');
+      const { extractText } = await import('unpdf');
+      const { text: pdfText } = await extractText(new Uint8Array(pdfBuffer), { mergePages: true });
+      console.log(`[LinkedIn] PDF text extracted, length: ${pdfText.length}`);
+
+      const codedFields = extractLinkedInCodedFields(pdfText);
+      console.log(`[LinkedIn] Coded extraction: slug=${codedFields.linkedinSlug || 'none'}, websites=${codedFields.websites.join(', ') || 'none'}`);
+
+      const parsePrompt = `Extract structured biographical data from this LinkedIn profile text.
+
+Return JSON in this exact format:
+{
+  "currentTitle": "their current job title",
+  "currentEmployer": "their current employer",
+  "linkedinSlug": "the handle from their LinkedIn URL (e.g. 'geoffreymacdougall')",
+  "websites": ["any personal websites listed"],
+  "careerHistory": [
+    { "title": "Job Title", "employer": "Company Name", "startDate": "Mon YYYY", "endDate": "Mon YYYY or Present", "description": "role description" }
+  ],
+  "education": [
+    { "institution": "University Name", "degree": "Degree Type", "field": "Field of Study", "years": "YYYY - YYYY" }
+  ],
+  "skills": ["skill1", "skill2"],
+  "boards": ["Board membership 1", "Advisory role 2"]
+}
+
+Parse carefully. Extract all career history entries in chronological order (most recent first).
+Look for the LinkedIn profile URL (linkedin.com/in/...) and any personal website URLs.
+
+LinkedIn Profile Text:
+${pdfText}`;
+
+      const response = await complete('You are a data extraction assistant.', parsePrompt, { maxTokens: 4000 });
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        linkedinData = JSON.parse(jsonMatch[0]);
+      }
+
+      if (linkedinData) {
+        if (codedFields.linkedinSlug) {
+          linkedinData.linkedinSlug = codedFields.linkedinSlug;
+        }
+        if (codedFields.websites.length > 0) {
+          const allWebsites = new Set([...codedFields.websites, ...(linkedinData.websites || [])]);
+          linkedinData.websites = Array.from(allWebsites);
+        }
+      }
+
+      console.log(`[LinkedIn] Parsed: ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`);
+
+      try {
+        mkdirSync('/tmp/prospectai-outputs', { recursive: true });
+        writeFileSync('/tmp/prospectai-outputs/DEBUG-linkedin-data.json', JSON.stringify(linkedinData, null, 2));
+      } catch (e) { /* ignore */ }
+
+      emit(`LinkedIn parsed — ${linkedinData?.currentTitle} at ${linkedinData?.currentEmployer}`, undefined, 2, totalSteps);
+    } catch (err) {
+      console.error('[LinkedIn] Parsing failed:', err);
+      emit('LinkedIn PDF parsing failed — continuing without it', undefined, 2, totalSteps);
+    }
+  }
+
+  // ── Research stages (v6 path) ──────────────────────────────────
+  emit('', 'research');
+
+  const actualFetchFunction = fetchFunction || executeFetchPage;
+  let seedUrlContent: string | null = null;
+  if (seedUrls.length > 0) {
+    try {
+      const domain = (() => { try { return new URL(seedUrls[0]).hostname.replace('www.', ''); } catch { return seedUrls[0]; } })();
+      emit(`Reading seed URL — ${domain}`, 'research', 2, totalSteps);
+      seedUrlContent = await actualFetchFunction(seedUrls[0]);
+      console.log(`[Pipeline] Fetched seed URL: ${seedUrls[0]} (${seedUrlContent.length} chars)`);
+    } catch (err) {
+      console.error(`[Pipeline] Failed to fetch seed URL: ${seedUrls[0]}`, err);
+    }
+  }
+
+  // ── Stage 0: Identity extraction ─────────────────────────────
+  let identity: any = { name: donorName, currentOrg: '', currentRole: '' };
+  if (seedUrlContent) {
+    emit('Identifying role, org, and key affiliations', 'research', 3, totalSteps);
+    try {
+      const identityResponse = await complete('You are a research assistant.', `${IDENTITY_EXTRACTION_PROMPT}\n\nDonor Name: ${donorName}\n\nPAGE CONTENT:\n${seedUrlContent.slice(0, 15000)}\n\nExtract the identity signals for this person.`);
+      const jsonMatch = identityResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        identity = JSON.parse(jsonMatch[0]);
+        identity.name = identity.fullName || donorName;
+      }
+    } catch (err) {
+      console.error('[Pipeline] Identity extraction failed:', err);
+    }
+  }
+  if (linkedinData) {
+    identity.currentRole = linkedinData.currentTitle || identity.currentRole;
+    identity.currentOrg = linkedinData.currentEmployer || identity.currentOrg;
+    if (linkedinData.careerHistory?.length) {
+      identity.pastRoles = linkedinData.careerHistory.map(j => ({
+        role: j.title, org: j.employer, years: `${j.startDate} - ${j.endDate}`
+      }));
+    }
+    if (linkedinData.education?.length) {
+      identity.education = linkedinData.education.map(e => ({
+        school: e.institution, degree: e.degree, year: e.years
+      }));
+    }
+    if (linkedinData.boards?.length) {
+      identity.affiliations = [...(identity.affiliations || []), ...linkedinData.boards];
+    }
+  }
+
+  // ── Stage 1: Query Generation ────────────────────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Designing search strategy for ${donorName}`, 'research', 4, totalSteps);
+  console.log('[Stage 1] Generating search queries');
+
+  const queryPrompt = generateResearchQueries(donorName, identity, seedUrlContent?.slice(0, 15000), linkedinData, projectContext ? { issueAreas: projectContext.issueAreas, processedBrief: projectContext.processedBrief, strategicFrame: projectContext.strategicFrame } : undefined);
+  const queryResponse = await complete('You are a research strategist designing search queries for behavioral evidence.', queryPrompt);
+  const categorizedQueries = parseQueryGenerationResponse(queryResponse);
+
+  const catCounts: Record<string, number> = {};
+  for (const q of categorizedQueries) {
+    catCounts[q.category] = (catCounts[q.category] || 0) + 1;
+  }
+  console.log(`[Stage 1] Generated ${categorizedQueries.length} queries: A=${catCounts['A'] || 0}, B=${catCounts['B'] || 0}, C=${catCounts['C'] || 0}`);
+  emit(`${categorizedQueries.length} search queries designed`, 'research', 5, totalSteps);
+
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-1-query-generation-prompt.txt', queryPrompt);
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-stage-1-query-generation-response.txt', queryResponse);
+  } catch (e) { /* ignore */ }
+
+  // ── Stage 2: Search Execution ────────────────────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Executing ${categorizedQueries.length} searches`, 'research', 6, totalSteps);
+  console.log('[Stage 2] Executing searches');
+
+  const allSearchSources: ResearchSource[] = [];
+  const seenSearchUrls = new Set<string>();
+  let searchedCount = 0;
+  const SEARCH_CONCURRENCY = 3;
+  const searchPromises = new Set<Promise<void>>();
+
+  for (const q of categorizedQueries) {
+    const p = (async () => {
+      try {
+        const results = await searchFunction(q.query);
+        for (const r of results) {
+          if (seenSearchUrls.has(r.url)) continue;
+          seenSearchUrls.add(r.url);
+          allSearchSources.push({
+            url: r.url,
+            title: r.title,
+            snippet: r.snippet,
+            content: (r as any).fullContent || (r as any).content || undefined,
+            query: q.query,
+            queryCategory: q.category as 'A' | 'B' | 'C',
+            queryHypothesis: q.rationale,
+            targetDimensions: q.targetDimensions,
+            source: 'tavily',
+          });
+        }
+      } catch (err) {
+        console.error(`[Stage 2] Search failed: ${q.query}`, err);
+      }
+      searchedCount++;
+      if (searchedCount % 10 === 0 || searchedCount === categorizedQueries.length) {
+        emit(`Searched ${searchedCount}/${categorizedQueries.length} — ${allSearchSources.length} unique results`, 'research', 7, totalSteps);
+      }
+    })().then(() => { searchPromises.delete(p); });
+    searchPromises.add(p);
+    if (searchPromises.size >= SEARCH_CONCURRENCY) {
+      await Promise.race(searchPromises);
+    }
+  }
+  await Promise.all(searchPromises);
+
+  let tier1Sources: ResearchSource[] = [];
+  if (fetchFunction) {
+    try {
+      tier1Sources = await crawlSubjectPublishing(donorName, seedUrls, linkedinData || identity, searchFunction as any, fetchFunction);
+      console.log(`[Stage 2] Blog crawl: ${tier1Sources.length} sources`);
+    } catch (err) {
+      console.error('[Stage 2] Blog crawl failed:', err);
+    }
+  }
+
+  const allSources = [...tier1Sources, ...allSearchSources];
+  console.log(`[Stage 2] ${allSources.length} total sources`);
+  emit(`${allSources.length} sources found`, 'research', 8, totalSteps);
+
+  // ── Stage 3: Screening & Attribution ─────────────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Screening ${allSources.length} sources for relevance`, 'research', 9, totalSteps);
+  console.log('[Stage 3] Running screening & attribution filter');
+
+  const screeningResult = await runScreeningPipeline(allSources, donorName, identity, linkedinData);
+  const screenedSources = screeningResult.survivingUrls;
+  console.log(`[Stage 3] ${screenedSources.length} survived screening`);
+  emit(`${screenedSources.length} sources passed screening`, 'research', 10, totalSteps);
+
+  // ── Stage 4: Content Fetch + Dedup ───────────────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Fetching full content for ${screenedSources.length} sources`, 'research', 11, totalSteps);
+
+  const sourcesToFetch = screenedSources.filter(s => !s.content || s.content.length < 200);
+  const FETCH_CONCURRENCY = 8;
+  let fetchedCount = 0;
+  const executing = new Set<Promise<void>>();
+  for (const source of sourcesToFetch) {
+    const p = (async () => {
+      try {
+        const content = await executeFetchPage(source.url);
+        source.content = content;
+        fetchedCount++;
+      } catch (err) {
+        console.log(`[Stage 4] Fetch failed: ${source.url}`);
+      }
+    })().then(() => { executing.delete(p); });
+    executing.add(p);
+    if (executing.size >= FETCH_CONCURRENCY) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+
+  const linkedinPostContents: string[] = [];
+  for (const s of tier1Sources) {
+    if (s.source === 'linkedin_post' && s.content) {
+      linkedinPostContents.push(s.content);
+    }
+  }
+  const { deduplicated: dedupedSources } = deduplicateSources(screenedSources, linkedinPostContents);
+  console.log(`[Stage 4] After dedup: ${dedupedSources.length} sources`);
+
+  // ── Stage 4.5: Relevance Filter ─────────────────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Relevance-checking ${dedupedSources.length} sources`, 'research', 14, totalSteps);
+
+  const relevanceResult = await runRelevanceFilter(dedupedSources, donorName, seedUrlContent || '', linkedinData, identity);
+  const relevantSources = relevanceResult.passed;
+  console.log(`[Stage 4.5] ${relevantSources.length} passed relevance filter`);
+
+  // ── Stage 5: Dimension Scoring & Selection ───────────────────
+  if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+  emit(`Scoring ${relevantSources.length} sources against 25 dimensions`, 'research', 15, totalSteps);
+  console.log('[Stage 5] Dimension scoring & selection');
+
+  const stage5Result = await runDimensionScoring(relevantSources, donorName, identity, linkedinData);
+  const selectedSources = stage5Result.selectedSources;
+  const coverageGapReport = formatCoverageGapReport(stage5Result.coverageGaps);
+
+  console.log(`[Stage 5] Selected ${selectedSources.length} sources (~${stage5Result.stats.estimatedContentChars} chars)`);
+  emit(`${selectedSources.length} sources selected`, 'research', 15, totalSteps);
+
+  const confidenceResult = computeSectionConfidence(
+    stage5Result.dimensionAttribution,
+    stage5Result.coverageGaps,
+  );
+  console.log(`[Stage 5] Confidence floors: ${confidenceResult.sections.map(s => `S${s.section}=${s.floor}`).join(', ')}`);
+
+  // Debug saves
+  try {
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-confidence-floors.json', JSON.stringify(confidenceResult.sections, null, 2));
+  } catch (e) { /* ignore */ }
+
+  // Source packet manifest
+  try {
+    const nameLower = donorName.toLowerCase();
+    const lastNameLower = donorName.trim().split(/\s+/).pop()?.toLowerCase() || '';
+    const manifestLines: string[] = [
+      `SOURCE PACKET MANIFEST — ${donorName}`,
+      `Generated: ${new Date().toISOString()}`,
+      `Selected sources: ${selectedSources.length}`,
+      '',
+    ];
+    for (let i = 0; i < selectedSources.length; i++) {
+      const s = selectedSources[i];
+      const content = s.content || '';
+      const nameHit = content.toLowerCase().includes(nameLower)
+        ? 'FULL NAME'
+        : content.toLowerCase().includes(lastNameLower)
+          ? 'LAST NAME ONLY'
+          : '*** ABSENT ***';
+      manifestLines.push(
+        `--- SOURCE ${i + 1} ---`,
+        `URL: ${s.url}`,
+        `Title: ${s.title}`,
+        `Tier: ${s.sourceTier}  |  Attribution: ${s.attribution || 'none'}`,
+        `Content length: ${content.length} chars  |  Name check: ${nameHit}`,
+        `Content preview: ${content.slice(0, 300).replace(/\n/g, ' ')}`,
+        '',
+      );
+    }
+    writeFileSync('/tmp/prospectai-outputs/DEBUG-source-packet-manifest.txt', manifestLines.join('\n'));
+  } catch (e) { /* ignore */ }
+
+  // Build ResearchResult for compat
+  const research: ResearchResult = {
+    donorName,
+    identity,
+    queries: categorizedQueries.map(q => ({
+      query: q.query,
+      tier: q.category === 'A' ? 'STANDARD' as const : 'TAILORED' as const,
+      rationale: `[Cat ${q.category}] ${q.rationale}`,
+    })),
+    sources: selectedSources.map(s => ({
+      url: s.url,
+      title: s.title,
+      snippet: (s.content || '').slice(0, 200),
+    })),
+    rawMarkdown: `# v5 RESEARCH STAGES: ${donorName}\nQueries: ${categorizedQueries.length}\nSelected: ${selectedSources.length}`,
+  };
+
+  return {
+    linkedinData,
+    identity,
+    selectedSources,
+    coverageGapReport,
+    confidenceResult,
+    stage5Result,
+    screenedSources,
+    categorizedQueries,
+    research,
+  };
+}

@@ -50,6 +50,9 @@ export default function Home() {
   const [materialUrls, setMaterialUrls] = useState<string[]>(['']);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ── Conversation mode toggle ──
+  const [conversationMode, setConversationMode] = useState(false);
+
   // ── Pipeline / loading state ──
   const [isLoading, setIsLoading] = useState(false);
   const [progressMessages, setProgressMessages] = useState<ProgressEvent[]>([]);
@@ -208,7 +211,7 @@ export default function Home() {
 
       // 3. Submit pipeline job
       console.log(`[Submit] projectContextId=${projectContextId || 'none'}, selectedContextId=${selectedContextId}, hasOrgInput=${hasOrgInput}, orgName="${orgName}"`);
-      const submitResponse = await fetch('/api/generate', {
+      const submitResponse = await fetch(conversationMode ? '/api/generate-v5' : '/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -394,7 +397,8 @@ export default function Home() {
       'analysis': 'ANALYZING BEHAVIOR',
       'writing': 'WRITING DOCUMENTS',
     };
-    const phaseLabel = isProcessing ? 'PREPARING' : (phaseLabels[currentPhase] || 'STARTING');
+    const defaultLabel = conversationMode ? 'CONVERSATION MODE' : 'STARTING';
+    const phaseLabel = isProcessing ? 'PREPARING' : (phaseLabels[currentPhase] || defaultLabel);
 
     return (
       <div className="min-h-screen bg-brand-black">
@@ -409,7 +413,7 @@ export default function Home() {
 
         <div className="flex justify-end px-6 pt-4">
           <span className="text-[10px] font-semibold tracking-[2px] uppercase text-white/30 border border-white/15 rounded px-2 py-0.5">
-            v4.5
+            {conversationMode ? 'v5' : 'v4.5'}
           </span>
         </div>
 
@@ -973,7 +977,24 @@ export default function Home() {
                   />
                 </div>
 
-                <div className="border-t border-brand-light-gray pt-6">
+                <div className="border-t border-brand-light-gray pt-6 space-y-4">
+                  {/* Conversation mode toggle */}
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={conversationMode}
+                        onChange={(e) => setConversationMode(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-brand-light-gray rounded-full peer-checked:bg-brand-purple transition-colors" />
+                      <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4" />
+                    </div>
+                    <span className="text-sm text-brand-warm-gray group-hover:text-brand-black transition-colors">
+                      Conversation mode <span className="text-[10px] font-semibold tracking-[1px] uppercase text-brand-purple/60 ml-1">experimental</span>
+                    </span>
+                  </label>
+
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -991,7 +1012,7 @@ export default function Home() {
                     Generate Profile
                   </button>
                   <p className="text-center text-xs text-brand-mid-gray mt-3">
-                    Takes 20 – 30 minutes. You&apos;ll see progress in real time.
+                    Takes {conversationMode ? '30 – 45' : '20 – 30'} minutes. You&apos;ll see progress in real time.
                   </p>
                 </div>
               </form>
