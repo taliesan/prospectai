@@ -5,6 +5,25 @@ import { readFileSync, existsSync } from 'fs';
  * GET /api/debug-dump?file=<key>
  *
  * Available files:
+ *   V5 Conversation Mode (7-turn pipeline):
+ *   ?file=v5-conv1-system         — Conversation 1 system prompt
+ *   ?file=v5-turn1-user           — Turn 1 (Research) user message
+ *   ?file=v5-turn1-response       — Turn 1 (Research) response
+ *   ?file=v5-turn2-user           — Turn 2 (Research Critique) user message
+ *   ?file=v5-turn2-response       — Turn 2 (Research Critique) response
+ *   ?file=v5-turn3-user           — Turn 3 (Profile Draft) user message
+ *   ?file=v5-turn3-response       — Turn 3 (Profile Draft) response
+ *   ?file=v5-turn4-user           — Turn 4 (Profile Final) user message
+ *   ?file=v5-turn4-response       — Turn 4 (Profile Final) response
+ *   ?file=v5-conv2-system         — Conversation 2 system prompt
+ *   ?file=v5-turn5-user           — Turn 5 (Org Frame) user message
+ *   ?file=v5-turn5-response       — Turn 5 (Org Frame) response
+ *   ?file=v5-turn6-user           — Turn 6 (Meeting Guide Draft) user message
+ *   ?file=v5-turn6-response       — Turn 6 (Meeting Guide Draft) response
+ *   ?file=v5-turn7-user           — Turn 7 (Meeting Guide Final) user message
+ *   ?file=v5-turn7-response       — Turn 7 (Meeting Guide Final) response
+ *   ?file=v5-token-usage          — Token usage summary (JSON)
+ *
  *   Phase 1 (Own Voice):
  *   ?file=phase1-sources          — Phase 1 source list
  *   ?file=phase1-conversation     — Phase 1 full conversation log (JSON)
@@ -39,6 +58,24 @@ export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get('file');
 
   const files: Record<string, string> = {
+    // V5 conversation mode files
+    'v5-conv1-system': '/tmp/prospectai-outputs/V5-conversation-1-system-prompt.txt',
+    'v5-turn1-user': '/tmp/prospectai-outputs/V5-turn-1-research-user.txt',
+    'v5-turn1-response': '/tmp/prospectai-outputs/V5-turn-1-research-response.txt',
+    'v5-turn2-user': '/tmp/prospectai-outputs/V5-turn-2-critique-user.txt',
+    'v5-turn2-response': '/tmp/prospectai-outputs/V5-turn-2-critique-response.txt',
+    'v5-turn3-user': '/tmp/prospectai-outputs/V5-turn-3-profile-user.txt',
+    'v5-turn3-response': '/tmp/prospectai-outputs/V5-turn-3-profile-response.txt',
+    'v5-turn4-user': '/tmp/prospectai-outputs/V5-turn-4-critique-user.txt',
+    'v5-turn4-response': '/tmp/prospectai-outputs/V5-turn-4-critique-response.txt',
+    'v5-conv2-system': '/tmp/prospectai-outputs/V5-conversation-2-system-prompt.txt',
+    'v5-turn5-user': '/tmp/prospectai-outputs/V5-turn-5-org-user.txt',
+    'v5-turn5-response': '/tmp/prospectai-outputs/V5-turn-5-org-response.txt',
+    'v5-turn6-user': '/tmp/prospectai-outputs/V5-turn-6-guide-user.txt',
+    'v5-turn6-response': '/tmp/prospectai-outputs/V5-turn-6-guide-response.txt',
+    'v5-turn7-user': '/tmp/prospectai-outputs/V5-turn-7-critique-user.txt',
+    'v5-turn7-response': '/tmp/prospectai-outputs/V5-turn-7-critique-response.txt',
+    'v5-token-usage': '/tmp/prospectai-outputs/V5-token-usage.json',
     // Per-phase debug files
     'phase1-sources': '/tmp/prospectai-outputs/DEBUG-phase1-sources.txt',
     'phase1-conversation': '/tmp/prospectai-outputs/DEBUG-phase1-conversation.json',
@@ -89,7 +126,7 @@ export async function GET(request: NextRequest) {
   }
 
   const content = readFileSync(path, 'utf-8');
-  const jsonFiles = ['linkedin', 'research-conversation', 'phase1-conversation', 'phase2-conversation', 'phase3-conversation', 'fact-check'];
+  const jsonFiles = ['linkedin', 'research-conversation', 'phase1-conversation', 'phase2-conversation', 'phase3-conversation', 'fact-check', 'v5-token-usage'];
   const contentType = jsonFiles.includes(file) ? 'application/json'
     : file === 'meeting-guide-html' ? 'text/html; charset=utf-8'
     : 'text/plain; charset=utf-8';
