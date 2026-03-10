@@ -10,7 +10,9 @@ const FILE_DESCRIPTIONS: Record<string, { path: string; label: string; group: st
   'v5-turn2-response':{ path: '/tmp/prospectai-outputs/V5-turn-2-critique-response.txt', label: 'Turn 2 response (Revised Research)', group: 'V5 Conversation — Research & Profile' },
   'v5-turn3-user':    { path: '/tmp/prospectai-outputs/V5-turn-3-profile-user.txt', label: 'Turn 3 user (Profile Draft)', group: 'V5 Conversation — Research & Profile' },
   'v5-turn3-response':{ path: '/tmp/prospectai-outputs/V5-turn-3-profile-response.txt', label: 'Turn 3 response (Profile Draft)', group: 'V5 Conversation — Research & Profile' },
-  'v5-turn4-user':    { path: '/tmp/prospectai-outputs/V5-turn-4-critique-user.txt', label: 'Turn 4 user (Profile Critique)', group: 'V5 Conversation — Research & Profile' },
+  'v5-professor-prompt':  { path: '/tmp/prospectai-outputs/V5-professor-prompt.txt', label: 'Professor prompt (canon + draft)', group: 'V5 Conversation — Research & Profile' },
+  'v5-professor-feedback':{ path: '/tmp/prospectai-outputs/V5-professor-feedback.txt', label: 'Professor feedback (analytical critique)', group: 'V5 Conversation — Research & Profile' },
+  'v5-turn4-user':    { path: '/tmp/prospectai-outputs/V5-turn-4-critique-user.txt', label: 'Turn 4 user (Professor + Editorial)', group: 'V5 Conversation — Research & Profile' },
   'v5-turn4-response':{ path: '/tmp/prospectai-outputs/V5-turn-4-critique-response.txt', label: 'Turn 4 response (Final Profile)', group: 'V5 Conversation — Research & Profile' },
   'v5-conv2-system':  { path: '/tmp/prospectai-outputs/V5-conversation-2-system-prompt.txt', label: 'Conv 2 system prompt', group: 'V5 Conversation — Meeting Guide' },
   'v5-turn5-user':    { path: '/tmp/prospectai-outputs/V5-turn-5-org-user.txt', label: 'Turn 5 user (Org Frame)', group: 'V5 Conversation — Meeting Guide' },
@@ -97,6 +99,8 @@ function buildIndexHtml(baseUrl: string): string {
   .banner strong { color: #e1e4e8; }
   .count { color: #3fb950; font-weight: 600; }
   .count-zero { color: #f85149; font-weight: 600; }
+  .download-all { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #238636; color: #fff; border-radius: 6px; text-decoration: none; font-size: 0.85em; font-weight: 600; }
+  .download-all:hover { background: #2ea043; text-decoration: none; }
 </style>
 </head><body>
 <h1>Debug Dump</h1>
@@ -104,6 +108,7 @@ function buildIndexHtml(baseUrl: string): string {
 <div class="banner">
   <strong>Status:</strong> <span class="${availableFiles > 0 ? 'count' : 'count-zero'}">${availableFiles}</span> of ${totalFiles} files available.
   ${availableFiles === 0 ? ' No debug files found — run a profile first, then access this page <em>before</em> the next deploy (files are stored in /tmp).' : ''}
+  ${availableFiles > 0 ? `<br><a class="download-all" href="${baseUrl}?file=all">Download All (${availableFiles} files)</a>` : ''}
 </div>
 `;
 
@@ -131,6 +136,29 @@ export async function GET(request: NextRequest) {
     const baseUrl = request.nextUrl.pathname;
     return new Response(buildIndexHtml(baseUrl), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  // Download all available files as a single concatenated text file
+  if (file === 'all') {
+    const sections: string[] = [];
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    for (const [key, info] of Object.entries(FILE_DESCRIPTIONS)) {
+      if (!existsSync(info.path)) continue;
+      try {
+        const content = readFileSync(info.path, 'utf-8');
+        sections.push(`${'═'.repeat(72)}\n${info.group} — ${info.label}\nFile: ${key}\n${'═'.repeat(72)}\n\n${content}`);
+      } catch { /* skip unreadable */ }
+    }
+    if (sections.length === 0) {
+      return new Response(JSON.stringify({ error: 'No debug files available' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    }
+    const bundle = `ProspectAI Debug Dump — ${timestamp}\n${sections.length} files\n\n${sections.join('\n\n\n')}`;
+    return new Response(bundle, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="debug-dump-${timestamp}.txt"`,
+      },
     });
   }
 

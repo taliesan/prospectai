@@ -404,12 +404,14 @@ Now write the profile using the research package from this conversation. Follow 
         const professorCanon = loadProfessorCanon();
         console.log(`[V5] Running professor review — canon: ${professorCanon.length} chars, draft: ${turn3Result.text.length} chars`);
 
-        const professorFeedback = await runProfessorReview(
+        const professorResult = await runProfessorReview(
           turn3Result.text,
           professorCanon,
           donorName,
         );
+        const professorFeedback = professorResult.feedback;
 
+        debugWrite('V5-professor-prompt.txt', professorResult.promptForDebug);
         debugWrite('V5-professor-feedback.txt', professorFeedback);
         console.log(`[V5] Professor review complete: ${professorFeedback.length} chars feedback`);
 
