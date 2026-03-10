@@ -295,14 +295,34 @@ ${dimensionDefs}
 
 Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
 
-Your job: read all sources carefully. Produce a behavioral research package organized by the 25 dimensions in your instructions.
+Your job: read every source completely and carefully. Do not skim. Do not skip sources that look biographical or institutional.
 
-For each dimension:
-- Extract direct quotes (with source URL attribution)
-- Note observed behavioral patterns
-- Write a brief analysis of what the evidence reveals about how this person operates
+PHASE 1 — READ FOR SIGNIFICANCE
 
-Prioritize the target's own voice. First-person quotes are your primary evidence. Third-party descriptions are supporting. When a dimension is thin, say so plainly — do not fill gaps with inference.
+For each source, ask: what does this reveal about how this person actually operates? Look for:
+- Decisions they made and what those decisions cost them
+- Specific dollar amounts attached to specific actions — these are behavioral evidence, not resume items
+- Sequences where small commitments escalated to large ones, or large commitments were suddenly cut
+- Moments where their stated values were tested and what they actually did
+- Their own words about why they did something — the explanation reveals the operating system
+- Patterns across sources — the same behavior showing up in different contexts
+- Contradictions between what they say and what they do
+- What they refused to do, and what that refusal cost
+- How other people describe interacting with them
+- Silences — topics they redirect away from, questions they won't answer
+
+PHASE 2 — ORGANIZE BY DIMENSION
+
+Take everything significant you found and organize it into the 25 behavioral dimensions below. For each dimension:
+- Extract direct quotes with source URL attribution
+- Note observed behavioral patterns with specific examples
+- Write a brief analysis of what the evidence reveals
+
+Some evidence will fit multiple dimensions. Include it in the most important one and cross-reference the others. Some evidence won't fit any dimension cleanly — include it under the closest match and note why it matters.
+
+When a dimension is thin, say so plainly rather than filling it with inference. But before marking a dimension as thin, re-read the sources — significant evidence often hides in articles that look like they're about something else.
+
+Prioritize the target's own voice. First-person quotes are your primary evidence. Third-party descriptions are supporting.
 
 COVERAGE GAPS FROM SCORING:
 ${coverageGapReport}
