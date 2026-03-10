@@ -4,12 +4,17 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+export interface ProfessorResult {
+  feedback: string;
+  promptForDebug: string;
+}
+
 export async function runProfessorReview(
   firstDraft: string,
   professorCanon: string,
   donorName: string,
   streamCallback?: (text: string) => void
-): Promise<string> {
+): Promise<ProfessorResult> {
   const client = new Anthropic();
 
   const systemPrompt = `You are a senior analytical reviewer for donor persuasion profiles. You have deep expertise in the methodology defined in the canon documents below. Your job is to critique the ANALYTICAL QUALITY of a first draft against this methodology.
@@ -67,5 +72,17 @@ ${firstDraft}`;
     .map(block => block.text)
     .join('\n');
 
-  return text;
+  // Build debug-friendly prompt (system prompt is huge due to canon, so just note the length)
+  const promptForDebug = `=== PROFESSOR SYSTEM PROMPT ===
+[Canon: ${professorCanon.length} chars — 4 methodology files]
+
+${systemPrompt.slice(0, 500)}...
+
+[TRUNCATED — full canon is ${professorCanon.length} chars]
+
+=== PROFESSOR USER MESSAGE ===
+
+${userMessage}`;
+
+  return { feedback: text, promptForDebug };
 }
