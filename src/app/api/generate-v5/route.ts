@@ -369,6 +369,13 @@ Here are three exemplar profiles at the target quality. These are FICTIONAL CHAR
 
 ${exemplarSection}
 
+SECTION OPENERS:
+Each section opens with one sentence that states a behavioral conclusion the reader can act on. This sentence is not a summary of what follows — it's the instruction. Everything after it is proof.
+
+The pirate exemplar demonstrates this move: "She kept the same ledger system her father used and won't explain why." That's not a topic sentence. It's the thing the fundraiser needs to know before anything else in the section.
+
+Your opening sentences should have the compression and directness of: "Accept the nerd. You'll get further." or "Don't touch the guilt lever. It's not a lever — it's a tripwire." State the behavioral conclusion. Then prove it.
+
 EVIDENCE CAUTION:
 The research package contains evidence quality markers. Respect them:
 - [SINGLE-SOURCE] figures must appear with "approximately" in the profile
