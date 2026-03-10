@@ -123,3 +123,34 @@ export function loadStage0OrgIntakePrompt(): string {
 export function loadTidebreakStrategicFrame(): string {
   return tidebreakStrategicFrameCache;
 }
+
+// Professor canon files — loaded lazily and cached (large files, only used by professor call)
+let professorCanonCache: string | null = null;
+
+export function loadProfessorCanon(): string {
+  if (professorCanonCache) return professorCanonCache;
+
+  const professorFiles = [
+    'professor/Donor_Profiles_3_0_-_The_13_Memos.md',
+    'professor/Donor_Profiles_3_0_-_Cognition_Manual.md',
+    'professor/Donor_Profiles_3_0_-_Field_Guide_for_Profilers.md',
+    'professor/Final_Donor_Profile_-_Fundraising_Canon.md',
+  ];
+
+  const sections: string[] = [];
+  for (const file of professorFiles) {
+    try {
+      const filePath = path.join(process.cwd(), 'src/lib/canon', file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      console.log(`[Canon] Loaded professor/${file}: ${content.length} characters`);
+      sections.push(content);
+    } catch (error) {
+      console.error(`[Canon] Failed to load professor file ${file}:`, error);
+      throw new Error(`Professor canon file missing: ${file}. These files must be provided manually — do not generate them.`);
+    }
+  }
+
+  professorCanonCache = sections.join('\n\n---\n\n');
+  console.log(`[Canon] Professor canon loaded: ${professorCanonCache.length} total characters`);
+  return professorCanonCache;
+}

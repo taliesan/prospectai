@@ -18,10 +18,12 @@ import {
   loadMeetingGuideInes,
   loadMeetingGuideLuma,
   loadMeetingGuideYmmra,
+  loadProfessorCanon,
   type ProjectLayerInput,
 } from '@/lib/canon/loader';
 import { formatDimensionsForPrompt } from '@/lib/dimensions';
 import { formatSourcesForDeepResearch } from '@/lib/prompts/source-scoring';
+import { runProfessorReview } from '@/lib/professor';
 
 // Tavily API for web search (same as /api/generate)
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -395,24 +397,55 @@ Now write the profile using the research package from this conversation. Follow 
         debugWrite('V5-turn-3-profile-response.txt', turn3Result.text);
         sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 3 complete — profile draft: ${turn3Result.text.length} chars`, step: 28, totalSteps: TOTAL_STEPS });
 
-        // ── Turn 4: Profile Critique & Final ──────────────────────
+        // ── Professor Review (separate context window) ────────────
         if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 4: Critiquing and finalizing profile...', step: 30, totalSteps: TOTAL_STEPS });
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Professor reviewing draft against canon...', step: 29, totalSteps: TOTAL_STEPS });
 
-        const turn4Msg = `Critique this profile against the register spec and the exemplars you just read. Check every sentence:
+        const professorCanon = loadProfessorCanon();
+        console.log(`[V5] Running professor review — canon: ${professorCanon.length} chars, draft: ${turn3Result.text.length} chars`);
+
+        const professorFeedback = await runProfessorReview(
+          turn3Result.text,
+          professorCanon,
+          donorName,
+        );
+
+        debugWrite('V5-professor-feedback.txt', professorFeedback);
+        console.log(`[V5] Professor review complete: ${professorFeedback.length} chars feedback`);
+
+        // ── Turn 4: Profile Revision (professor + editorial) ─────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 4: Applying professor and editorial review...', step: 30, totalSteps: TOTAL_STEPS });
+
+        const turn4Msg = `Your draft has been reviewed by two lenses. Apply both.
+
+---
+
+PART 1: ANALYTICAL REVIEW
+
+An independent reviewer with deep expertise in donor persuasion methodology has critiqued your draft against the full profiling canon. Their feedback identifies where the analysis is wrong, incomplete, or insufficiently grounded. Apply every correction they identify.
+
+${professorFeedback}
+
+---
+
+PART 2: EDITORIAL REVIEW
+
+Now apply these voice and craft checks to every sentence:
 
 - Name-swap test: swap in a different donor's name. Does the sentence still work? If yes, it's too generic. Sharpen it with evidence specific to this person.
-- Performative insight: sounds impressive but tells the reader nothing actionable. "The limitation became the superpower" — what does the reader DO with that in the meeting? If nothing, cut it.
-- Repeated deployment: the same insight re-derived across multiple sections. Find where it first deploys with full treatment. Keep that. Every other appearance becomes a one-sentence reference or gets cut entirely.
+- Performative insight: sounds impressive but tells the reader nothing actionable. "The limitation became the superpower" — what does the reader DO with that? If nothing, cut it.
+- Repeated deployment: the same insight re-derived across multiple sections. Find where it first deploys with full treatment. That stays. Every other appearance becomes a one-sentence reference or gets cut.
 - Literary construction: mirrored parallelism ("He's not X. He's Y."), compressed aphorisms, matched sentence pairs. Just say the thing.
-- Methodology vocabulary: "trust calibration," "substrate reconstruction," "compartmentalized," "subroutine," "defensive processing." These are internal terms. If one appears in the profile, rewrite in plain behavioral language.
-- Quotes as decoration: a quote appears because the analysis that follows unpacks it. If the insight stands without the quote, cut the quote.
-- Every factual claim must trace to the research package in this conversation. If you can't point to where a claim comes from, delete it. No exceptions.
-- Section length proportional to evidence density. One paragraph of evidence does not support three paragraphs of analysis.
+- Methodology vocabulary in the output: "trust calibration," "substrate reconstruction," "compartmentalized," "subroutine." These are internal terms. If one appears, rewrite in plain behavioral language.
+- Quotes deployed as decoration rather than proof. A quote appears because the analysis that follows unpacks it. If the insight stands without the quote, cut the quote.
+- Every factual claim must trace to the research package. If you can't point to where in the evidence a claim comes from, delete the claim.
+- Section length proportional to evidence density. If you have one paragraph of evidence, don't write three paragraphs of analysis.
+- Section openers must be instructions, not descriptions. If the first sentence of a section describes the donor without telling the reader what to do, rewrite it.
 
-Apply all corrections. Produce the final profile with no commentary, no edit log, no explanation of changes.`;
+Apply all corrections from both reviews. Produce the final profile with no commentary, no edit log, no explanation of changes.`;
 
-        console.log(`[V5] Turn 4 (PROFILE_FINAL): sending ${turn4Msg.length} chars`);
+        console.log(`[V5] Turn 4 (PROFILE_FINAL): sending ${turn4Msg.length} chars (includes professor feedback: ${professorFeedback.length} chars)`);
         debugWrite('V5-turn-4-critique-user.txt', turn4Msg);
 
         const turn4Result = await conv1.turn(turn4Msg, 'PROFILE_FINAL', undefined, abortSignal);
