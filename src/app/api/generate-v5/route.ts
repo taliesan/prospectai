@@ -18,10 +18,12 @@ import {
   loadMeetingGuideInes,
   loadMeetingGuideLuma,
   loadMeetingGuideYmmra,
+  loadProfessorCanon,
   type ProjectLayerInput,
 } from '@/lib/canon/loader';
 import { formatDimensionsForPrompt } from '@/lib/dimensions';
 import { formatSourcesForDeepResearch } from '@/lib/prompts/source-scoring';
+import { runProfessorReview } from '@/lib/professor';
 
 // Tavily API for web search (same as /api/generate)
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -262,18 +264,12 @@ async function runV5PipelineInBackground(
 
         sendEvent({ type: 'status', phase: 'analysis', message: '[V5] Starting conversation mode — research & profile' });
 
-        // Build system prompt for Conversation 1
+        // Build system prompt for Conversation 1 (voice spec only — persists across all turns)
         const geoffreyBlock = loadGeoffreyBlock();
         const taskSection = getTaskSection();
         const dimensionDefs = formatDimensionsForPrompt();
 
-        const conv1SystemPrompt = [
-          geoffreyBlock,
-          '---',
-          taskSection,
-          '---',
-          '# BEHAVIORAL DIMENSIONS\n\n' + dimensionDefs,
-        ].join('\n\n');
+        const conv1SystemPrompt = geoffreyBlock;
 
         console.log(`[V5] Conversation 1 starting — system prompt: ${conv1SystemPrompt.length} chars`);
         debugWrite('V5-conversation-1-system-prompt.txt', conv1SystemPrompt);
@@ -287,7 +283,17 @@ async function runV5PipelineInBackground(
         const linkedinJson = formatLinkedInData(linkedinData);
 
         const totalCandidates = stageResult.stage5Result.stats.totalScored;
-        const turn1Msg = `Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
+        const turn1Msg = `# PROFILE TASK
+
+${taskSection}
+
+# BEHAVIORAL DIMENSIONS
+
+${dimensionDefs}
+
+---
+
+Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
 
 Your job: read all sources carefully. Produce a behavioral research package organized by the 25 dimensions in your instructions.
 
@@ -310,7 +316,14 @@ ${linkedinJson}
 ---
 
 SOURCES:
-${sourcePacket}`;
+${sourcePacket}
+
+---
+
+EVIDENCE QUALITY RULES:
+When a specific number appears in only one source, mark it [SINGLE-SOURCE] in your package. When a figure is described with words like "estimated," "approximately," or "could," mark it [ESTIMATE] and preserve the qualifier. When you calculate or infer a number that no source states directly, mark it [INFERRED] and show your calculation. When two sources give different numbers for the same thing, note both and mark [CONFLICTING].
+
+These markers must appear inline next to every specific number in your research package. The profile writer will use them to decide what needs qualifiers.`;
 
         console.log(`[V5] Turn 1 (RESEARCH): sending ${turn1Msg.length} chars, source packet: ${selectedSources.length} sources`);
         debugWrite('V5-turn-1-research-user.txt', turn1Msg);
@@ -358,6 +371,21 @@ Here are three exemplar profiles at the target quality. These are FICTIONAL CHAR
 
 ${exemplarSection}
 
+SECTION OPENERS:
+Each section opens with one sentence that states a behavioral conclusion the reader can act on. This sentence is not a summary of what follows — it's the instruction. Everything after it is proof.
+
+The pirate exemplar demonstrates this move: "She kept the same ledger system her father used and won't explain why." That's not a topic sentence. It's the thing the fundraiser needs to know before anything else in the section.
+
+Your opening sentences should have the compression and directness of: "Accept the nerd. You'll get further." or "Don't touch the guilt lever. It's not a lever — it's a tripwire." State the behavioral conclusion. Then prove it.
+
+EVIDENCE CAUTION:
+The research package contains evidence quality markers. Respect them:
+- [SINGLE-SOURCE] figures must appear with "approximately" in the profile
+- [INFERRED] figures must either be independently verified in another source or omitted entirely
+- [ESTIMATE] figures must retain their qualifier — do not state estimates as facts
+- [CONFLICTING] figures must use the most conservative number or note the range
+- If you want to state a specific number and it has no marker in the research package, verify you can point to the exact source. If you can't, omit it.
+
 Now write the profile using the research package from this conversation. Follow the profile structure and writing principles in your instructions.`;
 
         console.log(`[V5] Turn 3 (PROFILE_DRAFT): sending ${turn3Msg.length} chars, exemplars injected: ${exemplarSection.length} chars`);
@@ -369,24 +397,55 @@ Now write the profile using the research package from this conversation. Follow 
         debugWrite('V5-turn-3-profile-response.txt', turn3Result.text);
         sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 3 complete — profile draft: ${turn3Result.text.length} chars`, step: 28, totalSteps: TOTAL_STEPS });
 
-        // ── Turn 4: Profile Critique & Final ──────────────────────
+        // ── Professor Review (separate context window) ────────────
         if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 4: Critiquing and finalizing profile...', step: 30, totalSteps: TOTAL_STEPS });
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Professor reviewing draft against canon...', step: 29, totalSteps: TOTAL_STEPS });
 
-        const turn4Msg = `Critique this profile against the register spec and the exemplars you just read. Check every sentence:
+        const professorCanon = loadProfessorCanon();
+        console.log(`[V5] Running professor review — canon: ${professorCanon.length} chars, draft: ${turn3Result.text.length} chars`);
+
+        const professorFeedback = await runProfessorReview(
+          turn3Result.text,
+          professorCanon,
+          donorName,
+        );
+
+        debugWrite('V5-professor-feedback.txt', professorFeedback);
+        console.log(`[V5] Professor review complete: ${professorFeedback.length} chars feedback`);
+
+        // ── Turn 4: Profile Revision (professor + editorial) ─────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 4: Applying professor and editorial review...', step: 30, totalSteps: TOTAL_STEPS });
+
+        const turn4Msg = `Your draft has been reviewed by two lenses. Apply both.
+
+---
+
+PART 1: ANALYTICAL REVIEW
+
+An independent reviewer with deep expertise in donor persuasion methodology has critiqued your draft against the full profiling canon. Their feedback identifies where the analysis is wrong, incomplete, or insufficiently grounded. Apply every correction they identify.
+
+${professorFeedback}
+
+---
+
+PART 2: EDITORIAL REVIEW
+
+Now apply these voice and craft checks to every sentence:
 
 - Name-swap test: swap in a different donor's name. Does the sentence still work? If yes, it's too generic. Sharpen it with evidence specific to this person.
-- Performative insight: sounds impressive but tells the reader nothing actionable. "The limitation became the superpower" — what does the reader DO with that in the meeting? If nothing, cut it.
-- Repeated deployment: the same insight re-derived across multiple sections. Find where it first deploys with full treatment. Keep that. Every other appearance becomes a one-sentence reference or gets cut entirely.
+- Performative insight: sounds impressive but tells the reader nothing actionable. "The limitation became the superpower" — what does the reader DO with that? If nothing, cut it.
+- Repeated deployment: the same insight re-derived across multiple sections. Find where it first deploys with full treatment. That stays. Every other appearance becomes a one-sentence reference or gets cut.
 - Literary construction: mirrored parallelism ("He's not X. He's Y."), compressed aphorisms, matched sentence pairs. Just say the thing.
-- Methodology vocabulary: "trust calibration," "substrate reconstruction," "compartmentalized," "subroutine," "defensive processing." These are internal terms. If one appears in the profile, rewrite in plain behavioral language.
-- Quotes as decoration: a quote appears because the analysis that follows unpacks it. If the insight stands without the quote, cut the quote.
-- Every factual claim must trace to the research package in this conversation. If you can't point to where a claim comes from, delete it. No exceptions.
-- Section length proportional to evidence density. One paragraph of evidence does not support three paragraphs of analysis.
+- Methodology vocabulary in the output: "trust calibration," "substrate reconstruction," "compartmentalized," "subroutine." These are internal terms. If one appears, rewrite in plain behavioral language.
+- Quotes deployed as decoration rather than proof. A quote appears because the analysis that follows unpacks it. If the insight stands without the quote, cut the quote.
+- Every factual claim must trace to the research package. If you can't point to where in the evidence a claim comes from, delete the claim.
+- Section length proportional to evidence density. If you have one paragraph of evidence, don't write three paragraphs of analysis.
+- Section openers must be instructions, not descriptions. If the first sentence of a section describes the donor without telling the reader what to do, rewrite it.
 
-Apply all corrections. Produce the final profile with no commentary, no edit log, no explanation of changes.`;
+Apply all corrections from both reviews. Produce the final profile with no commentary, no edit log, no explanation of changes.`;
 
-        console.log(`[V5] Turn 4 (PROFILE_FINAL): sending ${turn4Msg.length} chars`);
+        console.log(`[V5] Turn 4 (PROFILE_FINAL): sending ${turn4Msg.length} chars (includes professor feedback: ${professorFeedback.length} chars)`);
         debugWrite('V5-turn-4-critique-user.txt', turn4Msg);
 
         const turn4Result = await conv1.turn(turn4Msg, 'PROFILE_FINAL', undefined, abortSignal);
@@ -554,8 +613,8 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
           };
           debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
 
-          // Estimate cost (Opus rates: $15/M input, $75/M output)
-          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          // Estimate cost (Opus 4.6 rates: $5/M input, $25/M output)
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 5 + (tokenUsage.totals.outputTokens / 1_000_000) * 25;
           console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
         } else {
           // No org context — write token usage for conversation 1 only
@@ -565,7 +624,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
             totals: conv1.getUsage(),
           };
           debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
-          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 5 + (tokenUsage.totals.outputTokens / 1_000_000) * 25;
           console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
           console.log(`[V5] No org context provided — skipping meeting guide`);
         }
