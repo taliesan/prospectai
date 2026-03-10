@@ -402,10 +402,11 @@ Now write the profile using the research package from this conversation. Follow 
         sendEvent({ type: 'status', phase: 'writing', message: '[V5] Professor reviewing draft against canon...', step: 29, totalSteps: TOTAL_STEPS });
 
         const professorCanon = loadProfessorCanon();
-        console.log(`[V5] Running professor review — canon: ${professorCanon.length} chars, draft: ${turn3Result.text.length} chars`);
+        console.log(`[V5] Running professor review — canon: ${professorCanon.length} chars, research: ${turn2Result.text.length} chars, draft: ${turn3Result.text.length} chars, total: ${professorCanon.length + turn2Result.text.length + turn3Result.text.length} chars`);
 
         const professorResult = await runProfessorReview(
           turn3Result.text,
+          turn2Result.text,
           professorCanon,
           donorName,
         );
