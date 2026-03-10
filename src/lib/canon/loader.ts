@@ -131,10 +131,10 @@ export function loadProfessorCanon(): string {
   if (professorCanonCache) return professorCanonCache;
 
   const professorFiles = [
-    'professor/Donor_Profiles_3_0_-_The_13_Memos.md',
-    'professor/Donor_Profiles_3_0_-_Cognition_Manual.md',
-    'professor/Donor_Profiles_3_0_-_Field_Guide_for_Profilers.md',
-    'professor/Final_Donor_Profile_-_Fundraising_Canon.md',
+    'professor/Donor Profiles 3.0 - The 13 Memos.md',
+    'professor/Donor Profiles 3.0 - Cognition Manual.md',
+    'professor/Donor Profiles 3.0 - Field Guide for Profilers.md',
+    'professor/Final Donor Profile - Fundraising Canon.md',
   ];
 
   const sections: string[] = [];
