@@ -72,13 +72,13 @@ ${firstDraft}`;
     .map(block => block.text)
     .join('\n');
 
-  // Build debug-friendly prompt (system prompt is huge due to canon, so just note the length)
+  // Build debug-friendly prompt — truncate canon for display only (full canon was sent to API above)
   const promptForDebug = `=== PROFESSOR SYSTEM PROMPT ===
 [Canon: ${professorCanon.length} chars — 4 methodology files]
 
 ${systemPrompt.slice(0, 500)}...
 
-[TRUNCATED — full canon is ${professorCanon.length} chars]
+[TRUNCATED FOR DEBUG — full ${professorCanon.length} chars sent to API]
 
 === PROFESSOR USER MESSAGE ===
 
