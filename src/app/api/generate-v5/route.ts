@@ -314,7 +314,14 @@ ${linkedinJson}
 ---
 
 SOURCES:
-${sourcePacket}`;
+${sourcePacket}
+
+---
+
+EVIDENCE QUALITY RULES:
+When a specific number appears in only one source, mark it [SINGLE-SOURCE] in your package. When a figure is described with words like "estimated," "approximately," or "could," mark it [ESTIMATE] and preserve the qualifier. When you calculate or infer a number that no source states directly, mark it [INFERRED] and show your calculation. When two sources give different numbers for the same thing, note both and mark [CONFLICTING].
+
+These markers must appear inline next to every specific number in your research package. The profile writer will use them to decide what needs qualifiers.`;
 
         console.log(`[V5] Turn 1 (RESEARCH): sending ${turn1Msg.length} chars, source packet: ${selectedSources.length} sources`);
         debugWrite('V5-turn-1-research-user.txt', turn1Msg);
@@ -361,6 +368,14 @@ Re-read the sources for the thinnest gaps. Revise the package. Acknowledge remai
 Here are three exemplar profiles at the target quality. These are FICTIONAL CHARACTERS — a 16th-century pirate captain, a sentient octopus cartographer, and a mycorrhizal network consciousness. Learn the architecture — section rhythm, paragraph density, how quotes deploy, how contradictions land, how evidence ceilings work. Nothing from these exemplars belongs in your output.
 
 ${exemplarSection}
+
+EVIDENCE CAUTION:
+The research package contains evidence quality markers. Respect them:
+- [SINGLE-SOURCE] figures must appear with "approximately" in the profile
+- [INFERRED] figures must either be independently verified in another source or omitted entirely
+- [ESTIMATE] figures must retain their qualifier — do not state estimates as facts
+- [CONFLICTING] figures must use the most conservative number or note the range
+- If you want to state a specific number and it has no marker in the research package, verify you can point to the exact source. If you can't, omit it.
 
 Now write the profile using the research package from this conversation. Follow the profile structure and writing principles in your instructions.`;
 
