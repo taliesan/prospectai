@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { downloadProfile, type DownloadableProfile } from '@/lib/download-document';
 import { parseProfileForPDF } from '@/lib/pdf/parse-profile';
+import { stripEvidenceMetadata } from '@/lib/strip-evidence-metadata';
 import MeetingGuideRenderer from '@/components/MeetingGuideRenderer';
 
 interface Source {
@@ -270,28 +271,20 @@ export default function ProfilePage() {
           "Contradiction Patterns": "Where to Start",
         };
 
-        let displayMarkdown = data.researchProfile.rawMarkdown;
+        let displayMarkdown = stripEvidenceMetadata(data.researchProfile.rawMarkdown);
         for (const [original, replacement] of Object.entries(headingMap)) {
           displayMarkdown = displayMarkdown.replace(original, replacement);
         }
 
-        // Pre-process Format B: convert raw [CONFIDENCE: X/10 | FLOOR: Y] metadata blocks
-        // (appearing as paragraphs after section headings) into Format A heading style
-        // so the h2 component handler can parse the score uniformly.
-        displayMarkdown = displayMarkdown.replace(
-          /(#{2,3}\s*\d+\.\s*[^\n]*)\n+\[CONFIDENCE:\s*(\d+)\/10[^\]]*\]\s*\n?(?:\[EVIDENCE BASIS:[^\]]*\]\s*\n?)?(?:\[INFERRED:[^\]]*\]\s*\n?)?(?:\[EVIDENCE CEILINGS:[^\]]*\]\s*\n?)?/g,
-          (_, header, score) => {
-            const s = parseInt(score, 10);
-            return `${header} ${'■'.repeat(s)}${'□'.repeat(10 - s)}  ${s}/10\n\n`;
-          },
-        );
-
         return (
-          <div className="bg-white rounded-2xl border border-brand-light-gray relative overflow-hidden"
+          <div className="bg-white rounded-2xl border border-stone-200 relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-1 bg-brand-purple rounded-b-sm" />
-            <div className="p-9 pt-10">
-              <article className="prose max-w-none">
+            <div className="absolute top-0 left-7 right-7 h-0.5 bg-stone-900" />
+            <div
+              className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
+              style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
+            >
+              <article className="prose max-w-none profile-prose">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -301,12 +294,18 @@ export default function ProfilePage() {
                       if (match) {
                         return (
                           <div className="not-prose mb-12 relative">
-                            <div className="text-xs font-medium tracking-[0.12em] uppercase text-stone-500 mb-1.5">
+                            <div
+                              className="text-xs font-medium uppercase text-stone-500 mb-1.5 pb-0"
+                              style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
+                            >
                               Persuasion Profile
                             </div>
-                            <div className="font-serif text-[32px] font-bold tracking-tight leading-tight text-stone-900 uppercase">
+                            <h1
+                              className="text-[32px] font-bold tracking-tight leading-tight text-stone-900 uppercase m-0"
+                              style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+                            >
                               {match[1]}
-                            </div>
+                            </h1>
                             <div className="mt-5 h-0.5 bg-stone-900" />
                           </div>
                         );
@@ -315,19 +314,21 @@ export default function ProfilePage() {
                     },
                     h2: ({ children }) => {
                       const text = String(children);
-                      // Parse out confidence score: "1. THE OPERATING SYSTEM  ■■■■■■■■□□  8/10"
                       const scoreMatch = text.match(/^(.+?)\s*[■□]+\s+(\d+)\/10\s*$/);
                       if (scoreMatch) {
                         const heading = scoreMatch[1].trim();
                         const score = parseInt(scoreMatch[2], 10);
                         const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
                         return (
-                          <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black flex items-center justify-between gap-3">
+                          <h2
+                            className="text-lg font-semibold mt-8 mb-3 text-stone-900 flex items-center justify-between gap-3"
+                            style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+                          >
                             <span>{heading}</span>
                             <span className="relative flex-shrink-0 group/pill cursor-pointer">
                               <span
                                 className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block"
-                                style={{ background: badgeBg }}
+                                style={{ background: badgeBg, fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}
                               >
                                 Confidence {score}/10
                               </span>
@@ -341,32 +342,64 @@ export default function ProfilePage() {
                                 style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}
                               >
                                 How much direct behavioral evidence supports this section.
-                                <br /><strong>8–10:</strong> Strong sourced evidence.
-                                <br /><strong>5–7:</strong> Mix of evidence and informed inference.
-                                <br /><strong>1–4:</strong> Mostly inferred from limited data.
+                                <br /><strong>8-10:</strong> Strong sourced evidence.
+                                <br /><strong>5-7:</strong> Mix of evidence and informed inference.
+                                <br /><strong>1-4:</strong> Mostly inferred from limited data.
                               </span>
                             </span>
                           </h2>
                         );
                       }
-                      return <h2 className="text-xl font-semibold mt-6 mb-3 text-brand-black">{children}</h2>;
+                      return (
+                        <h2
+                          className="text-lg font-semibold mt-8 mb-3 text-stone-900"
+                          style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+                        >
+                          {children}
+                        </h2>
+                      );
                     },
+                    h3: ({ children }) => (
+                      <h3
+                        className="text-sm font-bold uppercase tracking-wide text-stone-900 mt-5 mb-2.5"
+                        style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}
+                      >
+                        {children}
+                      </h3>
+                    ),
                     blockquote: ({ children }) => {
-                      // Suppress evidence/inferred metadata blockquotes
                       const text = String(children);
                       if (/Evidence:|Inferred:/i.test(text)) {
                         return null;
                       }
-                      return <blockquote>{children}</blockquote>;
+                      return (
+                        <blockquote className="border-l-[3px] border-stone-300 pl-4 italic my-4 bg-stone-50 rounded-r-lg py-2 pr-4 text-stone-500">
+                          {children}
+                        </blockquote>
+                      );
                     },
                     p: ({ children }) => {
-                      // Suppress Format B metadata paragraphs that escaped pre-processing
                       const text = String(children);
                       if (/^\[CONFIDENCE:|^\[EVIDENCE BASIS:|^\[INFERRED:|^\[EVIDENCE CEILINGS:/i.test(text)) {
                         return null;
                       }
-                      return <p>{children}</p>;
+                      return <p className="my-3 leading-[1.7] text-stone-700">{children}</p>;
                     },
+                    ul: ({ children }) => (
+                      <ul className="my-3 flex flex-col gap-2">{children}</ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-[14.5px] leading-[1.65] pl-4 relative text-stone-700">
+                        <span className="absolute left-0 text-stone-400 font-medium">{'\u2014'}</span>
+                        {children}
+                      </li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-stone-900">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic text-stone-600">{children}</em>
+                    ),
                   }}
                 >
                   {displayMarkdown}
@@ -522,15 +555,15 @@ export default function ProfilePage() {
           </div>
 
           {/* Overline */}
-          <p className="text-[11px] font-semibold tracking-[3px] uppercase mb-3" style={{ color: '#D894E8' }}>
+          <p className="text-[11px] font-medium uppercase mb-3" style={{ color: '#D894E8', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}>
             Donor Intelligence Report
           </p>
 
           {/* Donor name */}
-          <h1 className="font-serif text-[56px] leading-[1.1] text-white mb-2">{donorName}</h1>
+          <h1 className="text-[56px] leading-[1.1] text-white mb-2" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>{donorName}</h1>
 
           {/* Date */}
-          <p className="text-[15px] text-white/40 mb-4">{date}</p>
+          <p className="text-[15px] text-white/40 mb-4" style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}>{date}</p>
 
           {/* Action buttons */}
           <div className="flex items-center gap-3 mb-8">
@@ -604,7 +637,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-[800px] mx-auto px-4 py-10">
+      <main className="max-w-[820px] mx-auto px-4 py-10">
         {renderContent()}
 
         {/* Debug Downloads */}

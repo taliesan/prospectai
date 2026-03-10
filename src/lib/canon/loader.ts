@@ -19,12 +19,13 @@ function loadCanonFile(filename: string): string {
 const geoffreyBlockCache = loadCanonFile('geoffrey-block.md');
 const meetingGuideBlockV3Cache = loadCanonFile('meeting-guide-block-v3.md');
 const meetingGuideOutputTemplateCache = loadCanonFile('meeting-guide-output-template.md');
-const meetingGuideNewmarkCache = loadCanonFile('meeting-guide-craig-newmark.md');
-const meetingGuideBahatCache = loadCanonFile('meeting-guide-roy-bahat.md');
-const meetingGuideMcGlincheyCache = loadCanonFile('meeting-guide-lori-mcglinchey.md');
+const meetingGuideInesCache = loadCanonFile('meeting-guide-ines-de-la-cerda.md');
+const meetingGuideLumaCache = loadCanonFile('meeting-guide-luma-orekh.md');
+const meetingGuideYmmraCache = loadCanonFile('meeting-guide-ymmra.md');
 const promptV2Cache = loadCanonFile('prompt-v2.txt');
 const critiqueEditorialV2Cache = loadCanonFile('critique-editorial-v2.txt');
 const stage0OrgIntakeCache = loadCanonFile('stage-0-org-intake-prompt.md');
+const tidebreakStrategicFrameCache = loadCanonFile('org-strategic-frame-tidebreak.md');
 
 export function loadGeoffreyBlock(): string {
   return geoffreyBlockCache;
@@ -39,26 +40,30 @@ export function loadMeetingGuideOutputTemplate(): string {
 }
 
 /**
- * Returns meeting guide exemplars for the prompt, excluding the exemplar
- * that matches the current donor (by lowercase last-name match in filename).
+ * Returns the Tidebreak org frame + all fictional meeting guide exemplars for the prompt.
  */
-export function loadMeetingGuideExemplars(donorName: string): string {
-  const allExemplars = [
-    { name: 'newmark', content: meetingGuideNewmarkCache },
-    { name: 'bahat', content: meetingGuideBahatCache },
-    { name: 'mcglinchey', content: meetingGuideMcGlincheyCache },
-  ];
+export function loadMeetingGuideExemplars(): string {
+  return `## EXEMPLAR ORG FRAME
 
-  const donorLower = donorName.toLowerCase();
-  const selected = allExemplars.filter(e => !donorLower.includes(e.name));
+${tidebreakStrategicFrameCache}
 
-  if (selected.length === allExemplars.length) {
-    // No match found — return all 3
-    return selected.map(e => e.content).join('\n\n---\n\n');
-  }
+---
 
-  // Excluded one — return the remaining 2
-  return selected.map(e => e.content).join('\n\n---\n\n');
+## EXEMPLAR GUIDE 1
+
+${meetingGuideInesCache}
+
+---
+
+## EXEMPLAR GUIDE 2
+
+${meetingGuideLumaCache}
+
+---
+
+## EXEMPLAR GUIDE 3
+
+${meetingGuideYmmraCache}`;
 }
 
 export interface ProjectLayerInput {
@@ -92,6 +97,17 @@ ${projectContext.specificAsk || 'Not specified'}
 ${projectContext.fundraiserName || 'Not specified'}`.trim();
 }
 
+/** Individual meeting guide exemplars for conversation mode */
+export function loadMeetingGuideInes(): string {
+  return meetingGuideInesCache;
+}
+export function loadMeetingGuideLuma(): string {
+  return meetingGuideLumaCache;
+}
+export function loadMeetingGuideYmmra(): string {
+  return meetingGuideYmmraCache;
+}
+
 export function loadPromptV2(): string {
   return promptV2Cache;
 }
@@ -102,4 +118,39 @@ export function loadCritiqueEditorialV2(): string {
 
 export function loadStage0OrgIntakePrompt(): string {
   return stage0OrgIntakeCache;
+}
+
+export function loadTidebreakStrategicFrame(): string {
+  return tidebreakStrategicFrameCache;
+}
+
+// Professor canon files — loaded lazily and cached (large files, only used by professor call)
+let professorCanonCache: string | null = null;
+
+export function loadProfessorCanon(): string {
+  if (professorCanonCache) return professorCanonCache;
+
+  const professorFiles = [
+    'professor/Donor Profiles 3.0 - The 13 Memos.md',
+    'professor/Donor Profiles 3.0 - Cognition Manual.md',
+    'professor/Donor Profiles 3.0 - Field Guide for Profilers.md',
+    'professor/Final Donor Profile - Fundraising Canon.md',
+  ];
+
+  const sections: string[] = [];
+  for (const file of professorFiles) {
+    try {
+      const filePath = path.join(process.cwd(), 'src/lib/canon', file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      console.log(`[Canon] Loaded professor/${file}: ${content.length} characters`);
+      sections.push(content);
+    } catch (error) {
+      console.error(`[Canon] Failed to load professor file ${file}:`, error);
+      throw new Error(`Professor canon file missing: ${file}. These files must be provided manually — do not generate them.`);
+    }
+  }
+
+  professorCanonCache = sections.join('\n\n---\n\n');
+  console.log(`[Canon] Professor canon loaded: ${professorCanonCache.length} total characters`);
+  return professorCanonCache;
 }

@@ -134,7 +134,7 @@ OTHER RESOURCES NEEDED: [Expertise, networks, legitimacy, introductions that mon
 (e.g., "Pro bono data science capacity for the audit backlog. Introduction to the state AG's technology crimes unit.")
 
 WHO ELSE IS AT THE TABLE: [Named funders, partners, or constituencies already involved or being targeted. Or "No other funders yet."]
-(e.g., "Ford Foundation — $200K confirmed for Document. Unbound Philanthropy — in conversation for Organize. ACLU — co-counsel on 2 impact cases.")
+(e.g., "Reef Authority — $200K confirmed for Document. Unbound Philanthropy — in conversation for Organize. ACLU — co-counsel on 2 impact cases.")
 
 
 ## FIRST MOVES

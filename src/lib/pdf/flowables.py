@@ -1,4 +1,4 @@
-"""Custom ReportLab flowables for DTW PDF design system."""
+"""Custom ReportLab flowables for ProspectAI PDF design system."""
 
 from reportlab.platypus import Flowable, Paragraph, Table, TableStyle
 from reportlab.lib.units import inch

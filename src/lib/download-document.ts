@@ -8,6 +8,8 @@
  * Zero dependencies. No Puppeteer. No heavy libraries. Works offline.
  */
 
+import { stripEvidenceMetadata } from '@/lib/strip-evidence-metadata';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Source {
@@ -155,7 +157,7 @@ function renderSourcesMarkdown(sources: Source[]): string {
 
 function buildHtmlDocument(data: DownloadableProfile): string {
   const date = formatDate();
-  const profileHtml = markdownToHtml(data.profile);
+  const profileHtml = markdownToHtml(stripEvidenceMetadata(data.profile));
   const guideHtml = data.meetingGuide ? markdownToHtml(data.meetingGuide) : '';
   const sourcesHtml = renderSourcesHtml(data.sources);
 
@@ -319,7 +321,7 @@ function buildMarkdownDocument(data: DownloadableProfile): string {
   if (data.fundraiserName) doc += `Prepared for: ${data.fundraiserName}\n`;
   doc += `Date: ${date}\nClassification: Internal Use Only\n`;
   doc += divider;
-  doc += `# SECTION 1: PERSUASION PROFILE\n\n${data.profile}`;
+  doc += `# SECTION 1: PERSUASION PROFILE\n\n${stripEvidenceMetadata(data.profile)}`;
   doc += divider;
   if (data.meetingGuide) {
     doc += `# SECTION 2: MEETING GUIDE\n\n${data.meetingGuide}`;

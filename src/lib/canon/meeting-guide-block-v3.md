@@ -4,6 +4,8 @@
 
 Every sentence in a Meeting Guide must pass these transformations. The ❌ line is what the model defaults to. The ✅ line is what this work requires. If your sentence matches the ❌, rewrite it until it matches the ✅.
 
+All ✅ examples below use fictional characters — a 16th-century pirate captain, a sentient octopus cartographer, and a mycorrhizal network consciousness. They demonstrate the transformation pattern only. Their content is nonsense on purpose. Do not import any content from these examples into your output.
+
 **Profile voice → Guide voice.**
 - ❌ "When someone frames her as a tech policy expert, she widens the aperture."
 - ✅ "She'll expand the conversation beyond what you expected. Follow her. Don't pull it back."
@@ -22,23 +24,23 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 
 **Passive observation → Active signal.**
 - ❌ "She tends to engage more deeply when intellectually stimulated."
-- ✅ "When he's thinking in real time rather than broadcasting — and when there's energy behind it — he's present. The interruptions have started."
+- ✅ "When she starts tracing routes on the chart rather than asking questions — and the quill comes out — she's present. The logistics have started."
 
 **Personality summary → Behavioral tripwire.**
 - ❌ "She doesn't respond well to flattery."
-- ✅ "If you lead with credentials or polish, energy drops and he gets polite. Share a failure. Get back to the work."
+- ✅ "If you lead with credentials or polish, she closes the ledger case. Name a cost you miscalculated. Get back to the numbers."
 
 **Strategic suggestion → Operational command.**
 - ❌ "Consider positioning the work as aligned with her existing interests."
-- ✅ "Lead with Organize framed as the missing labor dimension of her antimonopoly work. Ground it in Fight through the AI displacement her program already studies."
+- ✅ "Lead with the provisioning gap — her fleet has been avoiding the northern passage since the four-ship loss and the Tortuga supply chain is overextended. Ground it in the repair costs she already tracks in the ledger."
 
 **Vague framing → Concrete move.**
 - ❌ "Help them see the stakes in their own terms."
-- ✅ "What happens to workers in your portfolio companies' industries if organizing infrastructure doesn't exist in five years? Don't say 'movement.' Don't say 'justice.' Let him arrive at the stakes in his own language."
+- ✅ "What happens to the reefs she's been charting when no observers are left who can map the rate of change? Don't say 'crisis.' Don't say 'legacy.' Let her arrive at the loss in her own language."
 
 **Outcome description → Room choreography.**
 - ❌ "The goal is to establish a collaborative dynamic."
-- ✅ "He names someone with context — 'talk to X, they're seeing the same thing in Y.' That's social capital. Follow up within 48 hours with exactly the framing he gave you."
+- ✅ "She names a harbor — 'the shipwright at Île-à-Vache is seeing the same timber shortage.' That's operational intelligence. Follow up within the week with exactly the terms she quoted."
 
 **Soft close → Sharp vector.**
 - ❌ "End by expressing interest in continuing the conversation."
@@ -46,11 +48,11 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 
 **Issue alignment → Specific overlap.**
 - ❌ "She cares about tech accountability and worker rights align with that."
-- ✅ "She funds antimonopoly organizing. [Client Organization] organizes workers against tech monopolies. She funds surveillance resistance. The organizing field depends on tools owned by the companies workers are fighting. The overlap is inside her existing program, not adjacent to it."
+- ✅ "She runs convoy interdiction in the Windward Passage. Your cooperative controls the harbor supply chain she depends on. She funds ship repair at three ports. Your timber comes from the same yards. The overlap is inside her existing operation, not adjacent to it."
 
 **Role description → What they'll do.**
 - ❌ "She could serve as an advisor or connector."
-- ✅ "His network is operators and intermediary organizations — Bob Woodruff Foundation, Blue Star Families, Aspen Digital. He routes through them. If he names someone with context, follow up within 48 hours."
+- ✅ "Her network is harbor provisioners and allied captains — the Tortuga shipwright, the Île-à-Vache repair yard, the two captains she sails with regularly. She routes through them. If she names someone with context, follow up within the week with exactly the framing she gave you."
 
 **Profile jargon → Plain English.**
 - ❌ "His communication architecture is deliberately compressed."
@@ -69,20 +71,20 @@ Every sentence in a Meeting Guide must pass these transformations. The ❌ line 
 - ✅ "He connects people who work on similar problems, not people who believe in similar things."
 
 - ❌ "She operates in two registers — institutional and candid."
-- ✅ "In a small meeting she'll tell you what she actually thinks. In a large one you'll get the polished Ford position."
+- ✅ "In a small meeting she'll tell you what she actually thinks. In a large one you'll get the formal Guild position on methodology standards."
 
 **Compressed aphorism → Expanded plain instruction.**
 - ❌ "'Build' is his verb. 'Fight' is not."
-- ✅ "If your ask sounds like confrontation, advocacy, or public pressure, he's out. If it sounds like building a durable system that protects people, you're speaking his language."
+- ✅ "If your proposal sounds like raiding or lawlessness, she's out. If it sounds like building a reliable supply operation that protects the crew, you're speaking her language."
 
 - ❌ "Name the gap, not the solution."
-- ✅ "Show her where practitioners exist without anything connecting them. Let her see the absence before you present what you'd build."
+- ✅ "Show her where observers exist without any shared record connecting them. Let her see the gap in the chart before you present what you'd map."
 
 - ❌ "The field does what the foundation can't say."
-- ✅ "Don't position [Client Organization] as adversarial to anyone Ford works with. Show her that [Client Organization] builds the capacity for workers to organize on their own terms — and what workers do with that capacity is their decision, not yours."
+- ✅ "Don't position your cooperative as competing with anyone she already provisions from. Show her that your operation fills a gap in the supply chain she already runs — and what the harbor gains from that capacity is the harbor's decision, not yours."
 
 - ❌ "No vision — operations."
-- ✅ "He doesn't respond to big ideas or compelling storytelling. He responds to people who can show him their operation works, inside a cause he already believes in."
+- ✅ "She doesn't respond to grand visions or compelling narratives. She responds to people who can show her their numbers hold up, inside a supply chain she already runs."
 
 **Performative character study → Operational briefing.**
 - ❌ "Rogue navigator who found her superpower in the thing most cartographers avoid: mapping dead zones."
@@ -104,11 +106,11 @@ The pattern: the meeting guide tells the fundraiser what to DO. Sentences that c
 
 **Analysis first → Action first.**
 - ❌ "She distinguishes between programs and fields. A program is an organization that does good work and needs funding. A field is the infrastructure that connects practitioners. She funds fields. Lead with who's already doing the work."
-- ✅ "Lead with who's already doing the work, not what your organization has accomplished. She funds fields — the infrastructure that connects practitioners — not individual programs. If you sound like a program looking for a grant, the meeting stalls."
+- ✅ "Lead with who's already observing the same reefs, not what your expedition has accomplished. She funds the documentary record — the infrastructure that connects observers across the ocean — not individual expeditions. If you sound like a solo expedition looking for a patron, the meeting stalls."
 
 **Broad mapping → Specific mapping.**
 - ❌ "She builds fields. [Client Organization] is building a field. The approach matches."
-- ✅ "She funds antimonopoly organizing. [Client Organization] organizes workers against tech monopolies. Same people, same companies, different side of the fight. Start with her named programs and show where the work lands inside them."
+- ✅ "She maps bleaching reefs in the southern shelf. Your survey team documents thermal vent shifts in the same waters. Same territory, same species, different measurement. Start with her published charts and show where your data lands inside them."
 
 ---
 
@@ -130,7 +132,7 @@ No scripts. Never write "You might say: '...'" or put words in the fundraiser's 
 
 No flattery of the donor. No "visionary," "brilliant," "remarkable." Describe and interpret, never praise. If a sentence would make the donor sound impressive, it's profile language leaking in. The guide tells the fundraiser what to do about who the donor is, not how to admire them.
 
-No resume recitation. A donor's role or accomplishment only appears if it changes what the fundraiser does. "He stepped down as CEO and went to customer service representative" belongs because it reveals character. "She oversees a $40M portfolio" doesn't belong unless the number changes how the fundraiser shows up.
+No resume recitation. A donor's role or accomplishment only appears if it changes what the fundraiser does. "She burned her father's ledgers the day she took her first prize" belongs because it reveals character. "She commands a fleet of twelve vessels" doesn't belong unless the number changes how the fundraiser shows up.
 
 No explaining the methodology. The guide never says "this is where Self/Us/Now applies" or "per the canon" or "the fundraising philosophy here is..." Canon principles are embedded in the structure — they're the reason Beat 2 harvests the donor's language and Beat 3 builds on it. But the guide never names them. It just does them.
 
@@ -157,7 +159,7 @@ Short ≠ compressed. Fewer words is good. Compressed aphorisms that require unp
 ### Content failures
 - Horizontal restatement — the same insight living in multiple sections. Each section owns its content. If a trait appears in Who They Are, it does not reappear in How to Engage. If a sequencing insight appears in Where to Focus, a beat can deploy it as a move but does not re-teach it. Before finalizing, scan every insight and confirm it lives in exactly one home.
 - False empirical claims about fields, movements, or institutions. Never claim a field doesn't exist, a movement is absent, or an institution is missing without direct evidence from the research. The profile's gap-detection may misfire because the research can't see what the fundraiser knows. Assume established fields exist. Look for specific gaps within existing fields, not the absence of whole fields.
-- Attributing institutional programs to individuals. If the research shows a program lives inside someone's department, say "Ford's PIT University Network" not "her PIT University Network" — unless the research directly credits them by name as the person who created or ran it. Institutional leaders are visible. The people who built the programs may not be.
+- Attributing institutional programs to individuals. If the research shows a program lives inside someone's institution, say "the Archive's Deep Survey Initiative" not "her Deep Survey Initiative" — unless the research directly credits them by name as the person who created or ran it. Institutional leaders are visible. The people who built the programs may not be.
 - Inventing donor behavior the profile doesn't support. The guide can infer reasonable behavioral predictions from the profile's evidence — that's its job. But it cannot fabricate interpersonal dynamics, meeting preferences, or emotional responses that the profile doesn't establish. If the profile has an evidence gap, the guide should acknowledge it ("you're walking in partly blind — watch and adapt") rather than fill it with plausible fiction.
 
 ---
@@ -168,7 +170,7 @@ A Meeting Guide is a tactical briefing for a specific conversation between a spe
 
 The guide draws from the persuasion profile but does not repeat it. The profile is the analytical document — it explains who the donor is. The guide is the operational document — it tells the fundraiser what to do about who the donor is. Every insight in the guide must trace back to the profile. No insight from the profile should appear unless it changes what the fundraiser does. The profile explains. The guide directs.
 
-The guide describes the donor, but every description serves an instruction. "Built one thing, stayed with it for thirty years, and descended rather than climbed" is description — it belongs because it changes how the fundraiser breathes in the first thirty seconds. If a description doesn't change behavior, it's profile language that hasn't been translated yet.
+The guide describes the donor, but every description serves an instruction. "Ran cargo for three generations, took a ship, and kept the same ledger system" is description — it belongs because it changes how the fundraiser breathes in the first thirty seconds. If a description doesn't change behavior, it's profile language that hasn't been translated yet.
 
 The document has two reading modes: top to bottom in preparation, find-your-beat mid-meeting. The fundraiser studying in prep reads Setup through One Line and walks in with a plan. The fundraiser scanning mid-meeting jumps to the current beat's STAY section and finds what to watch for and what to do. Everything in the document must serve both modes.
 
@@ -178,6 +180,6 @@ The arc is sequential. Beat 1 creates the conditions for Beat 2. Beat 2 produces
 
 Trust the fundraiser. Each beat has one primary dynamic to manage. Tripwires are exactly three. STAY sections handle one or two branching scenarios, not every possible outcome. The guide makes the fundraiser braver and clearer, not more anxious and scripted. If it reads like a minefield, there are too many warnings.
 
-Every guide needs at least one piece of dangerous accuracy — something true about the donor that's uncomfortable but tactically essential. The nerd identity that lets him give away hundreds of millions without seeing himself as exercising power. The pro-labor conviction he can't say directly because it would empty the room. The pattern of building institutions and leaving before they can claim him. These are the lines that make the fundraiser trust the guide, because it told them something a polite briefing wouldn't. Without them, the guide is safe, warm, and useless. This usually lives in Who They Are or the tripwires.
+Every guide needs at least one piece of dangerous accuracy — something true about the donor that's uncomfortable but tactically essential. The merchant discipline that lets her run a pirate fleet without seeing herself as lawless. The documentary mission she can't state directly because it would alarm the Archive that trained her. The pattern of mapping territories and moving on before the Guild can absorb her charts into their official record. These are the lines that make the fundraiser trust the guide, because it told them something a polite briefing wouldn't. Without them, the guide is safe, warm, and useless. This usually lives in Who They Are or the tripwires.
 
 Different donors produce fundamentally different meeting energy. Some build with you. Some evaluate and decide. Some map the landscape. The profile will suggest which type this meeting is. The guide's entire energy — beat pacing, STAY dynamics, setup posture, compression level — follows from the meeting type. Getting it wrong produces a guide that teaches the reader to play the wrong game.
