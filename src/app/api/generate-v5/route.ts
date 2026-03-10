@@ -554,8 +554,8 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
           };
           debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
 
-          // Estimate cost (Opus rates: $15/M input, $75/M output)
-          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          // Estimate cost (Opus 4.6 rates: $5/M input, $25/M output)
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 5 + (tokenUsage.totals.outputTokens / 1_000_000) * 25;
           console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
         } else {
           // No org context — write token usage for conversation 1 only
@@ -565,7 +565,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
             totals: conv1.getUsage(),
           };
           debugWrite('V5-token-usage.json', JSON.stringify(tokenUsage, null, 2));
-          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 15 + (tokenUsage.totals.outputTokens / 1_000_000) * 75;
+          const costEstimate = (tokenUsage.totals.inputTokens / 1_000_000) * 5 + (tokenUsage.totals.outputTokens / 1_000_000) * 25;
           console.log(`[V5] Total cost estimate: $${costEstimate.toFixed(2)} (${tokenUsage.totals.inputTokens} input + ${tokenUsage.totals.outputTokens} output tokens at Opus rates)`);
           console.log(`[V5] No org context provided — skipping meeting guide`);
         }
