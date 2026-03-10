@@ -262,18 +262,12 @@ async function runV5PipelineInBackground(
 
         sendEvent({ type: 'status', phase: 'analysis', message: '[V5] Starting conversation mode — research & profile' });
 
-        // Build system prompt for Conversation 1
+        // Build system prompt for Conversation 1 (voice spec only — persists across all turns)
         const geoffreyBlock = loadGeoffreyBlock();
         const taskSection = getTaskSection();
         const dimensionDefs = formatDimensionsForPrompt();
 
-        const conv1SystemPrompt = [
-          geoffreyBlock,
-          '---',
-          taskSection,
-          '---',
-          '# BEHAVIORAL DIMENSIONS\n\n' + dimensionDefs,
-        ].join('\n\n');
+        const conv1SystemPrompt = geoffreyBlock;
 
         console.log(`[V5] Conversation 1 starting — system prompt: ${conv1SystemPrompt.length} chars`);
         debugWrite('V5-conversation-1-system-prompt.txt', conv1SystemPrompt);
@@ -287,7 +281,17 @@ async function runV5PipelineInBackground(
         const linkedinJson = formatLinkedInData(linkedinData);
 
         const totalCandidates = stageResult.stage5Result.stats.totalScored;
-        const turn1Msg = `Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
+        const turn1Msg = `# PROFILE TASK
+
+${taskSection}
+
+# BEHAVIORAL DIMENSIONS
+
+${dimensionDefs}
+
+---
+
+Here are the ${selectedSources.length} pre-screened, scored sources for ${donorName}. They were selected from ${totalCandidates} candidates by a research pipeline that searched ${stageResult.categorizedQueries.length} queries and scored each source against 25 behavioral dimensions.
 
 Your job: read all sources carefully. Produce a behavioral research package organized by the 25 dimensions in your instructions.
 
