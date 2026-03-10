@@ -178,15 +178,15 @@ async function runV5PipelineInBackground(
         const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const safeName = donorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
 
-        // Load project context from database
+        // Load project context from database (retry once on failure)
         let projectContextData: ProjectLayerInput | undefined;
         if (projectContextId && userId) {
-          try {
+          const loadProjectContext = async () => {
             const pc = await prisma.projectContext.findFirst({
               where: { id: projectContextId, userId },
             });
             if (pc) {
-              projectContextData = {
+              return {
                 name: pc.name,
                 processedBrief: pc.processedBrief,
                 issueAreas: pc.issueAreas || undefined,
@@ -194,11 +194,30 @@ async function runV5PipelineInBackground(
                 specificAsk: specificAsk || undefined,
                 fundraiserName: fundraiserName || undefined,
                 strategicFrame: pc.strategicFrame || undefined,
-              };
-              console.log(`[V5] Loaded project context: ${pc.name}`);
+              } as ProjectLayerInput;
             }
-          } catch (err) {
-            console.warn(`[V5] Failed to load project context:`, err);
+            return undefined;
+          };
+
+          try {
+            projectContextData = await loadProjectContext();
+          } catch (firstErr) {
+            console.warn(`[V5] Failed to load project context (attempt 1):`, firstErr);
+            try {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              projectContextData = await loadProjectContext();
+              console.log(`[V5] Project context loaded on retry`);
+            } catch (retryErr) {
+              console.error(`[V5] Failed to load project context after retry:`, retryErr);
+              sendEvent({ type: 'status', phase: 'writing', message: `[V5] Warning: Could not load org context — meeting guide will be skipped` });
+            }
+          }
+
+          if (projectContextData) {
+            console.log(`[V5] Loaded project context: ${projectContextData.name}`);
+          } else {
+            console.warn(`[V5] projectContextId "${projectContextId}" provided but no matching record found for user ${userId}`);
+            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Warning: Org context not found — meeting guide will be skipped` });
           }
         }
 

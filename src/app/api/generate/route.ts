@@ -261,16 +261,18 @@ async function runPipelineInBackground(
         const exemplars = '';
         console.log(`[Job ${jobId}] V2 pipeline active — exemplars loaded from prompt-v2.txt`);
 
-        // Load project context from database if provided
+        // Load project context from database if provided (retry once on failure)
         let projectContextData: import('@/lib/canon/loader').ProjectLayerInput | undefined;
         console.log(`[Stage 0] Pipeline start: projectContextId=${projectContextId || 'none'}, userId=${userId || 'none'}`);
         if (projectContextId && userId) {
-          try {
+          const loadProjectContext = async () => {
             const pc = await prisma.projectContext.findFirst({
               where: { id: projectContextId, userId },
             });
             if (pc) {
-              projectContextData = {
+              console.log(`[Job ${jobId}] Loaded project context: ${pc.name} (${pc.processedBrief.length} chars)`);
+              console.log(`[Stage 0] Pipeline context loaded: strategicFrame=${!!pc.strategicFrame} (${pc.strategicFrame?.length || 0} chars), processedBrief=${pc.processedBrief.length} chars, issueAreas=${pc.issueAreas?.length || 0} chars`);
+              return {
                 name: pc.name,
                 processedBrief: pc.processedBrief,
                 issueAreas: pc.issueAreas || undefined,
@@ -278,14 +280,28 @@ async function runPipelineInBackground(
                 specificAsk: specificAsk || undefined,
                 fundraiserName: fundraiserName || undefined,
                 strategicFrame: pc.strategicFrame || undefined,
-              };
-              console.log(`[Job ${jobId}] Loaded project context: ${pc.name} (${pc.processedBrief.length} chars)`);
-              console.log(`[Stage 0] Pipeline context loaded: strategicFrame=${!!pc.strategicFrame} (${pc.strategicFrame?.length || 0} chars), processedBrief=${pc.processedBrief.length} chars, issueAreas=${pc.issueAreas?.length || 0} chars`);
-            } else {
-              console.log(`[Stage 0] ProjectContext id=${projectContextId} not found for user=${userId}`);
+              } as import('@/lib/canon/loader').ProjectLayerInput;
             }
-          } catch (err) {
-            console.warn(`[Job ${jobId}] Failed to load project context:`, err);
+            return undefined;
+          };
+
+          try {
+            projectContextData = await loadProjectContext();
+          } catch (firstErr) {
+            console.warn(`[Job ${jobId}] Failed to load project context (attempt 1):`, firstErr);
+            try {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              projectContextData = await loadProjectContext();
+              console.log(`[Job ${jobId}] Project context loaded on retry`);
+            } catch (retryErr) {
+              console.error(`[Job ${jobId}] Failed to load project context after retry:`, retryErr);
+              sendEvent({ type: 'status', phase: 'writing', message: `Warning: Could not load org context — meeting guide will be skipped` });
+            }
+          }
+
+          if (!projectContextData) {
+            console.warn(`[Stage 0] ProjectContext id=${projectContextId} not found or failed to load for user=${userId}`);
+            sendEvent({ type: 'status', phase: 'writing', message: `Warning: Org context not found — meeting guide will be skipped` });
           }
         } else {
           console.log(`[Stage 0] No projectContextId provided — pipeline will run without org context`);
