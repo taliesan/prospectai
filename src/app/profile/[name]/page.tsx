@@ -297,12 +297,6 @@ export default function ProfilePage() {
                             >
                               Briefing Note
                             </div>
-                            <h1
-                              className="text-[28px] font-bold tracking-tight leading-tight text-stone-900 uppercase m-0"
-                              style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-                            >
-                              {match[1]}
-                            </h1>
                             <div className="mt-4 h-0.5 bg-stone-900" />
                           </div>
                         );
@@ -324,8 +318,8 @@ export default function ProfilePage() {
                       <ul className="my-2.5 flex flex-col gap-1.5">{children}</ul>
                     ),
                     li: ({ children }) => (
-                      <li className="text-[14.5px] leading-[1.65] pl-4 relative text-stone-700">
-                        <span className="absolute left-0 text-stone-400 font-medium">{'\u2014'}</span>
+                      <li className="text-[14.5px] leading-[1.65] pl-5 relative text-stone-700">
+                        <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
                         {children}
                       </li>
                     ),
@@ -395,12 +389,6 @@ export default function ProfilePage() {
                             >
                               Persuasion Profile
                             </div>
-                            <h1
-                              className="text-[32px] font-bold tracking-tight leading-tight text-stone-900 uppercase m-0"
-                              style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-                            >
-                              {match[1]}
-                            </h1>
                             <div className="mt-5 h-0.5 bg-stone-900" />
                           </div>
                         );
@@ -484,8 +472,8 @@ export default function ProfilePage() {
                       <ul className="my-3 flex flex-col gap-2">{children}</ul>
                     ),
                     li: ({ children }) => (
-                      <li className="text-[14.5px] leading-[1.65] pl-4 relative text-stone-700">
-                        <span className="absolute left-0 text-stone-400 font-medium">{'\u2014'}</span>
+                      <li className="text-[14.5px] leading-[1.65] pl-5 relative text-stone-700">
+                        <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
                         {children}
                       </li>
                     ),
@@ -657,52 +645,52 @@ export default function ProfilePage() {
           {/* Donor name */}
           <h1 className="text-[56px] leading-[1.1] text-white mb-2" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>{donorName}</h1>
 
-          {/* Date */}
-          <p className="text-[15px] text-white/40 mb-4" style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}>{date}</p>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-3 mb-8">
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isDownloading}
-              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-pill
-                         bg-white text-brand-black hover:bg-brand-gold
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {isDownloading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Preparing...
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Download
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleRegenerate}
-              className="px-4 py-2 text-sm font-medium rounded-pill text-white/70 border border-white/20
-                         hover:text-white hover:border-white/40 transition-all"
-            >
-              Regenerate
-            </button>
-            {profileId && (
+          {/* Date + action buttons row */}
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-[15px] text-white/40" style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}>{date}</p>
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium rounded-pill text-red-400/70 border border-red-400/20
-                           hover:text-red-400 hover:border-red-400/40 disabled:opacity-50 transition-all"
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-pill
+                           text-white/50 border border-white/15 hover:text-white/80 hover:border-white/30
+                           disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isDownloading ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Preparing...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download
+                  </>
+                )}
               </button>
-            )}
+              <button
+                onClick={handleRegenerate}
+                className="px-3 py-1.5 text-xs font-medium rounded-pill text-white/50 border border-white/15
+                           hover:text-white/80 hover:border-white/30 transition-all"
+              >
+                Regenerate
+              </button>
+              {profileId && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-3 py-1.5 text-xs font-medium rounded-pill text-red-400/40 border border-red-400/10
+                             hover:text-red-400/70 hover:border-red-400/25 disabled:opacity-50 transition-all"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Tabs */}

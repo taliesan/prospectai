@@ -185,13 +185,7 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
         >
           Meeting Guide
         </div>
-        <h1
-          className="text-[32px] font-bold tracking-tight leading-tight"
-          style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-        >
-          {guide.donorName}
-        </h1>
-        <div className="mt-5 h-0.5 bg-stone-900" />
+        <div className="mt-4 h-0.5 bg-stone-900" />
       </div>
 
       {/* Setup */}
@@ -206,8 +200,8 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
                 </div>
                 <ul className="flex flex-col gap-2">
                   {group.bullets.map((bullet, j) => (
-                    <li key={j} className="text-[14.5px] leading-[1.65] pl-4 relative">
-                      <span className="absolute left-0 text-stone-400 font-medium">{'\u2014'}</span>
+                    <li key={j} className="text-[14.5px] leading-[1.65] pl-5 relative">
+                      <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
                       <InlineMarkdown text={bullet} />
                     </li>
                   ))}
