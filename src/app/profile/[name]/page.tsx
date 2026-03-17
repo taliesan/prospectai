@@ -74,10 +74,14 @@ export default function ProfilePage() {
         if (profile.seedUrlsJson) {
           try { setSeedUrls(JSON.parse(profile.seedUrlsJson)); } catch { /* ignore */ }
         }
+        let parsedSources: any[] = [];
+        if (profile.researchPackageJson) {
+          try { parsedSources = JSON.parse(profile.researchPackageJson); } catch { /* ignore */ }
+        }
         setData({
           research: {
-            rawMarkdown: profile.researchPackageJson || '',
-            sources: [],
+            rawMarkdown: '',
+            sources: parsedSources,
           },
           researchProfile: { rawMarkdown: profile.profileMarkdown },
           profile: { profile: profile.profileMarkdown, status: 'complete', validationPasses: 0 },

@@ -819,7 +819,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
                 profileMarkdown: finalProfile,
                 briefingNoteMarkdown: finalBriefingNote || null,
                 meetingGuideMarkdown: meetingGuide || null,
-                researchPackageJson: null,
+                researchPackageJson: JSON.stringify(selectedSources.map(s => ({ url: s.url, title: s.title, snippet: s.snippet || '' }))),
                 linkedinDataJson: linkedinData ? JSON.stringify(linkedinData) : null,
                 seedUrlsJson: seedUrls.length > 0 ? JSON.stringify(seedUrls) : null,
                 confidenceScores: confidenceResult ? JSON.stringify(confidenceResult.sections) : null,
