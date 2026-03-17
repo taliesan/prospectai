@@ -23,14 +23,16 @@ interface ProfileData {
   };
   researchProfile: { rawMarkdown: string };
   profile: { profile: string; status: string; validationPasses: number };
+  briefingNote?: string;
   meetingGuide?: string;
   meetingGuideHtml?: string;
 }
 
-type Tab = 'persuasion-profile' | 'meeting-guide' | 'sources';
+type Tab = 'briefing-note' | 'persuasion-profile' | 'meeting-guide' | 'sources';
 
 // Per-tab accent colors
 const tabAccents: Record<Tab, { border: string; color: string; bg: string }> = {
+  'briefing-note': { border: '#3B82F6', color: '#3B82F6', bg: '#1E40AF' },
   'persuasion-profile': { border: '#D894E8', color: '#D894E8', bg: '#7B2D8E' },
   'meeting-guide': { border: '#40916C', color: '#40916C', bg: '#2D6A4F' },
   'sources': { border: '#E07A5F', color: '#E07A5F', bg: '#E07A5F' },
@@ -46,7 +48,13 @@ export default function ProfilePage() {
   const [fundraiserName, setFundraiserName] = useState('');
   const [seedUrls, setSeedUrls] = useState<string[]>([]);
   const [data, setData] = useState<ProfileData | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('persuasion-profile');
+  const [activeTab, setActiveTab] = useState<Tab>('briefing-note');
+  // Fall back to profile tab if no briefing note available once data loads
+  useEffect(() => {
+    if (data && !data.briefingNote && activeTab === 'briefing-note') {
+      setActiveTab('persuasion-profile');
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -73,6 +81,7 @@ export default function ProfilePage() {
           },
           researchProfile: { rawMarkdown: profile.profileMarkdown },
           profile: { profile: profile.profileMarkdown, status: 'complete', validationPasses: 0 },
+          briefingNote: profile.briefingNoteMarkdown || undefined,
           meetingGuide: profile.meetingGuideMarkdown || undefined,
         });
         setIsLoading(false);
@@ -240,6 +249,7 @@ export default function ProfilePage() {
   }
 
   const tabs: { id: Tab; label: string }[] = [
+    { id: 'briefing-note', label: 'Briefing Note' },
     { id: 'persuasion-profile', label: 'Persuasion Profile' },
     { id: 'meeting-guide', label: 'Meeting Guide' },
     { id: 'sources', label: 'Sources' },
@@ -250,6 +260,91 @@ export default function ProfilePage() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'briefing-note': {
+        if (!data.briefingNote) {
+          return (
+            <div className="bg-white rounded-2xl border border-brand-light-gray p-12 text-center"
+                 style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <h2 className="font-serif text-2xl text-brand-black mb-2">No Briefing Note Available</h2>
+              <p className="text-brand-mid-gray max-w-md mx-auto">
+                This profile was generated before Briefing Notes were available. Re-generate to include one.
+              </p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white rounded-2xl border border-stone-200 relative overflow-hidden"
+               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <div className="absolute top-0 left-7 right-7 h-1 rounded-b-sm" style={{ background: '#3B82F6' }} />
+            <div
+              className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
+              style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
+            >
+              <article className="prose max-w-none profile-prose">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => {
+                      const text = String(children);
+                      const match = text.match(/^BRIEFING NOTE\s*[—–-]\s*(.+)$/i);
+                      if (match) {
+                        return (
+                          <div className="not-prose mb-10 relative">
+                            <div
+                              className="text-xs font-medium uppercase text-stone-500 mb-1.5 pb-0"
+                              style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
+                            >
+                              Briefing Note
+                            </div>
+                            <h1
+                              className="text-[28px] font-bold tracking-tight leading-tight text-stone-900 uppercase m-0"
+                              style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+                            >
+                              {match[1]}
+                            </h1>
+                            <div className="mt-4 h-0.5 bg-stone-900" />
+                          </div>
+                        );
+                      }
+                      return <h1>{children}</h1>;
+                    },
+                    h2: ({ children }) => (
+                      <h2
+                        className="text-base font-semibold mt-7 mb-2.5 text-stone-900"
+                        style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
+                      >
+                        {children}
+                      </h2>
+                    ),
+                    p: ({ children }) => (
+                      <p className="my-2.5 leading-[1.7] text-stone-700">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="my-2.5 flex flex-col gap-1.5">{children}</ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-[14.5px] leading-[1.65] pl-4 relative text-stone-700">
+                        <span className="absolute left-0 text-stone-400 font-medium">{'\u2014'}</span>
+                        {children}
+                      </li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-stone-900">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic text-stone-600">{children}</em>
+                    ),
+                  }}
+                >
+                  {data.briefingNote}
+                </ReactMarkdown>
+              </article>
+            </div>
+          </div>
+        );
+      }
+
       case 'persuasion-profile': {
         const headingMap: Record<string, string> = {
           "Decision-Making Patterns": "How They Decide",

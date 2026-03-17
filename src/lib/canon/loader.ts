@@ -124,6 +124,41 @@ export function loadTidebreakStrategicFrame(): string {
   return tidebreakStrategicFrameCache;
 }
 
+// Briefing Notes canon files — loaded lazily and cached
+let briefingNotesPromptCache: string | null = null;
+let briefingNotesProfessorCache: { system: string; userTemplate: string } | null = null;
+
+export function loadBriefingNotesPrompt(): string {
+  if (briefingNotesPromptCache) return briefingNotesPromptCache;
+  briefingNotesPromptCache = loadCanonFile('briefing-notes-prompt.md');
+  return briefingNotesPromptCache;
+}
+
+export function loadBriefingNotesProfessorPrompt(): { system: string; userTemplate: string } {
+  if (briefingNotesProfessorCache) return briefingNotesProfessorCache;
+  const raw = loadCanonFile('briefing-notes-professor-prompt.md');
+
+  // Split on the separator between SYSTEM PROMPT and USER MESSAGE sections
+  const systemMarker = '# ═══════════════════════════════════════════════════════════════════\n# SYSTEM PROMPT\n# ═══════════════════════════════════════════════════════════════════';
+  const userMarker = '# ═══════════════════════════════════════════════════════════════════\n# USER MESSAGE\n# ═══════════════════════════════════════════════════════════════════';
+
+  const systemStart = raw.indexOf(systemMarker);
+  const userStart = raw.indexOf(userMarker);
+
+  if (systemStart === -1 || userStart === -1) {
+    console.error('[Canon] Could not find SYSTEM PROMPT / USER MESSAGE markers in briefing-notes-professor-prompt.md');
+    briefingNotesProfessorCache = { system: raw, userTemplate: '' };
+    return briefingNotesProfessorCache;
+  }
+
+  const systemContent = raw.substring(systemStart + systemMarker.length, userStart).trim();
+  const userContent = raw.substring(userStart + userMarker.length).trim();
+
+  briefingNotesProfessorCache = { system: systemContent, userTemplate: userContent };
+  console.log(`[Canon] Briefing Notes professor prompt loaded: system=${systemContent.length} chars, userTemplate=${userContent.length} chars`);
+  return briefingNotesProfessorCache;
+}
+
 // Professor canon files — loaded lazily and cached (large files, only used by professor call)
 let professorCanonCache: string | null = null;
 

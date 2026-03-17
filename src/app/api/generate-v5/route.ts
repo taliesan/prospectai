@@ -19,11 +19,14 @@ import {
   loadMeetingGuideLuma,
   loadMeetingGuideYmmra,
   loadProfessorCanon,
+  loadBriefingNotesPrompt,
+  loadBriefingNotesProfessorPrompt,
   type ProjectLayerInput,
 } from '@/lib/canon/loader';
 import { formatDimensionsForPrompt } from '@/lib/dimensions';
 import { formatSourcesForDeepResearch } from '@/lib/prompts/source-scoring';
 import { runProfessorReview } from '@/lib/professor';
+import Anthropic from '@anthropic-ai/sdk';
 
 // Tavily API for web search (same as /api/generate)
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -118,6 +121,35 @@ function formatLinkedInData(linkedinData: any): string {
     education: linkedinData.education,
     boards: linkedinData.boards,
   }, null, 2);
+}
+
+// ── BN Professor — standalone side-call for Briefing Note review ─────
+async function runBnProfessorReview(
+  finalProfile: string,
+  briefingNoteDraft: string,
+): Promise<{ feedback: string; promptForDebug: string }> {
+  const client = new Anthropic();
+  const { system, userTemplate } = loadBriefingNotesProfessorPrompt();
+
+  const userMessage = userTemplate
+    .replace('[PIPELINE INJECTS FINAL PROFILE HERE]', finalProfile)
+    .replace('[PIPELINE INJECTS BRIEFING NOTE DRAFT HERE]', briefingNoteDraft);
+
+  const response = await client.messages.create({
+    model: 'claude-opus-4-20250514',
+    max_tokens: 8000,
+    system,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map(block => block.text)
+    .join('\n');
+
+  const promptForDebug = `=== BN PROFESSOR SYSTEM PROMPT ===\n${system.slice(0, 500)}...\n\n[TRUNCATED — full ${system.length} chars sent to API]\n\n=== BN PROFESSOR USER MESSAGE ===\n[Profile: ${finalProfile.length} chars]\n[BN Draft: ${briefingNoteDraft.length} chars]\n[Total user message: ${userMessage.length} chars]\n\n${userMessage}`;
+
+  return { feedback: text, promptForDebug };
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -249,7 +281,7 @@ async function runV5PipelineInBackground(
         // STAGES 1-5: Identical research pipeline
         // ═══════════════════════════════════════════════════════════
 
-        const TOTAL_STEPS = 38;
+        const TOTAL_STEPS = 41;
 
         const stageResult = await runResearchStages(
           donorName,
@@ -495,11 +527,84 @@ Apply all corrections from both reviews. Produce the final profile with no comme
         console.log(`[V5] Turn 4 (PROFILE_FINAL): response received, ${turn4Result.text.length} chars, ${turn4Result.inputTokens} input tokens, ${turn4Result.outputTokens} output tokens`);
         debugWrite('V5-turn-4-critique-response.txt', turn4Result.text);
 
-        const conv1Usage = conv1.getUsage();
-        console.log(`[V5] Conversation 1 complete — total: ${conv1Usage.inputTokens} input, ${conv1Usage.outputTokens} output tokens`);
         sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 4 complete — final profile: ${turn4Result.text.length} chars`, step: 32, totalSteps: TOTAL_STEPS });
 
         const finalProfile = turn4Result.text;
+
+        // ═══════════════════════════════════════════════════════════
+        // TURNS 5-6: Briefing Note (still in Conversation 1)
+        // ═══════════════════════════════════════════════════════════
+
+        // ── Turn 5: Briefing Note Draft ──────────────────────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 5: Writing Briefing Note...', step: 33, totalSteps: TOTAL_STEPS });
+
+        const briefingNotesPrompt = loadBriefingNotesPrompt();
+
+        console.log(`[V5] Turn 5 (BRIEFING_NOTE_DRAFT): sending ${briefingNotesPrompt.length} chars`);
+        debugWrite('V5-turn-5-bn-user.txt', briefingNotesPrompt);
+
+        const turn5Result = await conv1.turn(briefingNotesPrompt, 'BRIEFING_NOTE_DRAFT', undefined, abortSignal);
+
+        console.log(`[V5] Turn 5 (BRIEFING_NOTE_DRAFT): response received, ${turn5Result.text.length} chars, ${turn5Result.inputTokens} input tokens, ${turn5Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-5-bn-response.txt', turn5Result.text);
+        sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 5 complete — Briefing Note draft: ${turn5Result.text.length} chars`, step: 33, totalSteps: TOTAL_STEPS });
+
+        // ── BN Professor Review (separate context window) ────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Reviewing Briefing Note...', step: 34, totalSteps: TOTAL_STEPS });
+
+        console.log(`[V5] Running BN professor review — profile: ${finalProfile.length} chars, BN draft: ${turn5Result.text.length} chars`);
+
+        const bnProfessorResult = await runBnProfessorReview(finalProfile, turn5Result.text);
+        const bnProfessorFeedback = bnProfessorResult.feedback;
+
+        debugWrite('V5-bn-professor-prompt.txt', bnProfessorResult.promptForDebug);
+        debugWrite('V5-bn-professor-feedback.txt', bnProfessorFeedback);
+        console.log(`[V5] BN professor review complete: ${bnProfessorFeedback.length} chars feedback`);
+
+        // ── Turn 6: Briefing Note Final ──────────────────────────
+        if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
+        sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 6: Finalizing Briefing Note...', step: 35, totalSteps: TOTAL_STEPS });
+
+        const turn6Msg = `Your Briefing Note draft has been reviewed. Apply all corrections.
+
+---
+
+PROFESSOR REVIEW:
+
+${bnProfessorFeedback}
+
+---
+
+EDITORIAL CHECKS:
+
+Apply all corrections from the review above. Specifically:
+
+- If load-bearing truths are missing, add them by reducing lower-priority material.
+- If any bullet overclaims beyond the full profile, pull back to what the profile actually says.
+- If any bullet drifted into meeting guide territory, rewrite as donor behavior description.
+- If any bullet is too generic to pass the name-swap test, sharpen with donor-specific detail from the full profile.
+- If any section is doing another section's job, move the content.
+- If any repeated insight appears, keep the strongest placement and cut the other.
+- Preserve evidence ceilings from the full profile. Do not add false confidence.
+- Do not exceed 500 words. Do not go below 320 unless the evidence is genuinely thin.
+
+Produce the final Briefing Note with no commentary.`;
+
+        console.log(`[V5] Turn 6 (BRIEFING_NOTE_FINAL): sending ${turn6Msg.length} chars (includes BN professor feedback: ${bnProfessorFeedback.length} chars)`);
+        debugWrite('V5-turn-6-bn-critique-user.txt', turn6Msg);
+
+        const turn6Result = await conv1.turn(turn6Msg, 'BRIEFING_NOTE_FINAL', undefined, abortSignal);
+
+        console.log(`[V5] Turn 6 (BRIEFING_NOTE_FINAL): response received, ${turn6Result.text.length} chars, ${turn6Result.inputTokens} input tokens, ${turn6Result.outputTokens} output tokens`);
+        debugWrite('V5-turn-6-bn-critique-response.txt', turn6Result.text);
+        sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 6 complete — final Briefing Note: ${turn6Result.text.length} chars`, step: 35, totalSteps: TOTAL_STEPS });
+
+        const finalBriefingNote = turn6Result.text;
+
+        const conv1Usage = conv1.getUsage();
+        console.log(`[V5] Conversation 1 complete — total: ${conv1Usage.inputTokens} input, ${conv1Usage.outputTokens} output tokens`);
 
         // ═══════════════════════════════════════════════════════════
         // CONVERSATION 2: Meeting Guide (only if org context provided)
@@ -525,27 +630,25 @@ Apply all corrections from both reviews. Produce the final profile with no comme
 
           const conv2 = new ConversationManager(conv2SystemPrompt);
 
-          // ── Turn 5: Org Frame ─────────────────────────────────
+          // ── Turn 7: Org Frame ─────────────────────────────────
           let orgFrame = '';
 
           if (projectContextData.strategicFrame) {
-            // Strategic frame already exists — skip Turn 5
+            // Strategic frame already exists — skip Turn 7
             orgFrame = projectContextData.strategicFrame;
-            console.log(`[V5] Turn 5 (ORG_FRAME): SKIPPED — using existing frame (${orgFrame.length} chars)`);
-            debugWrite('V5-turn-5-org-user.txt', 'SKIPPED — used existing frame');
-            debugWrite('V5-turn-5-org-response.txt', orgFrame);
+            console.log(`[V5] Turn 7 (ORG_FRAME): SKIPPED — using existing frame (${orgFrame.length} chars)`);
+            debugWrite('V5-turn-7-org-user.txt', 'SKIPPED — used existing frame');
+            debugWrite('V5-turn-7-org-response.txt', orgFrame);
 
             // Still need to add to conversation history for context
-            // We'll inject it as a user+assistant pair
             const skipMsg = `The organization's strategic frame has already been prepared. Here it is:\n\n${orgFrame}`;
-            // Add as a "turn" so the conversation has context
             await conv2.turn(skipMsg, 'ORG_FRAME_EXISTING', undefined, abortSignal);
-            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 5: Using existing org frame (${orgFrame.length} chars)`, step: 33, totalSteps: TOTAL_STEPS });
+            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 7: Using existing org frame (${orgFrame.length} chars)`, step: 36, totalSteps: TOTAL_STEPS });
           } else {
             if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-            sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 5: Processing org materials...', step: 33, totalSteps: TOTAL_STEPS });
+            sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 7: Processing org materials...', step: 36, totalSteps: TOTAL_STEPS });
 
-            const turn5Msg = `Process the following org materials into an Org Strategic Frame.
+            const turn7OrgMsg = `Process the following org materials into an Org Strategic Frame.
 
 Organization: ${projectContextData.name}
 
@@ -555,26 +658,26 @@ Issue areas: ${projectContextData.issueAreas || 'Not specified'}
 
 The ask: ${specificAsk || projectContextData.defaultAsk || 'Not specified'}`;
 
-            console.log(`[V5] Turn 5 (ORG_FRAME): sending ${turn5Msg.length} chars`);
-            debugWrite('V5-turn-5-org-user.txt', turn5Msg);
+            console.log(`[V5] Turn 7 (ORG_FRAME): sending ${turn7OrgMsg.length} chars`);
+            debugWrite('V5-turn-7-org-user.txt', turn7OrgMsg);
 
-            const turn5Result = await conv2.turn(turn5Msg, 'ORG_FRAME', undefined, abortSignal);
-            orgFrame = turn5Result.text;
+            const turn7OrgResult = await conv2.turn(turn7OrgMsg, 'ORG_FRAME', undefined, abortSignal);
+            orgFrame = turn7OrgResult.text;
 
-            console.log(`[V5] Turn 5 (ORG_FRAME): response received, ${turn5Result.text.length} chars, ${turn5Result.inputTokens} input tokens, ${turn5Result.outputTokens} output tokens`);
-            debugWrite('V5-turn-5-org-response.txt', turn5Result.text);
-            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 5 complete — org frame: ${orgFrame.length} chars`, step: 34, totalSteps: TOTAL_STEPS });
+            console.log(`[V5] Turn 7 (ORG_FRAME): response received, ${turn7OrgResult.text.length} chars, ${turn7OrgResult.inputTokens} input tokens, ${turn7OrgResult.outputTokens} output tokens`);
+            debugWrite('V5-turn-7-org-response.txt', turn7OrgResult.text);
+            sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 7 complete — org frame: ${orgFrame.length} chars`, step: 37, totalSteps: TOTAL_STEPS });
           }
 
-          // ── Turn 6: Meeting Guide Draft ────────────────────────
+          // ── Turn 8: Meeting Guide Draft ────────────────────────
           if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 6: Writing meeting guide...', step: 35, totalSteps: TOTAL_STEPS });
+          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 8: Writing meeting guide...', step: 38, totalSteps: TOTAL_STEPS });
 
           const inesExemplar = loadMeetingGuideInes();
           const lumaExemplar = loadMeetingGuideLuma();
           const ymmraExemplar = loadMeetingGuideYmmra();
 
-          const turn6Msg = `Write the meeting guide for ${donorName} at ${projectContextData.name}.
+          const turn8GuideMsg = `Write the meeting guide for ${donorName} at ${projectContextData.name}.
 
 # DONOR PROFILE
 
@@ -603,20 +706,20 @@ ${ymmraExemplar}
 
 Now write the meeting guide following the template and voice spec in your instructions.`;
 
-          console.log(`[V5] Turn 6 (MEETING_GUIDE_DRAFT): sending ${turn6Msg.length} chars, profile: ${finalProfile.length} chars, frame: ${orgFrame.length} chars, exemplars: ${inesExemplar.length + lumaExemplar.length + ymmraExemplar.length} chars`);
-          debugWrite('V5-turn-6-guide-user.txt', turn6Msg);
+          console.log(`[V5] Turn 8 (MEETING_GUIDE_DRAFT): sending ${turn8GuideMsg.length} chars, profile: ${finalProfile.length} chars, frame: ${orgFrame.length} chars, exemplars: ${inesExemplar.length + lumaExemplar.length + ymmraExemplar.length} chars`);
+          debugWrite('V5-turn-8-guide-user.txt', turn8GuideMsg);
 
-          const turn6Result = await conv2.turn(turn6Msg, 'MEETING_GUIDE_DRAFT', undefined, abortSignal);
+          const turn8GuideResult = await conv2.turn(turn8GuideMsg, 'MEETING_GUIDE_DRAFT', undefined, abortSignal);
 
-          console.log(`[V5] Turn 6 (MEETING_GUIDE_DRAFT): response received, ${turn6Result.text.length} chars, ${turn6Result.inputTokens} input tokens, ${turn6Result.outputTokens} output tokens`);
-          debugWrite('V5-turn-6-guide-response.txt', turn6Result.text);
-          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 6 complete — meeting guide draft: ${turn6Result.text.length} chars`, step: 36, totalSteps: TOTAL_STEPS });
+          console.log(`[V5] Turn 8 (MEETING_GUIDE_DRAFT): response received, ${turn8GuideResult.text.length} chars, ${turn8GuideResult.inputTokens} input tokens, ${turn8GuideResult.outputTokens} output tokens`);
+          debugWrite('V5-turn-8-guide-response.txt', turn8GuideResult.text);
+          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 8 complete — meeting guide draft: ${turn8GuideResult.text.length} chars`, step: 39, totalSteps: TOTAL_STEPS });
 
-          // ── Turn 7: Meeting Guide Critique & Final ─────────────
+          // ── Turn 9: Meeting Guide Critique & Final ─────────────
           if (abortSignal?.aborted) throw new Error('Pipeline aborted by client');
-          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 7: Critiquing meeting guide...', step: 37, totalSteps: TOTAL_STEPS });
+          sendEvent({ type: 'status', phase: 'writing', message: '[V5] Turn 9: Critiquing meeting guide...', step: 40, totalSteps: TOTAL_STEPS });
 
-          const turn7Msg = `Critique this meeting guide against the voice spec and the exemplars. Check:
+          const turn9CritiqueMsg = `Critique this meeting guide against the voice spec and the exemplars. Check:
 
 - Beat titles and goals must be verbatim from the template — do not modify them
 - Every bulleted section has exactly 3 or 5 bullets — never 2, 4, or 6+
@@ -630,19 +733,19 @@ Now write the meeting guide following the template and voice spec in your instru
 
 Apply all corrections. Produce the final meeting guide with no commentary.`;
 
-          console.log(`[V5] Turn 7 (MEETING_GUIDE_FINAL): sending ${turn7Msg.length} chars`);
-          debugWrite('V5-turn-7-critique-user.txt', turn7Msg);
+          console.log(`[V5] Turn 9 (MEETING_GUIDE_FINAL): sending ${turn9CritiqueMsg.length} chars`);
+          debugWrite('V5-turn-9-critique-user.txt', turn9CritiqueMsg);
 
-          const turn7Result = await conv2.turn(turn7Msg, 'MEETING_GUIDE_FINAL', undefined, abortSignal);
+          const turn9CritiqueResult = await conv2.turn(turn9CritiqueMsg, 'MEETING_GUIDE_FINAL', undefined, abortSignal);
 
-          console.log(`[V5] Turn 7 (MEETING_GUIDE_FINAL): response received, ${turn7Result.text.length} chars, ${turn7Result.inputTokens} input tokens, ${turn7Result.outputTokens} output tokens`);
-          debugWrite('V5-turn-7-critique-response.txt', turn7Result.text);
+          console.log(`[V5] Turn 9 (MEETING_GUIDE_FINAL): response received, ${turn9CritiqueResult.text.length} chars, ${turn9CritiqueResult.inputTokens} input tokens, ${turn9CritiqueResult.outputTokens} output tokens`);
+          debugWrite('V5-turn-9-critique-response.txt', turn9CritiqueResult.text);
 
-          meetingGuide = turn7Result.text;
+          meetingGuide = turn9CritiqueResult.text;
 
           const conv2Usage = conv2.getUsage();
           console.log(`[V5] Conversation 2 complete — total: ${conv2Usage.inputTokens} input, ${conv2Usage.outputTokens} output tokens`);
-          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 7 complete — final meeting guide: ${meetingGuide.length} chars`, step: 38, totalSteps: TOTAL_STEPS });
+          sendEvent({ type: 'status', phase: 'writing', message: `[V5] Turn 9 complete — final meeting guide: ${meetingGuide.length} chars`, step: 41, totalSteps: TOTAL_STEPS });
 
           // Write token usage for both conversations
           const tokenUsage = {
@@ -678,6 +781,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
         // Save debug output files
         ensureOutputDir();
         writeFileSync(`${OUTPUT_DIR}/${requestId}-${safeName}-profile.md`, finalProfile);
+        writeFileSync(`${OUTPUT_DIR}/${requestId}-${safeName}-briefing-note.md`, finalBriefingNote);
         if (meetingGuide) {
           writeFileSync(`${OUTPUT_DIR}/${requestId}-${safeName}-meeting-guide.md`, meetingGuide);
         }
@@ -696,6 +800,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
             validationPasses: 0,
             status: 'complete',
           },
+          briefingNote: finalBriefingNote,
           meetingGuide,
           fundraiserName,
         };
@@ -712,6 +817,7 @@ Apply all corrections. Produce the final meeting guide with no commentary.`;
                 userId,
                 donorName,
                 profileMarkdown: finalProfile,
+                briefingNoteMarkdown: finalBriefingNote || null,
                 meetingGuideMarkdown: meetingGuide || null,
                 researchPackageJson: null,
                 linkedinDataJson: linkedinData ? JSON.stringify(linkedinData) : null,

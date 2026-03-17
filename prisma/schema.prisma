@@ -59,6 +59,7 @@ model Profile {
   user                 User            @relation(fields: [userId], references: [id])
   donorName            String
   profileMarkdown      String          @db.Text
+  briefingNoteMarkdown String?         @db.Text
   meetingGuideMarkdown String?         @db.Text
   researchPackageJson  String?         @db.Text
   linkedinDataJson     String?         @db.Text
