@@ -91,6 +91,10 @@ body {
 .prose td { @apply border border-brand-light-gray px-3 py-2 text-brand-warm-gray; }
 .prose a { @apply text-brand-green hover:text-brand-green-light transition-colors; }
 
+/* Profile output cards — custom bullets replace default list-disc */
+.profile-prose ul { list-style: none; margin-left: 0; padding-left: 0; }
+.profile-prose li { list-style: none; }
+
 /* Meeting guide tab — green accents */
 .prose-green blockquote { @apply border-l-[3px] border-brand-green bg-brand-green-pale rounded-r-lg; }
 
