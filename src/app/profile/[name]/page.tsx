@@ -16,6 +16,12 @@ interface Source {
   snippet?: string;
 }
 
+interface ConfidenceSection {
+  section: number;
+  sectionName: string;
+  floor: number;
+}
+
 interface ProfileData {
   research: {
     rawMarkdown: string;
@@ -55,6 +61,7 @@ export default function ProfilePage() {
       setActiveTab('persuasion-profile');
     }
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [confidenceScores, setConfidenceScores] = useState<ConfidenceSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -77,6 +84,9 @@ export default function ProfilePage() {
         let parsedSources: any[] = [];
         if (profile.researchPackageJson) {
           try { parsedSources = JSON.parse(profile.researchPackageJson); } catch { /* ignore */ }
+        }
+        if (profile.confidenceScores) {
+          try { setConfidenceScores(JSON.parse(profile.confidenceScores)); } catch { /* ignore */ }
         }
         setData({
           research: {
@@ -405,10 +415,24 @@ export default function ProfilePage() {
                     },
                     h2: ({ children }) => {
                       const text = String(children);
-                      const scoreMatch = text.match(/^(.+?)\s*[■□]+\s+(\d+)\/10\s*$/);
-                      if (scoreMatch) {
-                        const heading = scoreMatch[1].trim().replace(/^\d+\.\s*/, '');
-                        const score = parseInt(scoreMatch[2], 10);
+                      // Strip leading number prefix from old-format headings
+                      const heading = text.replace(/^\d+\.\s*/, '').replace(/\s*[■□]+\s+\d+\/10\s*$/, '').trim();
+
+                      // Look up confidence score from DB column, fall back to ■□ parsing
+                      let score: number | null = null;
+                      if (confidenceScores.length > 0) {
+                        const match = confidenceScores.find(s =>
+                          heading.toLowerCase().includes(s.sectionName.toLowerCase().split(' ').slice(0, 2).join(' '))
+                          || s.sectionName.toLowerCase().includes(heading.toLowerCase().split(' ').slice(0, 2).join(' '))
+                        );
+                        if (match) score = match.floor;
+                      }
+                      if (score === null) {
+                        const barMatch = text.match(/[■□]+\s+(\d+)\/10\s*$/);
+                        if (barMatch) score = parseInt(barMatch[1], 10);
+                      }
+
+                      if (score !== null) {
                         const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
                         return (
                           <div className="mt-10 first:mt-0">
@@ -444,7 +468,6 @@ export default function ProfilePage() {
                           </div>
                         );
                       }
-                      const plainHeading = text.replace(/^\d+\.\s*/, '');
                       return (
                         <div className="mt-10 first:mt-0">
                           <div className="border-t border-gray-200 pt-10" />
@@ -452,7 +475,7 @@ export default function ProfilePage() {
                             className="text-[13px] font-semibold uppercase mb-4"
                             style={{ letterSpacing: '1.5px', color: '#6b7280' }}
                           >
-                            {plainHeading}
+                            {heading}
                           </h2>
                         </div>
                       );
