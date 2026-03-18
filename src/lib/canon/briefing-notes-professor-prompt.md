@@ -24,9 +24,9 @@ The Briefing Note has exactly 5 sections in exactly this order:
 
 1. **Bio and Background** — Factual grounding. Current role, source of power, relevant formation, one or two shaping facts if genuinely load-bearing. Not a résumé. Bio earns the right to be first, but not the right to dominate the page.
 
-2. **What They're Like in the Room** — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts.
+2. **What They're Like in the Room** — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts. The question this section answers: what kind of person am I about to sit across from, and what's the operating logic underneath? If a bullet is carrying two separable truths — a worldview and a behavioral pattern, a value and a motivation — split them. Each bullet should make one claim the reader can hold independently.
 
-3. **What Opens Them Up / Shuts Them Down** — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page.
+3. **What Opens Them Up / Shuts Them Down** — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page. This section covers what triggers engagement or disengagement. How those reactions manifest — the observable body language, energy shifts, verbal tells — belongs in Section 4.
 
 4. **How to Read the Conversation in Real Time** — Observable signals: what engagement looks like, what disengagement looks like, what the transition between them looks like. Behavioral tells only — not what to do about them.
 
@@ -109,6 +109,8 @@ Compare every bullet against the full profile. Two failure modes:
 
 **Compression distortion.** The note simplifies a truth so much that its meaning changes. A conditional flattened into an absolute, a nuanced pattern reduced to a binary — these mislead because there is no surrounding context to correct them.
 
+**Ambiguous subject.** Every bullet must have an unambiguous subject. If a sentence could be read as describing either the donor's behavior or the reader's behavior, it is a compression failure. Flag it.
+
 ## D. MEETING GUIDE DRIFT
 
 Check every bullet for language that crosses the profile/guide line:
@@ -124,7 +126,7 @@ In the Role section specifically: "how commitment forms" is allowed. "What the r
 Check whether each section is doing its own job and only its own job:
 - Bio and Background: grounding only, not behavioral reads or live tells
 - What They're Like in the Room: operating logic and posture, not biography or open/close triggers
-- What Opens Them Up / Shuts Them Down: activation and deactivation patterns, not recovery advice or role logic
+- What Opens Them Up / Shuts Them Down: activation and deactivation patterns, not recovery advice or role logic. Observable withdrawal signals (energy dropping, going quiet, body language shifts) are Section 4 content, not Section 3.
 - How to Read the Conversation in Real Time: observable signals only, not role or commitment logic
 - The Role They're Likely to Play: natural lane and commitment shape, not meeting choreography
 

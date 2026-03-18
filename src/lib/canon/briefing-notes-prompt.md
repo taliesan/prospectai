@@ -26,9 +26,9 @@ The Briefing Note has exactly 5 sections in exactly this order with exactly thes
 
 1. ## Bio and Background — Factual grounding. Current role, source of power, relevant formation, one or two shaping facts if genuinely load-bearing. Not a résumé. The reader needs enough to place the donor in the world before the behavioral read begins. Bio earns the right to be first, but not the right to dominate the page.
 
-2. ## What They're Like in the Room — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts.
+2. ## What They're Like in the Room — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts. The question this section answers: what kind of person am I about to sit across from, and what's the operating logic underneath? If a bullet is carrying two separable truths — a worldview and a behavioral pattern, a value and a motivation — split them. Each bullet should make one claim the reader can hold independently.
 
-3. ## What Opens Them Up / Shuts Them Down — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page.
+3. ## What Opens Them Up / Shuts Them Down — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page. This section covers what triggers engagement or disengagement. How those reactions manifest — the observable body language, energy shifts, verbal tells — belongs in Section 4.
 
 4. ## How to Read the Conversation in Real Time — Observable signals: what engagement looks like, what disengagement looks like, what the transition between them looks like. Behavioral tells only — not what to do about them. This section is profile, not meeting guide.
 
