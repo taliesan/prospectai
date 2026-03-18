@@ -207,16 +207,17 @@ def make_styles(fonts):
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
         # Bullets (N: disc only, gray-400 bullet, body text size)
-        # leftIndent=16 + firstLineIndent=-16 creates a hanging indent
+        # leftIndent=14 sets text body indent; firstLineIndent=-14 outdents bullet to left edge.
+        # Wrapped lines align with text start past the bullet symbol.
         'bullet': ParagraphStyle(
             'bullet', fontName=sans, fontSize=10.5,
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, firstLineIndent=-16, spaceAfter=6,
+            leftIndent=14, firstLineIndent=-14, spaceAfter=6,
         ),
         'profile_bullet': ParagraphStyle(
             'profile_bullet', fontName=sans, fontSize=10.5,
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, firstLineIndent=-16, spaceAfter=8,
+            leftIndent=14, firstLineIndent=-14, spaceAfter=8,
         ),
 
         # Footer (Q: 7pt, gray-400)
@@ -519,31 +520,102 @@ def _build_section_heading(title, styles, confidence_scores=None, is_first=False
     return elements
 
 
-def _build_phase_label(label, color_hex):
-    """Build a colored pill label for START/STAY/CONTINUE phases."""
-    class PhaseLabelFlowable(Flowable):
-        def __init__(self, text, bg_color, width):
+PHASE_COLORS = {
+    'START': {'label_bg': '#0f766e', 'content_bg': '#f0fdfa', 'border': '#99f6e4'},
+    'STAY': {'label_bg': '#1e40af', 'content_bg': '#eff6ff', 'border': '#bfdbfe'},
+    'CONTINUE': {'label_bg': '#7e22ce', 'content_bg': '#faf5ff', 'border': '#d8b4fe'},
+}
+
+
+def _build_phase_box(label, content_paragraphs, styles):
+    """Build a phase box with colored pill label and tinted content background.
+
+    content_paragraphs: list of (type, text) tuples where type is 'text', 'bullet', or 'stalling'.
+    """
+    colors = PHASE_COLORS.get(label, PHASE_COLORS['START'])
+
+    class PhaseBoxFlowable(Flowable):
+        def __init__(self, label_text, paras, box_width, colors_dict):
             super().__init__()
-            self.text = text
-            self.bg_color = HexColor(bg_color)
-            self.box_width = width
+            self.label_text = label_text
+            self.paras = paras
+            self.box_width = box_width
+            self.colors = colors_dict
+            self._pill_h = 16
+            self._pill_w = 0
+            self._content_paras = []
+            self._h = 0
 
         def wrap(self, aW, aH):
-            return (self.box_width, 20)
+            inner_w = self.box_width - 28  # 14px padding each side
+            self._content_paras = []
+            total_content_h = 0
+
+            for ptype, text in self.paras:
+                if ptype == 'bullet':
+                    style = ParagraphStyle(
+                        'phase_bullet', fontName='DMSans', fontSize=10.5,
+                        leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
+                        leftIndent=14, firstLineIndent=-14,
+                    )
+                    p = Paragraph(
+                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {text}',
+                        style
+                    )
+                else:
+                    style = ParagraphStyle(
+                        'phase_body', fontName='DMSans', fontSize=10.5,
+                        leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
+                    )
+                    p = Paragraph(text, style)
+                pw, ph = p.wrap(inner_w, aH)
+                self._content_paras.append((p, ph))
+                total_content_h += ph + 6  # 6pt gap between items
+
+            if self._content_paras:
+                total_content_h -= 6  # remove last gap
+
+            # Pill sizing
+            font = 'DMSans-Bold'
+            try:
+                pdfmetrics.getFont(font)
+            except Exception:
+                font = 'Helvetica-Bold'
+            self._pill_font = font
+            tw = pdfmetrics.stringWidth(self.label_text, font, 7)
+            self._pill_w = tw + 14
+
+            # Total: pill (overlaps top of box by half) + content padding
+            self._content_h = total_content_h + 20  # 10px top + 10px bottom padding
+            self._h = self._pill_h // 2 + self._content_h + 4  # 4pt bottom margin
+            return (self.box_width, self._h)
 
         def draw(self):
             c = self.canv
-            font = 'DMSans-Bold' if 'DMSans-Bold' in c.getAvailableFonts() else 'Helvetica-Bold'
-            c.setFont(font, 7)
-            tw = c.stringWidth(self.text, font, 7)
-            pill_w = tw + 14
-            pill_h = 14
-            c.setFillColor(self.bg_color)
-            c.roundRect(0, 3, pill_w, pill_h, pill_h / 2, stroke=0, fill=1)
-            c.setFillColor(WHITE)
-            c.drawString(7, 7, self.text)
+            box_top = self._h - 4 - self._pill_h // 2
 
-    return PhaseLabelFlowable(label, color_hex, CONTENT_WIDTH)
+            # Content background box
+            c.setFillColor(HexColor(self.colors['content_bg']))
+            c.setStrokeColor(HexColor(self.colors['border']))
+            c.setLineWidth(0.5)
+            c.roundRect(0, 0, self.box_width, box_top, 4, stroke=1, fill=1)
+
+            # Pill label
+            pill_y = box_top - self._pill_h // 2
+            c.setFillColor(HexColor(self.colors['label_bg']))
+            c.roundRect(6, pill_y, self._pill_w, self._pill_h, self._pill_h // 2, stroke=0, fill=1)
+            c.setFillColor(WHITE)
+            c.setFont(self._pill_font, 7)
+            c.drawString(13, pill_y + 5, self.label_text)
+
+            # Content paragraphs
+            y = box_top - self._pill_h // 2 - 10  # start below pill overlap + padding
+            for para, ph in self._content_paras:
+                y -= ph
+                para.drawOn(c, 14, y)
+                y -= 6
+
+    return PhaseBoxFlowable(label, content_paragraphs, CONTENT_WIDTH, colors)
 
 
 def _build_tripwire_card(name, tell, recovery, styles):
@@ -805,60 +877,44 @@ def _build_meeting_guide_v3(mg, styles, accent_color=None, donor_name=''):
                 ))
             beat_header.append(Spacer(1, 4))
 
-            # Build phase content
+            # Build phase boxes
             phase_elements = []
 
-            if beat.get('start'):
-                phase_elements.append(_build_phase_label('START', '#0f766e'))
-                phase_elements.append(Paragraph(
-                    _md_inline_to_html(beat['start']),
-                    styles['body']
-                ))
+            if beat.get('start') or beat.get('startBullets'):
+                start_content = []
+                if beat.get('start'):
+                    start_content.append(('text', _md_inline_to_html(beat['start'])))
                 for b in beat.get('startBullets', []):
-                    phase_elements.append(Paragraph(
-                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
-                        styles['bullet']
-                    ))
+                    start_content.append(('bullet', _md_inline_to_html(b)))
+                phase_elements.append(_build_phase_box('START', start_content, styles))
 
-            if beat.get('stay') or beat.get('stayParagraphs'):
-                phase_elements.append(_build_phase_label('STAY', '#1e40af'))
+            if beat.get('stay') or beat.get('stayParagraphs') or beat.get('stayBullets'):
+                stay_content = []
                 if beat.get('stay'):
                     stay_text = _md_inline_to_html(beat['stay'])
                     stay_text = stay_text.replace('\n\n', '<br/><br/>')
-                    phase_elements.append(Paragraph(stay_text, styles['body']))
+                    stay_content.append(('text', stay_text))
                 for p in beat.get('stayParagraphs', []):
-                    phase_elements.append(Paragraph(
-                        _md_inline_to_html(p), styles['body']
-                    ))
+                    stay_content.append(('text', _md_inline_to_html(p)))
                 for b in beat.get('stayBullets', []):
-                    phase_elements.append(Paragraph(
-                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
-                        styles['bullet']
-                    ))
+                    stay_content.append(('bullet', _md_inline_to_html(b)))
+                if beat.get('stallingText'):
+                    stay_content.append(('text',
+                        f"<b>Stalling:</b> {_md_inline_to_html(beat['stallingText'])}"))
+                phase_elements.append(_build_phase_box('STAY', stay_content, styles))
 
-            if beat.get('stallingText'):
-                phase_elements.append(Spacer(1, 2))
-                phase_elements.append(_build_insight_box(
-                    f"<b>Stalling:</b> {_md_inline_to_html(beat['stallingText'])}",
-                    CORAL, styles
-                ))
-
-            if beat.get('continue'):
-                phase_elements.append(_build_phase_label('CONTINUE', '#7e22ce'))
-                phase_elements.append(Paragraph(
-                    _md_inline_to_html(beat['continue']),
-                    styles['body']
-                ))
+            if beat.get('continue') or beat.get('continueBullets'):
+                cont_content = []
+                if beat.get('continue'):
+                    cont_content.append(('text', _md_inline_to_html(beat['continue'])))
                 for b in beat.get('continueBullets', []):
-                    phase_elements.append(Paragraph(
-                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
-                        styles['bullet']
-                    ))
+                    cont_content.append(('bullet', _md_inline_to_html(b)))
+                phase_elements.append(_build_phase_box('CONTINUE', cont_content, styles))
 
-            # Keep beat header + first phase together
+            # Keep beat header + first phase box together
             if phase_elements:
-                elements.append(KeepTogether(beat_header + phase_elements[:2]))
-                elements.extend(phase_elements[2:])
+                elements.append(KeepTogether(beat_header + [phase_elements[0]]))
+                elements.extend(phase_elements[1:])
             else:
                 elements.extend(beat_header)
 
