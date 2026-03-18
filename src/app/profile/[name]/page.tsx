@@ -282,7 +282,7 @@ export default function ProfilePage() {
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
             <div className="absolute top-0 left-7 right-7 h-1 rounded-b-sm" style={{ background: '#3B82F6' }} />
             <div
-              className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
+              className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
               style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
             >
               <article className="prose max-w-none profile-prose">
@@ -308,31 +308,35 @@ export default function ProfilePage() {
                       return <h1>{children}</h1>;
                     },
                     h2: ({ children }) => (
-                      <h2
-                        className="text-base font-semibold mt-7 mb-2.5 text-stone-900"
-                        style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-                      >
-                        {children}
-                      </h2>
+                      <div className="mt-10 first:mt-0">
+                        <div className="border-t border-gray-200 pt-10" />
+                        <h2
+                          className="text-[13px] font-semibold uppercase mb-4"
+                          style={{ letterSpacing: '1.5px', color: '#6b7280' }}
+                        >
+                          {children}
+                        </h2>
+                      </div>
                     ),
                     p: ({ children }) => (
-                      <p className="my-2.5 leading-[1.7] text-stone-700">{children}</p>
+                      <p className="mb-4 text-[15px] leading-[1.7]" style={{ color: '#1f2937' }}>{children}</p>
                     ),
                     ul: ({ children }) => (
-                      <ul className="my-2.5 flex flex-col gap-1.5">{children}</ul>
+                      <ul className="my-4 flex flex-col gap-3 list-none pl-0">{children}</ul>
                     ),
                     li: ({ children }) => (
-                      <li className="text-[14.5px] leading-[1.65] pl-5 relative text-stone-700">
-                        <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
+                      <li className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                        <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
                         {children}
                       </li>
                     ),
                     strong: ({ children }) => (
-                      <strong className="font-semibold text-stone-900">{children}</strong>
+                      <strong className="font-semibold" style={{ color: '#111827' }}>{children}</strong>
                     ),
                     em: ({ children }) => (
-                      <em className="italic text-stone-600">{children}</em>
+                      <em className="italic" style={{ color: '#6b7280' }}>{children}</em>
                     ),
+                    hr: () => null,
                   }}
                 >
                   {data.briefingNote}
@@ -374,7 +378,7 @@ export default function ProfilePage() {
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
             <div className="absolute top-0 left-7 right-7 h-0.5 bg-stone-900" />
             <div
-              className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
+              className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
               style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
             >
               <article className="prose max-w-none profile-prose">
@@ -386,7 +390,7 @@ export default function ProfilePage() {
                       const match = text.match(/^PERSUASION PROFILE\s*[—–-]\s*(.+)$/i);
                       if (match) {
                         return (
-                          <div className="not-prose mb-12 relative">
+                          <div className="not-prose mb-10 relative">
                             <div
                               className="text-xs font-medium uppercase text-stone-500 mb-1.5 pb-0"
                               style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
@@ -407,49 +411,55 @@ export default function ProfilePage() {
                         const score = parseInt(scoreMatch[2], 10);
                         const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
                         return (
-                          <h2
-                            className="text-lg font-semibold mt-8 mb-3 text-stone-900 flex items-center justify-between gap-3"
-                            style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-                          >
-                            <span>{heading}</span>
-                            <span className="relative flex-shrink-0 group/pill cursor-pointer">
-                              <span
-                                className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block"
-                                style={{ background: badgeBg, fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}
-                              >
-                                Confidence {score}/10
+                          <div className="mt-10 first:mt-0">
+                            <div className="border-t border-gray-200 pt-10" />
+                            <h2
+                              className="text-[13px] font-semibold uppercase mb-4 flex items-center justify-between gap-3"
+                              style={{ letterSpacing: '1.5px', color: '#6b7280' }}
+                            >
+                              <span>{heading}</span>
+                              <span className="relative flex-shrink-0 group/pill cursor-pointer">
+                                <span
+                                  className="text-[11px] font-bold text-white rounded-full px-2 py-0.5 leading-normal inline-block normal-case"
+                                  style={{ background: badgeBg, letterSpacing: '0', fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}
+                                >
+                                  Confidence {score}/10
+                                </span>
+                                <span
+                                  className="invisible group-hover/pill:visible opacity-0 group-hover/pill:opacity-100
+                                             transition-opacity duration-150
+                                             absolute right-0 top-full mt-2 z-50
+                                             w-64 px-3 py-2.5 rounded-lg
+                                             text-[11px] leading-relaxed font-normal text-white normal-case
+                                             pointer-events-none"
+                                  style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)', letterSpacing: '0' }}
+                                >
+                                  How much direct behavioral evidence supports this section.
+                                  <br /><strong>8-10:</strong> Strong sourced evidence.
+                                  <br /><strong>5-7:</strong> Mix of evidence and informed inference.
+                                  <br /><strong>1-4:</strong> Mostly inferred from limited data.
+                                </span>
                               </span>
-                              <span
-                                className="invisible group-hover/pill:visible opacity-0 group-hover/pill:opacity-100
-                                           transition-opacity duration-150
-                                           absolute right-0 top-full mt-2 z-50
-                                           w-64 px-3 py-2.5 rounded-lg
-                                           text-[11px] leading-relaxed font-normal text-white
-                                           pointer-events-none"
-                                style={{ background: '#1f2937', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}
-                              >
-                                How much direct behavioral evidence supports this section.
-                                <br /><strong>8-10:</strong> Strong sourced evidence.
-                                <br /><strong>5-7:</strong> Mix of evidence and informed inference.
-                                <br /><strong>1-4:</strong> Mostly inferred from limited data.
-                              </span>
-                            </span>
-                          </h2>
+                            </h2>
+                          </div>
                         );
                       }
                       return (
-                        <h2
-                          className="text-lg font-semibold mt-8 mb-3 text-stone-900"
-                          style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}
-                        >
-                          {children}
-                        </h2>
+                        <div className="mt-10 first:mt-0">
+                          <div className="border-t border-gray-200 pt-10" />
+                          <h2
+                            className="text-[13px] font-semibold uppercase mb-4"
+                            style={{ letterSpacing: '1.5px', color: '#6b7280' }}
+                          >
+                            {children}
+                          </h2>
+                        </div>
                       );
                     },
                     h3: ({ children }) => (
                       <h3
-                        className="text-sm font-bold uppercase tracking-wide text-stone-900 mt-5 mb-2.5"
-                        style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}
+                        className="text-[14px] font-semibold mt-6 mb-3"
+                        style={{ color: '#374151' }}
                       >
                         {children}
                       </h3>
@@ -460,7 +470,10 @@ export default function ProfilePage() {
                         return null;
                       }
                       return (
-                        <blockquote className="border-l-[3px] border-stone-300 pl-4 italic my-4 bg-stone-50 rounded-r-lg py-2 pr-4 text-stone-500">
+                        <blockquote
+                          className="my-4 pl-4 py-0 italic text-[13px]"
+                          style={{ borderLeft: '2px solid #d1d5db', color: '#6b7280' }}
+                        >
                           {children}
                         </blockquote>
                       );
@@ -468,25 +481,33 @@ export default function ProfilePage() {
                     p: ({ children }) => {
                       const text = String(children);
                       if (/^\[CONFIDENCE:|^\[EVIDENCE BASIS:|^\[INFERRED:|^\[EVIDENCE CEILINGS:/i.test(text)) {
-                        return null;
+                        return (
+                          <div
+                            className="my-4 pl-4 italic text-[13px]"
+                            style={{ borderLeft: '2px solid #d1d5db', color: '#6b7280' }}
+                          >
+                            {children}
+                          </div>
+                        );
                       }
-                      return <p className="my-3 leading-[1.7] text-stone-700">{children}</p>;
+                      return <p className="mb-4 text-[15px] leading-[1.7]" style={{ color: '#1f2937' }}>{children}</p>;
                     },
                     ul: ({ children }) => (
-                      <ul className="my-3 flex flex-col gap-2">{children}</ul>
+                      <ul className="my-4 flex flex-col gap-3 list-none pl-0">{children}</ul>
                     ),
                     li: ({ children }) => (
-                      <li className="text-[14.5px] leading-[1.65] pl-5 relative text-stone-700">
-                        <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
+                      <li className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                        <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
                         {children}
                       </li>
                     ),
                     strong: ({ children }) => (
-                      <strong className="font-semibold text-stone-900">{children}</strong>
+                      <strong className="font-semibold" style={{ color: '#111827' }}>{children}</strong>
                     ),
                     em: ({ children }) => (
-                      <em className="italic text-stone-600">{children}</em>
+                      <em className="italic" style={{ color: '#6b7280' }}>{children}</em>
                     ),
+                    hr: () => null,
                   }}
                 >
                   {displayMarkdown}

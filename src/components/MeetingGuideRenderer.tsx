@@ -49,7 +49,7 @@ function PhaseBox({ type, label, children }: {
       <div className={`${s.labelBg} text-white text-xs font-semibold uppercase px-3.5 py-1.5 inline-block rounded-t-md`} style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}>
         {label}
       </div>
-      <div className={`${s.contentBg} border ${s.contentBorder} border-t-0 rounded-b-md px-4 py-3 text-[14.5px] leading-[1.7]`}>
+      <div className={`${s.contentBg} border ${s.contentBorder} border-t-0 rounded-b-md px-4 py-3 text-[15px] leading-[1.7]`}>
         {children}
       </div>
     </div>
@@ -71,7 +71,7 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
             {beat.number}
           </div>
           <div className="flex-1">
-            <div className="text-lg font-semibold leading-tight" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>
+            <div className="text-[14px] font-semibold leading-tight" style={{ color: '#374151' }}>
               <InlineMarkdown text={beat.title} />
             </div>
             {beat.goal && (
@@ -112,7 +112,7 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
               </ul>
             )}
             {beat.stallingText && (
-              <div className="mt-3.5 pt-3 border-t border-dashed border-blue-300 text-[14.5px]">
+              <div className="mt-3.5 pt-3 border-t border-dashed border-blue-300 text-[15px]">
                 <span className="font-semibold text-amber-700 text-xs uppercase" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Stalling:</span>{' '}
                 <InlineMarkdown text={beat.stallingText} />
               </div>
@@ -142,11 +142,11 @@ function TripwireCard({ tripwire }: { tripwire: Tripwire }) {
       <div className="text-sm font-bold text-red-800 mb-1.5">
         <InlineMarkdown text={tripwire.name} />.
       </div>
-      <div className="text-[14.5px] leading-relaxed mb-1">
+      <div className="text-[15px] leading-[1.7] mb-1">
         <span className="text-[10px] font-semibold uppercase text-red-800 mr-1" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Tell:</span>
-        <em className="italic text-stone-500"><InlineMarkdown text={tripwire.tell} /></em>
+        <em className="italic" style={{ color: '#6b7280' }}><InlineMarkdown text={tripwire.tell} /></em>
       </div>
-      <div className="text-[14.5px] leading-relaxed">
+      <div className="text-[15px] leading-[1.7]">
         <span className="text-[10px] font-semibold uppercase text-red-800 mr-1" style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.08em' }}>Recovery:</span>
         <InlineMarkdown text={tripwire.recovery} />
       </div>
@@ -158,11 +158,14 @@ function TripwireCard({ tripwire }: { tripwire: Tripwire }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="text-[11px] font-medium uppercase text-stone-500 mb-8 pb-2 border-b border-stone-300"
-      style={{ fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.12em' }}
-    >
-      {children}
+    <div className="mt-10 first:mt-0">
+      <div className="border-t border-gray-200 pt-10" />
+      <h2
+        className="text-[13px] font-semibold uppercase mb-4"
+        style={{ letterSpacing: '1.5px', color: '#6b7280' }}
+      >
+        {children}
+      </h2>
     </div>
   );
 }
@@ -174,8 +177,8 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
 
   return (
     <div
-      className="max-w-[820px] mx-auto px-8 pt-9 pb-14 text-stone-900 leading-relaxed text-[14.5px]"
-      style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
+      className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
+      style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif", color: '#1f2937', fontSize: '15px', lineHeight: '1.7' }}
     >
       {/* Header */}
       <div className="mb-12 relative">
@@ -195,13 +198,16 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
           <div className="space-y-6">
             {guide.setupGroups.map((group, i) => (
               <div key={i}>
-                <div className="text-sm font-bold uppercase tracking-wide text-stone-900 mb-2.5">
+                <h3
+                  className="text-[14px] font-semibold mb-3"
+                  style={{ color: '#374151' }}
+                >
                   {group.heading}
-                </div>
-                <ul className="flex flex-col gap-2">
+                </h3>
+                <ul className="flex flex-col gap-3 list-none pl-0">
                   {group.bullets.map((bullet, j) => (
-                    <li key={j} className="text-[14.5px] leading-[1.65] pl-5 relative">
-                      <span className="absolute left-0 text-stone-400">{'\u2022'}</span>
+                    <li key={j} className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                      <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
                       <InlineMarkdown text={bullet} />
                     </li>
                   ))}
