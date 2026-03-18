@@ -297,7 +297,7 @@ export default function ProfilePage() {
               className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
               style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
             >
-              <article className="prose max-w-none profile-prose">
+              <article className="max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -393,7 +393,7 @@ export default function ProfilePage() {
               className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
               style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
             >
-              <article className="prose max-w-none profile-prose">
+              <article className="max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
