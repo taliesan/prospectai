@@ -12,10 +12,12 @@ export interface Beat {
   title: string;
   goal: string;
   start: string;
+  startBullets: string[];
   stayParagraphs: string[];
   stayScenarios: Array<{ label: string; text: string }>;
   stallingText: string;
   continue: string;
+  continueBullets: string[];
 }
 
 export interface Tripwire {
@@ -153,10 +155,12 @@ export function parseMarkdown(markdown: string): ParsedGuide {
         title: beatMatch[2].trim(),
         goal: '',
         start: '',
+        startBullets: [],
         stayParagraphs: [],
         stayScenarios: [],
         stallingText: '',
         continue: '',
+        continueBullets: [],
       };
       i++;
       skipBlanks();
@@ -183,16 +187,23 @@ export function parseMarkdown(markdown: string): ParsedGuide {
         // START
         if (pLine.startsWith('**START.**')) {
           const startText = pLine.replace('**START.**', '').trim();
-          const startLines = [startText];
+          const proseLines: string[] = [];
+          const bullets: string[] = [];
+          if (startText) proseLines.push(startText);
           i++;
           while (i < lines.length) {
             const sLine = lines[i].trim();
             if (sLine.startsWith('**STAY.**') || sLine.startsWith('**CONTINUE.**') ||
                 sLine.match(/^\*\*Beat\s+\d+/i) || sLine.match(/^#{2,3}\s+/) || sLine === '---') break;
-            if (sLine) startLines.push(sLine);
+            if (sLine.startsWith('- ')) {
+              bullets.push(sLine.slice(2));
+            } else if (sLine) {
+              proseLines.push(sLine);
+            }
             i++;
           }
-          beat.start = startLines.filter(Boolean).join(' ');
+          beat.start = proseLines.filter(Boolean).join(' ');
+          beat.startBullets = bullets;
           continue;
         }
 
@@ -220,16 +231,23 @@ export function parseMarkdown(markdown: string): ParsedGuide {
         // CONTINUE
         if (pLine.startsWith('**CONTINUE.**')) {
           const contText = pLine.replace('**CONTINUE.**', '').trim();
-          const contLines = [contText];
+          const proseLines: string[] = [];
+          const bullets: string[] = [];
+          if (contText) proseLines.push(contText);
           i++;
           while (i < lines.length) {
             const cLine = lines[i].trim();
             if (cLine.match(/^\*\*Beat\s+\d+/i) || cLine.match(/^#{2,3}\s+/) ||
                 cLine === '---' || cLine.startsWith('**START.**') || cLine.startsWith('**STAY.**')) break;
-            if (cLine) contLines.push(cLine);
+            if (cLine.startsWith('- ')) {
+              bullets.push(cLine.slice(2));
+            } else if (cLine) {
+              proseLines.push(cLine);
+            }
             i++;
           }
-          beat.continue = contLines.filter(Boolean).join(' ');
+          beat.continue = proseLines.filter(Boolean).join(' ');
+          beat.continueBullets = bullets;
           continue;
         }
 
@@ -369,12 +387,14 @@ function parseStayContent(contentLines: string[], beat: Beat): void {
 
     // Check for scenario bullets: lines starting with - **
     const scenarioLines = block.filter(l => l.startsWith('- **'));
-    const nonScenarioLines = block.filter(l => !l.startsWith('- **'));
+    // Plain bullets: start with - but not - **
+    const plainBulletLines = block.filter(l => l.startsWith('- ') && !l.startsWith('- **'));
+    const proseLines = block.filter(l => !l.startsWith('- '));
 
     if (scenarioLines.length > 0) {
       // Add any prose before the scenarios
-      if (nonScenarioLines.length > 0) {
-        beat.stayParagraphs.push(nonScenarioLines.join(' '));
+      if (proseLines.length > 0) {
+        beat.stayParagraphs.push(proseLines.join(' '));
       }
 
       // Parse scenario bullets
@@ -383,6 +403,15 @@ function parseStayContent(contentLines: string[], beat: Beat): void {
         if (sMatch) {
           beat.stayScenarios.push({ label: sMatch[1], text: sMatch[2] });
         }
+      }
+    } else if (plainBulletLines.length > 0) {
+      // Block contains plain bullets — add prose first, then bullets as separate paragraphs prefixed with bullet marker
+      if (proseLines.length > 0) {
+        beat.stayParagraphs.push(proseLines.join(' '));
+      }
+      // Store each bullet as a paragraph prefixed with \u2022 so the renderer can identify it
+      for (const bLine of plainBulletLines) {
+        beat.stayParagraphs.push('\u2022' + bLine.slice(2));
       }
     } else {
       // Plain prose paragraph
@@ -818,21 +847,48 @@ function scopeCSS(css: string): string {
 
 // ── BODY RENDERING ──────────────────────────────────────────────────
 
+function renderBulletList(bullets: string[]): string {
+  if (bullets.length === 0) return '';
+  let html = '          <ul class="setup-bullets">\n';
+  for (const b of bullets) {
+    html += `            <li>${escapeHtml(b)}</li>\n`;
+  }
+  html += '          </ul>\n';
+  return html;
+}
+
 function renderBeat(beat: Beat, isLast: boolean): string {
   // START phase
+  let startInner = beat.start ? `          ${escapeHtml(beat.start)}\n` : '';
+  startInner += renderBulletList(beat.startBullets);
   const startHtml = `      <div class="phase start">
         <div class="phase-label">Start</div>
         <div class="phase-content">
-          ${escapeHtml(beat.start)}
-        </div>
+${startInner}        </div>
       </div>`;
 
   // STAY phase
   let stayInner = '';
 
-  // Prose paragraphs
+  // Prose paragraphs and inline bullets
+  let inBulletRun = false;
   for (const p of beat.stayParagraphs) {
-    stayInner += `          <p>${escapeHtml(p)}</p>\n`;
+    if (p.startsWith('\u2022')) {
+      if (!inBulletRun) {
+        stayInner += '          <ul class="setup-bullets">\n';
+        inBulletRun = true;
+      }
+      stayInner += `            <li>${escapeHtml(p.slice(1))}</li>\n`;
+    } else {
+      if (inBulletRun) {
+        stayInner += '          </ul>\n';
+        inBulletRun = false;
+      }
+      stayInner += `          <p>${escapeHtml(p)}</p>\n`;
+    }
+  }
+  if (inBulletRun) {
+    stayInner += '          </ul>\n';
   }
 
   // Scenario bullets
@@ -858,11 +914,12 @@ ${stayInner}        </div>
       </div>`;
 
   // CONTINUE phase
+  let contInner = beat.continue ? `          ${escapeHtml(beat.continue)}\n` : '';
+  contInner += renderBulletList(beat.continueBullets);
   const continueHtml = `      <div class="phase continue">
         <div class="phase-label">Continue</div>
         <div class="phase-content">
-          ${escapeHtml(beat.continue)}
-        </div>
+${contInner}        </div>
       </div>`;
 
   const connector = isLast ? '' : '\n\n  <div class="beat-connector"></div>';

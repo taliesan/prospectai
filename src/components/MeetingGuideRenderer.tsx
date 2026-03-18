@@ -89,16 +89,56 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
         <div className="ml-14">
           {/* START */}
           <PhaseBox type="start" label="Start">
-            <InlineMarkdown text={beat.start} />
+            {beat.start && <p className="mb-0"><InlineMarkdown text={beat.start} /></p>}
+            {beat.startBullets.length > 0 && (
+              <ul className={`flex flex-col gap-3 list-none pl-0${beat.start ? ' mt-3' : ''}`}>
+                {beat.startBullets.map((b, i) => (
+                  <li key={i} className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                    <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
+                    <InlineMarkdown text={b} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </PhaseBox>
 
           {/* STAY */}
           <PhaseBox type="stay" label="Stay">
-            {beat.stayParagraphs.map((p, i) => (
-              <p key={i} className="mb-3 last:mb-0">
-                <InlineMarkdown text={p} />
-              </p>
-            ))}
+            {(() => {
+              // Group consecutive bullet items together, render prose as <p> and bullets as <ul>
+              const elements: React.ReactNode[] = [];
+              let bulletBatch: string[] = [];
+              const flushBullets = () => {
+                if (bulletBatch.length > 0) {
+                  elements.push(
+                    <ul key={`bul-${elements.length}`} className="flex flex-col gap-3 list-none pl-0 my-3">
+                      {bulletBatch.map((b, j) => (
+                        <li key={j} className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                          <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
+                          <InlineMarkdown text={b} />
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                  bulletBatch = [];
+                }
+              };
+              for (let idx = 0; idx < beat.stayParagraphs.length; idx++) {
+                const p = beat.stayParagraphs[idx];
+                if (p.startsWith('\u2022')) {
+                  bulletBatch.push(p.slice(1));
+                } else {
+                  flushBullets();
+                  elements.push(
+                    <p key={`p-${idx}`} className="mb-3 last:mb-0">
+                      <InlineMarkdown text={p} />
+                    </p>
+                  );
+                }
+              }
+              flushBullets();
+              return elements;
+            })()}
             {beat.stayScenarios.length > 0 && (
               <ul className="my-3 flex flex-col gap-2.5">
                 {beat.stayScenarios.map((s, i) => (
@@ -121,7 +161,17 @@ function BeatCard({ beat, isLast }: { beat: Beat; isLast: boolean }) {
 
           {/* CONTINUE */}
           <PhaseBox type="continue" label="Continue">
-            <InlineMarkdown text={beat.continue} />
+            {beat.continue && <p className="mb-0"><InlineMarkdown text={beat.continue} /></p>}
+            {beat.continueBullets.length > 0 && (
+              <ul className={`flex flex-col gap-3 list-none pl-0${beat.continue ? ' mt-3' : ''}`}>
+                {beat.continueBullets.map((b, i) => (
+                  <li key={i} className="text-[15px] leading-[1.7] pl-6 relative" style={{ color: '#1f2937' }}>
+                    <span className="absolute left-0" style={{ color: '#9ca3af' }}>{'\u2022'}</span>
+                    <InlineMarkdown text={b} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </PhaseBox>
         </div>
       </div>
