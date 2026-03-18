@@ -376,7 +376,7 @@ export default function ProfilePage() {
         return (
           <div className="bg-white rounded-2xl border border-stone-200 relative overflow-hidden"
                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-            <div className="absolute top-0 left-7 right-7 h-0.5 bg-stone-900" />
+            <div className="absolute top-0 left-7 right-7 h-1 rounded-b-sm" style={{ background: '#D894E8' }} />
             <div
               className="max-w-[820px] mx-auto px-8 pt-6 pb-8"
               style={{ fontFamily: "'Instrument Sans', 'DM Sans', system-ui, sans-serif" }}
