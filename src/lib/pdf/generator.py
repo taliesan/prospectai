@@ -911,12 +911,9 @@ def _build_meeting_guide_v3(mg, styles, accent_color=None, donor_name=''):
                     cont_content.append(('bullet', _md_inline_to_html(b)))
                 phase_elements.append(_build_phase_box('CONTINUE', cont_content, styles))
 
-            # Keep beat header + first phase box together
-            if phase_elements:
-                elements.append(KeepTogether(beat_header + [phase_elements[0]]))
-                elements.extend(phase_elements[1:])
-            else:
-                elements.extend(beat_header)
+            # Keep beat header together, then add phases
+            elements.append(KeepTogether(beat_header))
+            elements.extend(phase_elements)
 
     # Tripwires section
     tripwires = mg.get('tripwires', [])

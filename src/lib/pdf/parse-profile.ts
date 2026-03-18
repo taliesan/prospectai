@@ -30,9 +30,13 @@ interface MeetingGuideData {
     title: string;
     goal: string;
     start: string;
+    startBullets: string[];
     stay: string;
+    stayParagraphs: string[];
+    stayBullets: string[];
     stallingText: string;
     continue: string;
+    continueBullets: string[];
   }[];
   tripwires: { name: string; tell: string; recovery: string }[];
   oneLine: string;
@@ -345,23 +349,62 @@ function parseMeetingGuideV3(markdown: string): MeetingGuideData {
         const stayMatch = beatContent.match(/\*\*STAY\.\*\*\s*([\s\S]*?)(?=\*\*CONTINUE\.\*\*|$)/);
         const continueMatch = beatContent.match(/\*\*CONTINUE\.\*\*\s*([\s\S]*?)(?=\*\*Beat\s+\d|---\s*$|$)/);
 
-        // Detect stalling text within STAY
-        let stayText = stayMatch ? stayMatch[1].trim() : '';
+        // Parse phase content into prose + bullets
+        function parsePhaseContent(raw: string): { prose: string; bullets: string[] } {
+          if (!raw) return { prose: '', bullets: [] };
+          const lines = raw.trim().split('\n');
+          const prose: string[] = [];
+          const bullets: string[] = [];
+          for (const line of lines) {
+            const t = line.trim();
+            if (t.startsWith('- ')) {
+              let bt = t.slice(2).replace(/^[\u2014\u2013\u2012-]\s*/, '');
+              bullets.push(bt);
+            } else if (t) {
+              prose.push(t);
+            }
+          }
+          return { prose: prose.join(' '), bullets };
+        }
+
+        const startParsed = parsePhaseContent(startMatch ? startMatch[1] : '');
+        const continueParsed = parsePhaseContent(continueMatch ? continueMatch[1] : '');
+
+        // Parse STAY — separate bullets, stalling, and prose
+        const stayRaw = stayMatch ? stayMatch[1].trim() : '';
+        const stayLines = stayRaw.split('\n');
+        const stayProse: string[] = [];
+        const stayBullets: string[] = [];
         let stallingText = '';
-        const stallingMatch = stayText.match(/(?:When it's stalling|When it\u2019s stalling)[:\s]*(.*?)$/im);
-        if (stallingMatch) {
-          stallingText = stallingMatch[0].trim();
-          stayText = stayText.slice(0, stayText.indexOf(stallingMatch[0])).trim();
+        for (const line of stayLines) {
+          const t = line.trim();
+          if (!t) continue;
+          if (t.startsWith('- ')) {
+            let bt = t.slice(2);
+            // Check for stalling indicator
+            if (/stalling\s*(indicator)?:/i.test(bt)) {
+              stallingText = bt;
+            } else {
+              bt = bt.replace(/^[\u2014\u2013\u2012-]\s*/, '');
+              stayBullets.push(bt);
+            }
+          } else {
+            stayProse.push(t);
+          }
         }
 
         result.beats.push({
           number: beatPositions[i].number,
           title: beatPositions[i].title,
           goal: goalMatch ? goalMatch[1] : '',
-          start: startMatch ? startMatch[1].trim().replace(/\n/g, ' ') : '',
-          stay: stayText.replace(/\n{2,}/g, '\n\n'),
+          start: startParsed.prose,
+          startBullets: startParsed.bullets,
+          stay: stayProse.join(' '),
+          stayParagraphs: [],
+          stayBullets,
           stallingText,
-          continue: continueMatch ? continueMatch[1].trim().replace(/\n/g, ' ') : '',
+          continue: continueParsed.prose,
+          continueBullets: continueParsed.bullets,
         });
       }
 
