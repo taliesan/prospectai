@@ -55,14 +55,23 @@ interface MeetingGuideData {
   resetMoves: string[];
 }
 
+interface ConfidenceScore {
+  sectionName: string;
+  floor: number;
+}
+
 export interface PDFProfileData {
   donorName: string;
   preparedFor: string;
   date: string;
   sourceCount: number;
+  briefingNote: {
+    sections: ProfileSection[];
+  } | null;
   persuasionProfile: {
     sections: ProfileSection[];
   };
+  confidenceScores: Record<string, number>;
   meetingGuide: MeetingGuideData | null;
   sources: Source[];
 }
@@ -75,7 +84,9 @@ export function parseProfileForPDF(
   preparedFor: string,
   profileMarkdown: string,
   meetingGuideMarkdown: string | undefined,
-  sources: Source[]
+  sources: Source[],
+  briefingNoteMarkdown?: string,
+  confidenceScoresJson?: ConfidenceScore[],
 ): PDFProfileData {
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -86,14 +97,24 @@ export function parseProfileForPDF(
   // Strip evidence metadata before parsing for PDF
   const cleanedProfile = stripEvidenceMetadata(profileMarkdown);
 
+  // Build confidence scores lookup keyed by section name
+  const confidenceScores: Record<string, number> = {};
+  if (confidenceScoresJson) {
+    for (const s of confidenceScoresJson) {
+      confidenceScores[s.sectionName] = s.floor;
+    }
+  }
+
   return {
     donorName,
     preparedFor,
     date,
     sourceCount: sources.length,
+    briefingNote: briefingNoteMarkdown ? { sections: parseBriefingNote(briefingNoteMarkdown) } : null,
     persuasionProfile: {
       sections: parsePersuasionProfile(cleanedProfile),
     },
+    confidenceScores,
     meetingGuide: meetingGuideMarkdown ? parseMeetingGuide(meetingGuideMarkdown) : null,
     sources,
   };
@@ -171,9 +192,12 @@ function parsePersuasionProfile(markdown: string): ProfileSection[] {
     const bulletMatch = line.trim().match(/^[-*]\s+(.+)/);
     if (bulletMatch && currentSection) {
       flushParagraph();
+      // Strip leading em-dash or en-dash from bullet text
+      let bulletText = bulletMatch[1].trim();
+      bulletText = bulletText.replace(/^[\u2014\u2013\u2012-]\s*/, '');
       currentSection.paragraphs.push({
         type: 'bullet',
-        content: bulletMatch[1].trim(),
+        content: bulletText,
       });
       continue;
     }
@@ -191,10 +215,54 @@ function parsePersuasionProfile(markdown: string): ProfileSection[] {
 }
 
 /**
+ * Parse briefing note markdown into sections (same structure as profile).
+ * BN uses ## headings and bullet points.
+ */
+function parseBriefingNote(markdown: string): ProfileSection[] {
+  if (!markdown) return [];
+
+  const sections: ProfileSection[] = [];
+  const lines = markdown.split('\n');
+  let currentSection: ProfileSection | null = null;
+
+  for (const line of lines) {
+    // Skip the title line (# BRIEFING NOTE — Name)
+    if (line.match(/^#\s+/) && !line.match(/^##/)) continue;
+    // Skip horizontal rules
+    if (line.trim() === '---') continue;
+
+    // New section on ## heading
+    const h2Match = line.match(/^##\s+(.+)/);
+    if (h2Match) {
+      if (currentSection) sections.push(currentSection);
+      currentSection = { title: h2Match[1].trim(), paragraphs: [] };
+      continue;
+    }
+
+    // Bullet items
+    const bulletMatch = line.trim().match(/^[-*]\s+(.+)/);
+    if (bulletMatch && currentSection) {
+      let bulletText = bulletMatch[1].trim();
+      bulletText = bulletText.replace(/^[\u2014\u2013\u2012-]\s*/, '');
+      currentSection.paragraphs.push({ type: 'bullet', content: bulletText });
+      continue;
+    }
+
+    // Non-empty text lines become body text
+    if (line.trim() && currentSection) {
+      currentSection.paragraphs.push({ type: 'text', content: line.trim() });
+    }
+  }
+
+  if (currentSection) sections.push(currentSection);
+  return sections;
+}
+
+/**
  * Detect if markdown uses v3 format (### SETUP / ### THE ARC / ### TRIPWIRES / ### ONE LINE)
  */
 function isV3MeetingGuide(markdown: string): boolean {
-  return /^###\s+SETUP$/im.test(markdown) && /^###\s+THE ARC$/im.test(markdown);
+  return /^#{2,3}\s+SETUP$/im.test(markdown) && /^#{2,3}\s+THE ARC$/im.test(markdown);
 }
 
 /**
@@ -222,8 +290,12 @@ function parseMeetingGuideV3(markdown: string): MeetingGuideData {
   const headerMatch = markdown.match(/^#{1,3}\s+MEETING GUIDE\s*[—–-]+\s*(.+)$/im);
   if (headerMatch) result.donorName = headerMatch[1].trim();
 
-  // Split by ### sections
-  const sections = splitByHeadings(markdown, 3);
+  // Split by ## or ### sections (support both old and new heading format)
+  let sections = splitByHeadings(markdown, 2);
+  // If no ## sections found (old format), fall back to ### sections
+  if (sections.filter(s => s.heading).length === 0) {
+    sections = splitByHeadings(markdown, 3);
+  }
 
   for (const section of sections) {
     const heading = section.heading.toUpperCase().trim();
@@ -245,7 +317,8 @@ function parseMeetingGuideV3(markdown: string): MeetingGuideData {
         }
 
         if (trimmed.startsWith('- ') && currentGroup) {
-          currentGroup.bullets.push(trimmed.slice(2));
+          let bt = trimmed.slice(2).replace(/^[\u2014\u2013\u2012-]\s*/, '');
+          currentGroup.bullets.push(bt);
         }
       }
       if (currentGroup) result.setupGroups.push(currentGroup);

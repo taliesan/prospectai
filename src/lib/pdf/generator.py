@@ -27,20 +27,26 @@ from reportlab.pdfbase.pdfmetrics import registerFont, registerFontFamily
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.colors import HexColor, Color
 
-# ─── Design tokens (inline to avoid import issues when run as script) ─────
+# ─── Design tokens ───────────────────────────────────────────────────────────
 
 CHARCOAL     = HexColor('#1A1A1A')
 WARM_WHITE   = HexColor('#FAF8F5')
 PARCHMENT    = HexColor('#F5F3EF')
 STONE        = HexColor('#E8E5E0')
-BODY_TEXT    = HexColor('#4A4A4A')
-LIGHT_GRAY   = HexColor('#9A9A9A')
+BODY_TEXT    = HexColor('#1f2937')       # gray-800 — matches web
+BODY_BOLD    = HexColor('#111827')       # gray-900
+HEADING_GRAY = HexColor('#6b7280')       # gray-500 — section headings
+SUBHEAD_GRAY = HexColor('#374151')       # gray-700 — sub-headings
+BULLET_GRAY  = HexColor('#9ca3af')       # gray-400 — bullet dots
+LIGHT_GRAY   = HexColor('#9ca3af')       # gray-400
+FOOTER_GRAY  = HexColor('#9ca3af')       # gray-400
 WHITE        = HexColor('#FFFFFF')
 PURPLE       = HexColor('#7B2D8E')
 PURPLE_LIGHT = HexColor('#D894E8')
 GREEN        = HexColor('#2D6A4F')
 GREEN_LIGHT  = HexColor('#40916C')
 CORAL        = HexColor('#E07A5F')
+BLUE         = HexColor('#3B82F6')
 
 GRADIENT_STOPS = [
     (0.0, PURPLE),
@@ -48,6 +54,14 @@ GRADIENT_STOPS = [
     (0.66, CORAL),
     (1.0, PURPLE),
 ]
+
+# Section accent colors
+SECTION_ACCENT = {
+    'briefing_note': BLUE,
+    'persuasion_profile': PURPLE_LIGHT,
+    'meeting_guide': GREEN_LIGHT,
+    'sources': CORAL,
+}
 
 PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN = 54  # 0.75in
@@ -102,7 +116,6 @@ def register_fonts():
             registerFont(TTFont(name, path))
         else:
             all_sans = False
-            # Fallback: register with regular if available
             regular = os.path.join(font_dir, 'DMSans-Regular.ttf')
             if os.path.exists(regular):
                 registerFont(TTFont(name, regular))
@@ -151,10 +164,6 @@ def make_styles(fonts):
             leading=20, textColor=Color(1, 1, 1, 0.6), alignment=TA_LEFT,
             spaceAfter=40,
         ),
-        'cover_meta_label': ParagraphStyle(
-            'cover_meta_label', fontName=sans, fontSize=9,
-            leading=20, textColor=Color(1, 1, 1, 0.4), alignment=TA_LEFT,
-        ),
         'cover_meta_value': ParagraphStyle(
             'cover_meta_value', fontName=sans, fontSize=9,
             leading=20, textColor=Color(1, 1, 1, 0.7), alignment=TA_LEFT,
@@ -164,73 +173,62 @@ def make_styles(fonts):
             leading=11, textColor=Color(1, 1, 1, 0.25), alignment=TA_CENTER,
         ),
 
-        # Section cover pages
-        'section_overline': ParagraphStyle(
-            'section_overline', fontName=sans, fontSize=9,
-            leading=14, textColor=PURPLE_LIGHT, alignment=TA_LEFT,
-            spaceAfter=12,
-        ),
-        'section_title': ParagraphStyle(
-            'section_title', fontName=serif, fontSize=44,
-            leading=50, textColor=WHITE, alignment=TA_LEFT,
-            spaceAfter=12,
-        ),
-        'section_desc': ParagraphStyle(
-            'section_desc', fontName=sans_light, fontSize=11,
-            leading=16, textColor=Color(1, 1, 1, 0.4), alignment=TA_LEFT,
-        ),
-
-        # Content pages
+        # Content pages — section headings (E: 9pt, medium, uppercase, gray-500)
         'heading': ParagraphStyle(
-            'heading', fontName=serif, fontSize=18,
-            leading=24, textColor=CHARCOAL, alignment=TA_LEFT,
-            spaceBefore=20, spaceAfter=8,
+            'heading', fontName=sans_medium, fontSize=9,
+            leading=13, textColor=HEADING_GRAY, alignment=TA_LEFT,
+            spaceBefore=0, spaceAfter=8,
         ),
+        # Sub-headings (F: 10pt, medium, gray-700)
         'subheading': ParagraphStyle(
-            'subheading', fontName=sans_bold, fontSize=13,
-            leading=18, textColor=CHARCOAL, alignment=TA_LEFT,
-            spaceBefore=14, spaceAfter=6,
+            'subheading', fontName=sans_medium, fontSize=10,
+            leading=14, textColor=SUBHEAD_GRAY, alignment=TA_LEFT,
+            spaceBefore=12, spaceAfter=6,
         ),
+        # Body text (G: 10.5pt, regular, gray-800, leading ~1.7)
         'body': ParagraphStyle(
             'body', fontName=sans, fontSize=10.5,
-            leading=15, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
-            spaceAfter=6,
+            leading=18, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
+            spaceAfter=8,
         ),
+        # Bold lead sentences (H: same size, medium weight, gray-900)
         'body_bold': ParagraphStyle(
-            'body_bold', fontName=sans_bold, fontSize=10.5,
-            leading=15, textColor=CHARCOAL, alignment=TA_JUSTIFY,
-            spaceAfter=6,
+            'body_bold', fontName=sans_medium, fontSize=10.5,
+            leading=18, textColor=BODY_BOLD, alignment=TA_JUSTIFY,
+            spaceAfter=8,
         ),
         'body_italic': ParagraphStyle(
             'body_italic', fontName=sans_italic, fontSize=10.5,
-            leading=15, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
-            spaceAfter=6,
+            leading=18, textColor=BODY_TEXT, alignment=TA_JUSTIFY,
+            spaceAfter=8,
         ),
         'insight': ParagraphStyle(
             'insight', fontName=sans_italic, fontSize=10.5,
-            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
+            leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
+        # Bullets (N: disc only, gray-400 bullet, body text size)
         'bullet': ParagraphStyle(
             'bullet', fontName=sans, fontSize=10.5,
-            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, bulletIndent=4, spaceAfter=3,
+            leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
+            leftIndent=16, bulletIndent=4, spaceAfter=6,
+        ),
+        'profile_bullet': ParagraphStyle(
+            'profile_bullet', fontName=sans, fontSize=10.5,
+            leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
+            leftIndent=16, bulletIndent=4, spaceAfter=8,
         ),
 
-        # Footer
+        # Footer (Q: 7pt, gray-400)
         'footer_left': ParagraphStyle(
-            'footer_left', fontName=sans, fontSize=7.5,
-            leading=10, textColor=LIGHT_GRAY, alignment=TA_LEFT,
+            'footer_left', fontName=sans, fontSize=7,
+            leading=10, textColor=FOOTER_GRAY, alignment=TA_LEFT,
         ),
         'footer_right': ParagraphStyle(
-            'footer_right', fontName=sans, fontSize=7.5,
-            leading=10, textColor=LIGHT_GRAY, alignment=TA_RIGHT,
+            'footer_right', fontName=sans, fontSize=7,
+            leading=10, textColor=FOOTER_GRAY, alignment=TA_RIGHT,
         ),
 
         # Sources
-        'source_num': ParagraphStyle(
-            'source_num', fontName=sans_bold, fontSize=8,
-            leading=12, textColor=PURPLE, alignment=TA_LEFT,
-        ),
         'source_title': ParagraphStyle(
             'source_title', fontName=sans, fontSize=7.5,
             leading=11, textColor=CHARCOAL, alignment=TA_LEFT,
@@ -240,7 +238,7 @@ def make_styles(fonts):
             leading=10, textColor=LIGHT_GRAY, alignment=TA_LEFT,
         ),
 
-        # Card styles
+        # Card styles (meeting guide beats)
         'card_title': ParagraphStyle(
             'card_title', fontName=sans_bold, fontSize=11,
             leading=15, textColor=CHARCOAL, alignment=TA_LEFT,
@@ -249,23 +247,9 @@ def make_styles(fonts):
             'card_body', fontName=sans, fontSize=9,
             leading=13, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
-        'card_read': ParagraphStyle(
-            'card_read', fontName=sans_italic, fontSize=9,
-            leading=13, textColor=BODY_TEXT, alignment=TA_LEFT,
-        ),
         'card_label': ParagraphStyle(
             'card_label', fontName=sans_bold, fontSize=7.5,
             leading=10, textColor=LIGHT_GRAY, alignment=TA_LEFT,
-        ),
-
-        # Two-column
-        'signal_header': ParagraphStyle(
-            'signal_header', fontName=sans_bold, fontSize=8,
-            leading=12, textColor=GREEN, alignment=TA_LEFT,
-        ),
-        'signal_item': ParagraphStyle(
-            'signal_item', fontName=sans, fontSize=8.5,
-            leading=13, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
 
         # Section title (two-line: small label + large serif name)
@@ -278,11 +262,10 @@ def make_styles(fonts):
             leading=28, textColor=CHARCOAL, alignment=TA_LEFT,
         ),
 
-        # Profile bullets (behavioral forks — wider spacing than meeting guide bullets)
-        'profile_bullet': ParagraphStyle(
-            'profile_bullet', fontName=sans, fontSize=10.5,
-            leading=15, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, bulletIndent=4, spaceAfter=8,
+        # Confidence badge
+        'confidence_badge': ParagraphStyle(
+            'confidence_badge', fontName=sans_medium, fontSize=7,
+            leading=10, textColor=WHITE, alignment=TA_CENTER,
         ),
     }
 
@@ -322,10 +305,10 @@ def draw_dark_page(canvas, doc):
     # Gradient bar at top
     draw_gradient_bar(canvas, 0, PAGE_HEIGHT - 6, PAGE_WIDTH, 6)
 
-    # Subtle radial glows (approximated with circles)
-    canvas.setFillColor(Color(0.482, 0.176, 0.557, 0.08))  # purple glow
+    # Subtle radial glows
+    canvas.setFillColor(Color(0.482, 0.176, 0.557, 0.08))
     canvas.circle(PAGE_WIDTH * 0.75, PAGE_HEIGHT * 0.7, 200, stroke=0, fill=1)
-    canvas.setFillColor(Color(0.176, 0.416, 0.310, 0.06))  # green glow
+    canvas.setFillColor(Color(0.176, 0.416, 0.310, 0.06))
     canvas.circle(PAGE_WIDTH * 0.25, PAGE_HEIGHT * 0.3, 180, stroke=0, fill=1)
 
     canvas.restoreState()
@@ -340,13 +323,10 @@ def draw_content_page(canvas, doc):
     # Thin gradient bar at top
     draw_gradient_bar(canvas, 0, PAGE_HEIGHT - 3, PAGE_WIDTH, 3)
 
-    # Footer
-    canvas.setStrokeColor(STONE)
-    canvas.setLineWidth(0.5)
-    canvas.line(MARGIN, 36, PAGE_WIDTH - MARGIN, 36)
-
-    canvas.setFont('DMSans' if 'DMSans' in canvas.getAvailableFonts() else 'Helvetica', 7.5)
-    canvas.setFillColor(LIGHT_GRAY)
+    # Footer (Q: 7pt, lighter color, page number right-aligned)
+    sans = 'DMSans' if 'DMSans' in canvas.getAvailableFonts() else 'Helvetica'
+    canvas.setFont(sans, 7)
+    canvas.setFillColor(FOOTER_GRAY)
     canvas.drawString(MARGIN, 24, 'ProspectAI \u00b7 Confidential')
     canvas.drawRightString(PAGE_WIDTH - MARGIN, 24, str(canvas.getPageNumber()))
 
@@ -362,7 +342,7 @@ def _spaced_text(text):
 
 
 class SectionTitleFlowable(Flowable):
-    """Two-line section title matching the app: small uppercase label + large serif name + thick divider."""
+    """Two-line section title: small uppercase label + large serif name + thick divider."""
 
     def __init__(self, label, name, width, styles):
         super().__init__()
@@ -381,131 +361,209 @@ class SectionTitleFlowable(Flowable):
         _, self._lh = self._label_para.wrap(self.box_width, aH)
         self._name_para = Paragraph(self.name_text, self.styles['title_name'])
         _, self._nh = self._name_para.wrap(self.box_width, aH)
-        # label + gap(2) + name + gap(10) + divider(~2) + bottom margin(12)
         self._h = self._lh + 2 + self._nh + 10 + 2 + 12
         return (self.box_width, self._h)
 
     def draw(self):
         c = self.canv
         h = self._h
-        # Label at top
         label_bottom = h - self._lh
         self._label_para.drawOn(c, 0, label_bottom)
-        # Name: 2pt gap below label
         name_bottom = label_bottom - 2 - self._nh
         self._name_para.drawOn(c, 0, name_bottom)
-        # Thick divider: 10pt below name
         divider_y = name_bottom - 10
         c.setStrokeColor(CHARCOAL)
         c.setLineWidth(2)
         c.line(0, divider_y, self.box_width, divider_y)
 
 
+# ─── Confidence badge flowable (I) ───────────────────────────────────────────
+
+class ConfidenceBadge(Flowable):
+    """Small inline confidence badge: filled/empty squares + score text."""
+
+    def __init__(self, score, width=None):
+        super().__init__()
+        self.score = score
+        self.box_width = width or CONTENT_WIDTH
+
+    def wrap(self, aW, aH):
+        return (self.box_width, 14)
+
+    def draw(self):
+        c = self.canv
+        score = self.score
+        badge_bg = (
+            HexColor('#ef4444') if score <= 3
+            else HexColor('#f59e0b') if score <= 5
+            else HexColor('#fbbf24') if score <= 7
+            else HexColor('#22c55e')
+        )
+
+        # Draw the badge pill
+        text = f'Confidence {score}/10'
+        sans = 'DMSans-Medium' if 'DMSans-Medium' in c.getAvailableFonts() else 'Helvetica'
+        c.setFont(sans, 7)
+        tw = c.stringWidth(text, sans, 7)
+        pill_w = tw + 10
+        pill_h = 12
+        # Right-align the badge
+        x = self.box_width - pill_w
+        c.setFillColor(badge_bg)
+        c.roundRect(x, 1, pill_w, pill_h, pill_h / 2, stroke=0, fill=1)
+        c.setFillColor(WHITE)
+        c.drawString(x + 5, 4, text)
+
+
+# ─── Accent line flowable ────────────────────────────────────────────────────
+
+class AccentLineFlowable(Flowable):
+    """Colored accent bar at top of content section (O)."""
+
+    def __init__(self, color, width=None):
+        super().__init__()
+        self.color = color
+        self.bar_width = width or CONTENT_WIDTH
+
+    def wrap(self, aW, aH):
+        return (self.bar_width, 6)
+
+    def draw(self):
+        self.canv.setFillColor(self.color)
+        self.canv.rect(0, 2, self.bar_width, 3, stroke=0, fill=1)
+
+
+# ─── Divider rule flowable ───────────────────────────────────────────────────
+
+class SectionDivider(Flowable):
+    """Thin gray rule above each H2 section heading."""
+
+    def __init__(self, width=None):
+        super().__init__()
+        self.bar_width = width or CONTENT_WIDTH
+
+    def wrap(self, aW, aH):
+        return (self.bar_width, 20)
+
+    def draw(self):
+        self.canv.setStrokeColor(HexColor('#e5e7eb'))
+        self.canv.setLineWidth(0.5)
+        self.canv.line(0, 10, self.bar_width, 10)
+
+
 # ─── Content builders ─────────────────────────────────────────────────────────
 
 def build_cover_page(data, styles):
-    """Build cover page flowables."""
+    """Build cover page flowables (P: updated subtitle and source count)."""
     elements = []
     elements.append(Spacer(1, PAGE_HEIGHT * 0.35))
 
-    # Overline
     overline = 'P R O S P E C T A I   D O N O R   I N T E L L I G E N C E'
     elements.append(Paragraph(overline, styles['cover_overline']))
-
-    # Donor name
     elements.append(Paragraph(data['donorName'], styles['cover_name']))
 
-    # Subtitle
-    elements.append(Paragraph('Behavioral Profile &amp; Meeting Strategy', styles['cover_subtitle']))
+    # P: Updated subtitle
+    elements.append(Paragraph(
+        'Briefing Note, Behavioral Profile &amp; Meeting Strategy',
+        styles['cover_subtitle']
+    ))
 
-    # Meta table
     meta_items = []
     if data.get('preparedFor'):
         meta_items.append(f"<b>Prepared for</b>  {data['preparedFor']}")
     meta_items.append(f"<b>Date</b>  {data.get('date', '')}")
     meta_items.append(f"<b>Classification</b>  Confidential \u2014 Internal Use Only")
-    meta_items.append(f"<b>Sources</b>  {data.get('sourceCount', 0)} verified references")
+
+    # P: Actual source count from payload
+    source_count = len(data.get('sources', []))
+    if source_count > 0:
+        meta_items.append(f"<b>Sources</b>  {source_count} verified references")
+    else:
+        meta_items.append(f"<b>Sources</b>  See sources page")
 
     for item in meta_items:
         elements.append(Paragraph(item, styles['cover_meta_value']))
 
-    # Footer at bottom
     elements.append(Spacer(1, 80))
     elements.append(Paragraph(
         'Generated by ProspectAI \u00b7 Confidential \u00b7 Internal Use Only',
         styles['cover_footer']
     ))
-    elements.append(Paragraph('ProspectAI', styles['cover_footer']))
 
-    # Note: no PageBreak here — the caller handles the transition
-    # to the content template to avoid a blank page 2.
     return elements
 
 
-def build_section_cover(section_num, title, description, accent_color, styles):
-    """Build a section cover page."""
+def _build_section_heading(title, styles, confidence_scores=None, is_first=False):
+    """Build a consistent H2 section heading with optional confidence badge (M, K)."""
     elements = []
-    elements.append(Spacer(1, PAGE_HEIGHT * 0.38))
 
-    overline_style = ParagraphStyle(
-        f'section_overline_{section_num}',
-        parent=styles['section_overline'],
-        textColor=accent_color if accent_color != GREEN else GREEN_LIGHT,
-    )
-    overline_text = f'S E C T I O N   {section_num}'
-    elements.append(Paragraph(overline_text, overline_style))
-    elements.append(Paragraph(title, styles['section_title']))
-    elements.append(Paragraph(description, styles['section_desc']))
-    elements.append(PageBreak())
+    if not is_first:
+        elements.append(Spacer(1, 16))
+        elements.append(SectionDivider())
+        elements.append(Spacer(1, 4))
+
+    # Heading text — uppercase in the PDF (E)
+    heading_text = title.upper()
+    # Expand letter spacing manually for the small-caps look
+    spaced = '&nbsp;'.join(heading_text) if len(heading_text) < 40 else heading_text
+    elements.append(Paragraph(heading_text, styles['heading']))
+
+    # Confidence badge (K)
+    if confidence_scores:
+        # Fuzzy match section name
+        score = _lookup_confidence(title, confidence_scores)
+        if score is not None:
+            elements.append(ConfidenceBadge(score))
+
     return elements
 
 
-def build_persuasion_profile(data, styles, accent_color=PURPLE):
-    """Build persuasion profile content pages from sections array."""
-    elements = []
+def _lookup_confidence(heading, scores):
+    """Fuzzy-match heading against confidence scores dict."""
+    if not scores:
+        return None
+    heading_lower = heading.lower().strip()
+    for name, score in scores.items():
+        name_lower = name.lower().strip()
+        # Check if first two words match
+        h_words = heading_lower.split()[:2]
+        n_words = name_lower.split()[:2]
+        if h_words == n_words:
+            return score
+        # Check if one contains the other
+        if heading_lower in name_lower or name_lower in heading_lower:
+            return score
+    return None
 
-    # Section title header (two-line: label + name + divider)
+
+def build_briefing_note(data, styles, accent_color=None):
+    """Build Briefing Note section (J)."""
+    accent = accent_color or BLUE
+    bn = data.get('briefingNote')
+    if not bn:
+        return []
+
+    elements = []
     donor_name = data.get('donorName', '')
-    elements.append(SectionTitleFlowable('Persuasion Profile', donor_name, CONTENT_WIDTH, styles))
+
+    # Section title header
+    elements.append(SectionTitleFlowable('Briefing Note', donor_name, CONTENT_WIDTH, styles))
     elements.append(Spacer(1, 8))
 
-    sections = data.get('persuasionProfile', {}).get('sections', [])
-
+    sections = bn.get('sections', [])
     for i, section in enumerate(sections):
-        # Accent line before each heading
-        class AccentLineFlowable(Flowable):
-            def __init__(self, color):
-                super().__init__()
-                self.color = color
-            def wrap(self, aW, aH):
-                return (40, 10)
-            def draw(self):
-                self.canv.setFillColor(self.color)
-                self.canv.rect(0, 4, 40, 2, stroke=0, fill=1)
-
-        if i > 0:
-            elements.append(Spacer(1, 12))
-
-        elements.append(AccentLineFlowable(accent_color))
-        elements.append(Paragraph(section['title'], styles['heading']))
+        elements.extend(
+            _build_section_heading(section['title'], styles, is_first=(i == 0))
+        )
 
         for para in section.get('paragraphs', []):
             ptype = para.get('type', 'text')
-            content = para.get('content', '')
+            content = _md_inline_to_html(para.get('content', ''))
 
-            # Convert markdown bold/italic to HTML tags
-            content = _md_inline_to_html(content)
-
-            if ptype == 'insight':
-                # Insight callout box
-                elements.append(Spacer(1, 4))
-                elements.append(_build_insight_box(content, accent_color, styles))
-                elements.append(Spacer(1, 4))
-            elif ptype == 'bold':
-                elements.append(Paragraph(content, styles['body_bold']))
-            elif ptype == 'bullet':
+            if ptype == 'bullet':
                 elements.append(Paragraph(
-                    f'\u2022  {content}', styles['profile_bullet']
+                    f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {content}',
+                    styles['bullet']
                 ))
             else:
                 elements.append(Paragraph(content, styles['body']))
@@ -513,63 +571,93 @@ def build_persuasion_profile(data, styles, accent_color=PURPLE):
     return elements
 
 
-def build_meeting_guide(data, styles, accent_color=GREEN):
-    """Build meeting guide content pages. Supports v3 and legacy formats."""
+def build_persuasion_profile(data, styles, accent_color=None):
+    """Build persuasion profile content pages (M, K, N)."""
+    accent = accent_color or PURPLE_LIGHT
+    elements = []
+
+    donor_name = data.get('donorName', '')
+    elements.append(SectionTitleFlowable('Persuasion Profile', donor_name, CONTENT_WIDTH, styles))
+    elements.append(Spacer(1, 8))
+
+    sections = data.get('persuasionProfile', {}).get('sections', [])
+    confidence_scores = data.get('confidenceScores', {})
+
+    for i, section in enumerate(sections):
+        elements.extend(
+            _build_section_heading(
+                section['title'], styles,
+                confidence_scores=confidence_scores,
+                is_first=(i == 0)
+            )
+        )
+
+        for para in section.get('paragraphs', []):
+            ptype = para.get('type', 'text')
+            content = _md_inline_to_html(para.get('content', ''))
+
+            if ptype == 'insight':
+                elements.append(Spacer(1, 4))
+                elements.append(_build_insight_box(content, accent, styles))
+                elements.append(Spacer(1, 4))
+            elif ptype == 'bold':
+                elements.append(Paragraph(content, styles['body_bold']))
+            elif ptype == 'bullet':
+                elements.append(Paragraph(
+                    f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {content}',
+                    styles['profile_bullet']
+                ))
+            else:
+                elements.append(Paragraph(content, styles['body']))
+
+    return elements
+
+
+def build_meeting_guide(data, styles, accent_color=None):
+    """Build meeting guide content pages."""
+    accent = accent_color or GREEN_LIGHT
     mg = data.get('meetingGuide', {})
     donor_name = data.get('donorName', '')
 
-    # Detect v3 format
     if mg.get('format') == 'v3':
-        return _build_meeting_guide_v3(mg, styles, accent_color, donor_name)
+        return _build_meeting_guide_v3(mg, styles, accent, donor_name)
 
-    return _build_meeting_guide_legacy(mg, styles, accent_color, donor_name)
+    return _build_meeting_guide_legacy(mg, styles, accent, donor_name)
 
 
-def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
-    """Build v3 meeting guide: Setup, The Arc (beats with START/STAY/CONTINUE), Tripwires, One Line."""
+def _build_meeting_guide_v3(mg, styles, accent_color=None, donor_name=''):
+    """Build v3 meeting guide: Setup, The Arc, Tripwires, One Line (M, N)."""
+    accent = accent_color or GREEN_LIGHT
     elements = []
 
-    # Section title header (two-line: label + name + divider)
     name = mg.get('donorName', '') or donor_name
     elements.append(SectionTitleFlowable('Meeting Guide', name, CONTENT_WIDTH, styles))
     elements.append(Spacer(1, 8))
 
-    class AccentLineFlowable2(Flowable):
-        def __init__(self, color):
-            super().__init__()
-            self.color = color
-        def wrap(self, aW, aH):
-            return (40, 10)
-        def draw(self):
-            self.canv.setFillColor(self.color)
-            self.canv.rect(0, 4, 40, 2, stroke=0, fill=1)
-
     # Setup section
     setup_groups = mg.get('setupGroups', [])
     if setup_groups:
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('Setup', styles['heading']))
+        elements.extend(_build_section_heading('Setup', styles, is_first=True))
         for group in setup_groups:
             elements.append(Spacer(1, 6))
+            # Sub-heading (F)
             elements.append(Paragraph(
-                f"<b>{_md_inline_to_html(group.get('heading', ''))}</b>",
-                styles['body_bold']
+                _md_inline_to_html(group.get('heading', '')),
+                styles['subheading']
             ))
             for bullet in group.get('bullets', []):
                 elements.append(Paragraph(
-                    f'\u2014  {_md_inline_to_html(bullet)}', styles['bullet']
+                    f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(bullet)}',
+                    styles['bullet']
                 ))
 
     # The Arc section (beats)
     beats = mg.get('beats', [])
     if beats:
-        elements.append(Spacer(1, 16))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('The Arc', styles['heading']))
+        elements.extend(_build_section_heading('The Arc', styles))
 
         for beat in beats:
             elements.append(Spacer(1, 10))
-            # Beat header
             title_text = f"<b>Beat {beat.get('number', '')}:</b> {_md_inline_to_html(beat.get('title', ''))}"
             elements.append(Paragraph(title_text, styles['card_title']))
             if beat.get('goal'):
@@ -579,14 +667,12 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
                 ))
             elements.append(Spacer(1, 4))
 
-            # START phase
             if beat.get('start'):
                 elements.append(Paragraph(
                     f"<b>START.</b> {_md_inline_to_html(beat['start'])}",
                     styles['body']
                 ))
 
-            # STAY phase
             if beat.get('stay'):
                 stay_text = _md_inline_to_html(beat['stay'])
                 stay_text = stay_text.replace('\n\n', '<br/><br/>')
@@ -595,7 +681,6 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
                     styles['body']
                 ))
 
-            # Stalling indicator
             if beat.get('stallingText'):
                 elements.append(Spacer(1, 2))
                 elements.append(_build_insight_box(
@@ -603,7 +688,6 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
                     CORAL, styles
                 ))
 
-            # CONTINUE phase
             if beat.get('continue'):
                 elements.append(Paragraph(
                     f"<b>CONTINUE.</b> {_md_inline_to_html(beat['continue'])}",
@@ -613,9 +697,7 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
     # Tripwires section
     tripwires = mg.get('tripwires', [])
     if tripwires:
-        elements.append(Spacer(1, 16))
-        elements.append(AccentLineFlowable2(CORAL))
-        elements.append(Paragraph('Tripwires', styles['heading']))
+        elements.extend(_build_section_heading('Tripwires', styles))
 
         for tw in tripwires:
             elements.append(Spacer(1, 6))
@@ -637,9 +719,7 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
     # One Line section
     one_line = mg.get('oneLine', '')
     if one_line:
-        elements.append(Spacer(1, 16))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('One Line', styles['heading']))
+        elements.extend(_build_section_heading('One Line', styles))
         elements.append(Spacer(1, 4))
         elements.append(_build_insight_box(
             f"<i>{_md_inline_to_html(one_line)}</i>",
@@ -649,150 +729,89 @@ def _build_meeting_guide_v3(mg, styles, accent_color=GREEN, donor_name=''):
     return elements
 
 
-def _build_meeting_guide_legacy(mg, styles, accent_color=GREEN, donor_name=''):
+def _build_meeting_guide_legacy(mg, styles, accent_color=None, donor_name=''):
     """Build legacy meeting guide content pages."""
+    accent = accent_color or GREEN_LIGHT
     elements = []
 
-    # Section title header (two-line: label + name + divider)
     name = mg.get('donorName', '') or donor_name
     elements.append(SectionTitleFlowable('Meeting Guide', name, CONTENT_WIDTH, styles))
     elements.append(Spacer(1, 8))
 
-    class AccentLineFlowable2(Flowable):
-        def __init__(self, color):
-            super().__init__()
-            self.color = color
-        def wrap(self, aW, aH):
-            return (40, 10)
-        def draw(self):
-            self.canv.setFillColor(self.color)
-            self.canv.rect(0, 4, 40, 2, stroke=0, fill=1)
+    first_section = True
 
-    # Donor Read
     if mg.get('donorRead'):
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('The Donor Read', styles['heading']))
+        elements.extend(_build_section_heading('The Donor Read', styles, is_first=first_section))
+        first_section = False
         if mg['donorRead'].get('posture'):
             elements.append(Paragraph(
-                _md_inline_to_html(mg['donorRead']['posture']),
-                styles['body_bold']
+                _md_inline_to_html(mg['donorRead']['posture']), styles['body_bold']
             ))
         for body in mg['donorRead'].get('body', []):
             elements.append(Paragraph(_md_inline_to_html(body), styles['body']))
 
-    # Lights Up
     if mg.get('lightsUp'):
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('What Lights Them Up', styles['heading']))
+        elements.extend(_build_section_heading('What Lights Them Up', styles, is_first=first_section))
+        first_section = False
         for item in mg['lightsUp']:
             elements.append(Paragraph(
-                f"<b>{_md_inline_to_html(item.get('title', ''))}</b>",
-                styles['body_bold']
+                f"<b>{_md_inline_to_html(item.get('title', ''))}</b>", styles['body_bold']
             ))
             elements.append(Paragraph(_md_inline_to_html(item.get('body', '')), styles['body']))
 
-    # Shuts Down
     if mg.get('shutsDown'):
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(CORAL))
-        elements.append(Paragraph('What Shuts Them Down', styles['heading']))
+        elements.extend(_build_section_heading('What Shuts Them Down', styles, is_first=first_section))
+        first_section = False
         for item in mg['shutsDown']:
-            elements.append(Paragraph(f'\u2022  {_md_inline_to_html(item)}', styles['bullet']))
-
-    # Alignment Map
-    if mg.get('alignmentMap'):
-        am = mg['alignmentMap']
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('Alignment Map', styles['heading']))
-
-        if am.get('primary'):
             elements.append(Paragraph(
-                f"<b>{_md_inline_to_html(am['primary'].get('title', ''))}</b>",
-                styles['body_bold']
-            ))
-            elements.append(Paragraph(
-                _md_inline_to_html(am['primary'].get('body', '')), styles['body']
+                f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(item)}',
+                styles['bullet']
             ))
 
-        for sec in am.get('secondary', []):
-            elements.append(Paragraph(
-                f"<b>{_md_inline_to_html(sec.get('title', ''))}</b>",
-                styles['body_bold']
-            ))
-            elements.append(Paragraph(
-                _md_inline_to_html(sec.get('body', '')), styles['body']
-            ))
-
-        for key in ['fightOrBuild', 'handsOnWheel']:
-            if am.get(key):
-                elements.append(Spacer(1, 4))
-                elements.append(_build_insight_box(
-                    _md_inline_to_html(am[key]), accent_color, styles
-                ))
-
-        if am.get('fiveMinCollapse'):
-            elements.append(Spacer(1, 8))
-            elements.append(_build_insight_box(
-                '<b>5 MIN COLLAPSE:</b> ' + _md_inline_to_html(am['fiveMinCollapse']),
-                CORAL, styles
-            ))
-
-    # Meeting Arc
     if mg.get('meetingArc'):
         arc = mg['meetingArc']
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('Meeting Arc', styles['heading']))
-
+        elements.extend(_build_section_heading('Meeting Arc', styles, is_first=first_section))
+        first_section = False
         if arc.get('intro'):
             elements.append(Paragraph(_md_inline_to_html(arc['intro']), styles['body']))
-
         for move in arc.get('moves', []):
             elements.append(Spacer(1, 8))
-            elements.append(_build_move_card(move, accent_color, styles))
+            elements.append(_build_move_card(move, accent, styles))
 
-    # Reading the Room
     if mg.get('readingRoom'):
         rr = mg['readingRoom']
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(accent_color))
-        elements.append(Paragraph('Reading the Room', styles['heading']))
+        elements.extend(_build_section_heading('Reading the Room', styles, is_first=first_section))
+        first_section = False
         elements.append(_build_two_columns(
             rr.get('working', []), rr.get('stalling', []), styles
         ))
 
-    # Reset Moves
     if mg.get('resetMoves'):
-        elements.append(Spacer(1, 12))
-        elements.append(AccentLineFlowable2(CORAL))
-        elements.append(Paragraph('Reset Moves', styles['heading']))
+        elements.extend(_build_section_heading('Reset Moves', styles, is_first=first_section))
+        first_section = False
         for item in mg['resetMoves']:
-            elements.append(Paragraph(f'\u2022  {_md_inline_to_html(item)}', styles['bullet']))
+            elements.append(Paragraph(
+                f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(item)}',
+                styles['bullet']
+            ))
 
     return elements
 
 
-def build_sources(data, styles, accent_color=CORAL):
-    """Build sources list pages."""
+def build_sources(data, styles, accent_color=None):
+    """Build sources list pages (L)."""
+    accent = accent_color or CORAL
     elements = []
     sources = data.get('sources', [])
 
-    class AccentLineFlowable3(Flowable):
-        def __init__(self, color):
-            super().__init__()
-            self.color = color
-        def wrap(self, aW, aH):
-            return (40, 10)
-        def draw(self):
-            self.canv.setFillColor(self.color)
-            self.canv.rect(0, 4, 40, 2, stroke=0, fill=1)
+    if not sources:
+        elements.extend(_build_section_heading('Sources', styles, is_first=True))
+        elements.append(Paragraph('Sources unavailable', styles['body']))
+        return elements
 
-    elements.append(AccentLineFlowable3(accent_color))
-    elements.append(Paragraph(
-        f'{len(sources)} Research Sources', styles['heading']
-    ))
+    elements.extend(
+        _build_section_heading(f'{len(sources)} Research Sources', styles, is_first=True)
+    )
     elements.append(Spacer(1, 8))
 
     max_display = 50
@@ -826,7 +845,7 @@ def build_sources(data, styles, accent_color=CORAL):
 # ─── Inline flowable builders ─────────────────────────────────────────────────
 
 def _build_insight_box(text, accent_color, styles):
-    """Build an insight callout box as a Table flowable."""
+    """Build an insight callout box."""
     class InsightBoxFlowable(Flowable):
         def __init__(self, text, accent, width):
             super().__init__()
@@ -837,10 +856,9 @@ def _build_insight_box(text, accent_color, styles):
             self._h = 0
 
         def wrap(self, aW, aH):
-            sans_italic = 'DMSans-Italic' if 'DMSans-Italic' in self.canv.getAvailableFonts() else 'Helvetica-Oblique' if hasattr(self, 'canv') else 'Helvetica-Oblique'
             style = ParagraphStyle(
                 'ib', fontName='DMSans-Italic',
-                fontSize=10.5, leading=15, textColor=BODY_TEXT,
+                fontSize=10.5, leading=18, textColor=BODY_TEXT,
             )
             inner = self.box_width - 24
             self._para = Paragraph(self.text, style)
@@ -861,7 +879,7 @@ def _build_insight_box(text, accent_color, styles):
 
 
 def _build_move_card(move, accent_color, styles):
-    """Build a meeting move card as a Flowable."""
+    """Build a meeting move card."""
     class MoveCardFlowable(Flowable):
         def __init__(self, move_data, accent, width):
             super().__init__()
@@ -875,22 +893,18 @@ def _build_move_card(move, accent_color, styles):
 
         def wrap(self, aW, aH):
             inner = self.card_width - 32
-            sans = 'DMSans'
-            sans_bold = 'DMSans-Bold'
-            sans_italic = 'DMSans-Italic'
-
-            ts = ParagraphStyle('mt', fontName=sans_bold, fontSize=11, leading=15, textColor=CHARCOAL)
+            ts = ParagraphStyle('mt', fontName='DMSans-Bold', fontSize=11, leading=15, textColor=CHARCOAL)
             self._title_p = Paragraph(
                 f"{self.move_data.get('number', '')}. {_md_inline_to_html(self.move_data.get('title', ''))}",
                 ts
             )
             _, th = self._title_p.wrap(inner, aH)
 
-            ms = ParagraphStyle('mm', fontName=sans, fontSize=9, leading=13, textColor=BODY_TEXT)
+            ms = ParagraphStyle('mm', fontName='DMSans', fontSize=9, leading=13, textColor=BODY_TEXT)
             self._move_p = Paragraph(_md_inline_to_html(self.move_data.get('moveText', '')), ms)
             _, mh = self._move_p.wrap(inner, aH)
 
-            rs = ParagraphStyle('mr', fontName=sans_italic, fontSize=9, leading=13, textColor=BODY_TEXT)
+            rs = ParagraphStyle('mr', fontName='DMSans-Italic', fontSize=9, leading=13, textColor=BODY_TEXT)
             self._read_p = Paragraph(_md_inline_to_html(self.move_data.get('readText', '')), rs)
             _, rh = self._read_p.wrap(inner, aH)
 
@@ -926,7 +940,8 @@ def _build_move_card(move, accent_color, styles):
             c.line(16, y, w - 16, y)
             y -= 12
 
-            c.setFont('DMSans-Bold' if 'DMSans-Bold' in c.getAvailableFonts() else 'Helvetica-Bold', 7.5)
+            sans_bold = 'DMSans-Bold' if 'DMSans-Bold' in c.getAvailableFonts() else 'Helvetica-Bold'
+            c.setFont(sans_bold, 7.5)
             c.setFillColor(LIGHT_GRAY)
             c.drawString(16, y, 'THE READ')
             y -= 14
@@ -1008,13 +1023,9 @@ def _md_inline_to_html(text):
     """Convert markdown bold/italic to HTML tags for ReportLab."""
     if not text:
         return ''
-    # Escape XML first, then convert markdown
     text = _escape_xml(text)
-    # ***bold italic***
     text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<b><i>\1</i></b>', text)
-    # **bold**
     text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-    # *italic*
     text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
     return text
 
@@ -1026,7 +1037,6 @@ def generate_pdf(data, output_path):
     fonts = register_fonts()
     styles = make_styles(fonts)
 
-    # Create document with custom page templates
     doc = BaseDocTemplate(
         output_path,
         pagesize=letter,
@@ -1038,34 +1048,36 @@ def generate_pdf(data, output_path):
         author='ProspectAI',
     )
 
-    # Frames
     dark_frame = Frame(MARGIN, MARGIN, CONTENT_WIDTH, PAGE_HEIGHT - 2 * MARGIN,
                        id='dark_frame', showBoundary=0)
     content_frame = Frame(MARGIN, MARGIN + 10, CONTENT_WIDTH, PAGE_HEIGHT - 2 * MARGIN - 20,
                           id='content_frame', showBoundary=0)
 
-    # Page templates
     dark_template = PageTemplate(id='dark', frames=[dark_frame], onPage=draw_dark_page)
     content_template = PageTemplate(id='content', frames=[content_frame], onPage=draw_content_page)
 
     doc.addPageTemplates([dark_template, content_template])
 
-    # Build story
     story = []
 
     # ─── Cover page (dark) ───
     story.extend(build_cover_page(data, styles))
 
-    # ─── Section 1: Persuasion Profile ───
-    # Content starts directly (no section cover page — saves a blank page)
+    # ─── Switch to content pages ───
     story.append(NextPageTemplate('content'))
     story.append(PageBreak())
 
-    # Profile content
-    story.extend(build_persuasion_profile(data, styles, PURPLE))
+    # ─── Briefing Note (J) ───
+    if data.get('briefingNote'):
+        story.append(AccentLineFlowable(SECTION_ACCENT['briefing_note']))
+        story.extend(build_briefing_note(data, styles))
+        story.append(PageBreak())
 
-    # ─── Section 2: Meeting Guide ───
-    # No section cover page — content starts directly to avoid a blank divider page.
+    # ─── Persuasion Profile ───
+    story.append(AccentLineFlowable(SECTION_ACCENT['persuasion_profile']))
+    story.extend(build_persuasion_profile(data, styles))
+
+    # ─── Meeting Guide ───
     if data.get('meetingGuide') and (
         data['meetingGuide'].get('format') == 'v3' or
         data['meetingGuide'].get('donorRead') or
@@ -1073,15 +1085,14 @@ def generate_pdf(data, output_path):
         data['meetingGuide'].get('lightsUp')
     ):
         story.append(PageBreak())
-        story.extend(build_meeting_guide(data, styles, GREEN))
+        story.append(AccentLineFlowable(SECTION_ACCENT['meeting_guide']))
+        story.extend(build_meeting_guide(data, styles))
 
-    # ─── Section 3: Sources ───
-    # Content starts directly (no section cover page — saves a blank page)
-    story.append(NextPageTemplate('content'))
+    # ─── Sources (L) ───
     story.append(PageBreak())
-    story.extend(build_sources(data, styles, CORAL))
+    story.append(AccentLineFlowable(SECTION_ACCENT['sources']))
+    story.extend(build_sources(data, styles))
 
-    # Build
     doc.build(story)
     print(f'[PDF] Generated: {output_path}')
 

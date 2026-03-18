@@ -173,7 +173,9 @@ export default function ProfilePage() {
         fundraiserName,
         data.researchProfile.rawMarkdown,
         data.meetingGuide,
-        sources
+        sources,
+        data.briefingNote,
+        confidenceScores,
       );
 
       const response = await fetch('/api/generate-pdf', {
