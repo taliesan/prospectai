@@ -391,30 +391,30 @@ function parseStayContent(contentLines: string[], beat: Beat): void {
     const plainBulletLines = block.filter(l => l.startsWith('- ') && !l.startsWith('- **'));
     const proseLines = block.filter(l => !l.startsWith('- '));
 
-    if (scenarioLines.length > 0) {
-      // Add any prose before the scenarios
-      if (proseLines.length > 0) {
-        beat.stayParagraphs.push(proseLines.join(' '));
-      }
+    // Add prose lines first (if any)
+    if (proseLines.length > 0) {
+      beat.stayParagraphs.push(proseLines.join(' '));
+    }
 
-      // Parse scenario bullets
+    // Add plain bullet lines as disc bullets
+    if (plainBulletLines.length > 0) {
+      for (const bLine of plainBulletLines) {
+        beat.stayParagraphs.push('\u2022' + bLine.slice(2));
+      }
+    }
+
+    // Parse scenario bullets (- **Label** text)
+    if (scenarioLines.length > 0) {
       for (const sLine of scenarioLines) {
         const sMatch = sLine.match(/^- \*\*(.+?)\*\*\s*[—–-]?\s*(.*)$/);
         if (sMatch) {
           beat.stayScenarios.push({ label: sMatch[1], text: sMatch[2] });
         }
       }
-    } else if (plainBulletLines.length > 0) {
-      // Block contains plain bullets — add prose first, then bullets as separate paragraphs prefixed with bullet marker
-      if (proseLines.length > 0) {
-        beat.stayParagraphs.push(proseLines.join(' '));
-      }
-      // Store each bullet as a paragraph prefixed with \u2022 so the renderer can identify it
-      for (const bLine of plainBulletLines) {
-        beat.stayParagraphs.push('\u2022' + bLine.slice(2));
-      }
-    } else {
-      // Plain prose paragraph
+    }
+
+    // If no bullets or scenarios, treat entire block as prose
+    if (proseLines.length === 0 && plainBulletLines.length === 0 && scenarioLines.length === 0) {
       beat.stayParagraphs.push(block.join(' '));
     }
   }
