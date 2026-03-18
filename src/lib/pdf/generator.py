@@ -207,15 +207,16 @@ def make_styles(fonts):
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
         ),
         # Bullets (N: disc only, gray-400 bullet, body text size)
+        # leftIndent=16 + firstLineIndent=-16 creates a hanging indent
         'bullet': ParagraphStyle(
             'bullet', fontName=sans, fontSize=10.5,
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, bulletIndent=4, spaceAfter=6,
+            leftIndent=16, firstLineIndent=-16, spaceAfter=6,
         ),
         'profile_bullet': ParagraphStyle(
             'profile_bullet', fontName=sans, fontSize=10.5,
             leading=18, textColor=BODY_TEXT, alignment=TA_LEFT,
-            leftIndent=16, bulletIndent=4, spaceAfter=8,
+            leftIndent=16, firstLineIndent=-16, spaceAfter=8,
         ),
 
         # Footer (Q: 7pt, gray-400)
@@ -518,6 +519,102 @@ def _build_section_heading(title, styles, confidence_scores=None, is_first=False
     return elements
 
 
+def _build_phase_label(label, color_hex):
+    """Build a colored pill label for START/STAY/CONTINUE phases."""
+    class PhaseLabelFlowable(Flowable):
+        def __init__(self, text, bg_color, width):
+            super().__init__()
+            self.text = text
+            self.bg_color = HexColor(bg_color)
+            self.box_width = width
+
+        def wrap(self, aW, aH):
+            return (self.box_width, 20)
+
+        def draw(self):
+            c = self.canv
+            font = 'DMSans-Bold' if 'DMSans-Bold' in c.getAvailableFonts() else 'Helvetica-Bold'
+            c.setFont(font, 7)
+            tw = c.stringWidth(self.text, font, 7)
+            pill_w = tw + 14
+            pill_h = 14
+            c.setFillColor(self.bg_color)
+            c.roundRect(0, 3, pill_w, pill_h, pill_h / 2, stroke=0, fill=1)
+            c.setFillColor(WHITE)
+            c.drawString(7, 7, self.text)
+
+    return PhaseLabelFlowable(label, color_hex, CONTENT_WIDTH)
+
+
+def _build_tripwire_card(name, tell, recovery, styles):
+    """Build a tripwire card with red left border."""
+    class TripwireFlowable(Flowable):
+        def __init__(self, name, tell, recovery, width):
+            super().__init__()
+            self.name_text = name
+            self.tell_text = tell
+            self.recovery_text = recovery
+            self.box_width = width
+            self._paras = []
+            self._h = 0
+
+        def wrap(self, aW, aH):
+            inner = self.box_width - 28  # 4px border + 12px padding each side
+            self._paras = []
+            total_h = 16  # top+bottom padding
+
+            name_style = ParagraphStyle('tw_name', fontName='DMSans-Bold', fontSize=9.5,
+                                         leading=13, textColor=HexColor('#991b1b'))
+            name_p = Paragraph(f'{_escape_xml(self.name_text)}.', name_style)
+            _, nh = name_p.wrap(inner, aH)
+            self._paras.append(('name', name_p, nh))
+            total_h += nh + 4
+
+            body_style = ParagraphStyle('tw_body', fontName='DMSans', fontSize=10,
+                                         leading=16, textColor=BODY_TEXT)
+            if self.tell_text:
+                tell_p = Paragraph(
+                    f'<font color="#991b1b"><b>Tell:</b></font> <i>{_escape_xml(self.tell_text)}</i>',
+                    body_style
+                )
+                _, th = tell_p.wrap(inner, aH)
+                self._paras.append(('tell', tell_p, th))
+                total_h += th + 2
+
+            if self.recovery_text:
+                rec_p = Paragraph(
+                    f'<font color="#991b1b"><b>Recovery:</b></font> {_escape_xml(self.recovery_text)}',
+                    body_style
+                )
+                _, rh = rec_p.wrap(inner, aH)
+                self._paras.append(('rec', rec_p, rh))
+                total_h += rh
+
+            self._h = total_h
+            return (self.box_width, self._h)
+
+        def draw(self):
+            c = self.canv
+            # Red-tinted background
+            c.setFillColor(HexColor('#fef2f2'))
+            c.roundRect(4, 0, self.box_width - 4, self._h, 4, stroke=0, fill=1)
+            # Red left border
+            c.setFillColor(HexColor('#991b1b'))
+            c.rect(0, 0, 4, self._h, stroke=0, fill=1)
+            # Border
+            c.setStrokeColor(HexColor('#fecaca'))
+            c.setLineWidth(0.5)
+            c.roundRect(4, 0, self.box_width - 4, self._h, 4, stroke=1, fill=0)
+
+            y = self._h - 8
+            for label, para, h in self._paras:
+                y -= h
+                para.drawOn(c, 16, y)
+                y -= (4 if label == 'name' else 2)
+
+    return TripwireFlowable(name, tell, recovery, CONTENT_WIDTH)
+
+
 def _lookup_confidence(heading, scores):
     """Fuzzy-match heading against confidence scores dict."""
     if not scores:
@@ -552,11 +649,27 @@ def build_briefing_note(data, styles, accent_color=None):
 
     sections = bn.get('sections', [])
     for i, section in enumerate(sections):
-        elements.extend(
-            _build_section_heading(section['title'], styles, is_first=(i == 0))
-        )
+        heading_elements = _build_section_heading(section['title'], styles, is_first=(i == 0))
 
-        for para in section.get('paragraphs', []):
+        paragraphs = section.get('paragraphs', [])
+        first_content = None
+        if paragraphs:
+            p0 = paragraphs[0]
+            c0 = _md_inline_to_html(p0.get('content', ''))
+            if p0.get('type') == 'bullet':
+                first_content = Paragraph(
+                    f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {c0}',
+                    styles['bullet']
+                )
+            else:
+                first_content = Paragraph(c0, styles['body'])
+
+        if first_content:
+            elements.append(KeepTogether(heading_elements + [first_content]))
+        else:
+            elements.extend(heading_elements)
+
+        for para in paragraphs[1:]:
             ptype = para.get('type', 'text')
             content = _md_inline_to_html(para.get('content', ''))
 
@@ -584,15 +697,39 @@ def build_persuasion_profile(data, styles, accent_color=None):
     confidence_scores = data.get('confidenceScores', {})
 
     for i, section in enumerate(sections):
-        elements.extend(
-            _build_section_heading(
-                section['title'], styles,
-                confidence_scores=confidence_scores,
-                is_first=(i == 0)
-            )
+        heading_elements = _build_section_heading(
+            section['title'], styles,
+            confidence_scores=confidence_scores,
+            is_first=(i == 0)
         )
 
-        for para in section.get('paragraphs', []):
+        paragraphs = section.get('paragraphs', [])
+        first_content = None
+        if paragraphs:
+            p0 = paragraphs[0]
+            c0 = _md_inline_to_html(p0.get('content', ''))
+            t0 = p0.get('type', 'text')
+            if t0 == 'insight':
+                first_content = _build_insight_box(c0, accent, styles)
+            elif t0 == 'bold':
+                first_content = Paragraph(c0, styles['body_bold'])
+            elif t0 == 'bullet':
+                first_content = Paragraph(
+                    f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {c0}',
+                    styles['profile_bullet']
+                )
+            else:
+                first_content = Paragraph(c0, styles['body'])
+
+        # Add spacing after confidence badge
+        heading_elements.append(Spacer(1, 6))
+
+        if first_content:
+            elements.append(KeepTogether(heading_elements + [first_content]))
+        else:
+            elements.extend(heading_elements)
+
+        for para in paragraphs[1:]:
             ptype = para.get('type', 'text')
             content = _md_inline_to_html(para.get('content', ''))
 
@@ -657,42 +794,73 @@ def _build_meeting_guide_v3(mg, styles, accent_color=None, donor_name=''):
         elements.extend(_build_section_heading('The Arc', styles))
 
         for beat in beats:
-            elements.append(Spacer(1, 10))
+            # Build beat header group (keep title + goal + first phase together)
+            beat_header = [Spacer(1, 10)]
             title_text = f"<b>Beat {beat.get('number', '')}:</b> {_md_inline_to_html(beat.get('title', ''))}"
-            elements.append(Paragraph(title_text, styles['card_title']))
+            beat_header.append(Paragraph(title_text, styles['card_title']))
             if beat.get('goal'):
-                elements.append(Paragraph(
+                beat_header.append(Paragraph(
                     f"<i>{_md_inline_to_html(beat['goal'])}</i>",
                     styles['body_italic']
                 ))
-            elements.append(Spacer(1, 4))
+            beat_header.append(Spacer(1, 4))
+
+            # Build phase content
+            phase_elements = []
 
             if beat.get('start'):
-                elements.append(Paragraph(
-                    f"<b>START.</b> {_md_inline_to_html(beat['start'])}",
+                phase_elements.append(_build_phase_label('START', '#0f766e'))
+                phase_elements.append(Paragraph(
+                    _md_inline_to_html(beat['start']),
                     styles['body']
                 ))
+                for b in beat.get('startBullets', []):
+                    phase_elements.append(Paragraph(
+                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
+                        styles['bullet']
+                    ))
 
-            if beat.get('stay'):
-                stay_text = _md_inline_to_html(beat['stay'])
-                stay_text = stay_text.replace('\n\n', '<br/><br/>')
-                elements.append(Paragraph(
-                    f"<b>STAY.</b> {stay_text}",
-                    styles['body']
-                ))
+            if beat.get('stay') or beat.get('stayParagraphs'):
+                phase_elements.append(_build_phase_label('STAY', '#1e40af'))
+                if beat.get('stay'):
+                    stay_text = _md_inline_to_html(beat['stay'])
+                    stay_text = stay_text.replace('\n\n', '<br/><br/>')
+                    phase_elements.append(Paragraph(stay_text, styles['body']))
+                for p in beat.get('stayParagraphs', []):
+                    phase_elements.append(Paragraph(
+                        _md_inline_to_html(p), styles['body']
+                    ))
+                for b in beat.get('stayBullets', []):
+                    phase_elements.append(Paragraph(
+                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
+                        styles['bullet']
+                    ))
 
             if beat.get('stallingText'):
-                elements.append(Spacer(1, 2))
-                elements.append(_build_insight_box(
+                phase_elements.append(Spacer(1, 2))
+                phase_elements.append(_build_insight_box(
                     f"<b>Stalling:</b> {_md_inline_to_html(beat['stallingText'])}",
                     CORAL, styles
                 ))
 
             if beat.get('continue'):
-                elements.append(Paragraph(
-                    f"<b>CONTINUE.</b> {_md_inline_to_html(beat['continue'])}",
+                phase_elements.append(_build_phase_label('CONTINUE', '#7e22ce'))
+                phase_elements.append(Paragraph(
+                    _md_inline_to_html(beat['continue']),
                     styles['body']
                 ))
+                for b in beat.get('continueBullets', []):
+                    phase_elements.append(Paragraph(
+                        f'<font color="{BULLET_GRAY.hexval()}">\u2022</font>  {_md_inline_to_html(b)}',
+                        styles['bullet']
+                    ))
+
+            # Keep beat header + first phase together
+            if phase_elements:
+                elements.append(KeepTogether(beat_header + phase_elements[:2]))
+                elements.extend(phase_elements[2:])
+            else:
+                elements.extend(beat_header)
 
     # Tripwires section
     tripwires = mg.get('tripwires', [])
@@ -701,20 +869,12 @@ def _build_meeting_guide_v3(mg, styles, accent_color=None, donor_name=''):
 
         for tw in tripwires:
             elements.append(Spacer(1, 6))
-            elements.append(Paragraph(
-                f"<b>{_md_inline_to_html(tw.get('name', ''))}.</b>",
-                styles['body_bold']
+            elements.append(_build_tripwire_card(
+                tw.get('name', ''),
+                tw.get('tell', ''),
+                tw.get('recovery', ''),
+                styles
             ))
-            if tw.get('tell'):
-                elements.append(Paragraph(
-                    f"<i>Tell:</i> {_md_inline_to_html(tw['tell'])}",
-                    styles['body']
-                ))
-            if tw.get('recovery'):
-                elements.append(Paragraph(
-                    f"<i>Recovery:</i> {_md_inline_to_html(tw['recovery'])}",
-                    styles['body']
-                ))
 
     # One Line section
     one_line = mg.get('oneLine', '')
@@ -818,19 +978,17 @@ def build_sources(data, styles, accent_color=None):
     for i, source in enumerate(sources[:max_display]):
         title = source.get('title', source.get('url', ''))
         url = source.get('url', '')
-        try:
-            from urllib.parse import urlparse
-            domain = urlparse(url).hostname or url
-            domain = domain.replace('www.', '')
-        except Exception:
-            domain = url
 
         elements.append(Paragraph(
             f'<b>{i + 1}.</b>  {_escape_xml(title)}',
             styles['source_title']
         ))
-        elements.append(Paragraph(domain, styles['source_domain']))
-        elements.append(Spacer(1, 6))
+        if url:
+            elements.append(Paragraph(
+                _escape_xml(url),
+                styles['source_domain']
+            ))
+        elements.append(Spacer(1, 10))
 
     if len(sources) > max_display:
         elements.append(Spacer(1, 8))
