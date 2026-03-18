@@ -4,7 +4,7 @@
 
 ---
 
-### SETUP
+## Setup
 
 **Who They Are.**
 - A merchant's daughter running a pirate crew with a merchant's discipline -- except she can't go home. The legitimate world is closed to her. She has made the pirate world more orderly than the one she left. Don't romanticize what that costs her.
@@ -29,7 +29,7 @@
 
 ---
 
-### THE ARC
+## The Arc
 
 **Beat 1: Get Them Talking**
 
@@ -117,7 +117,7 @@ If she doesn't engage, don't push. Close clean and follow up with exactly what s
 
 ---
 
-### TRIPWIRES
+## Tripwires
 
 **Selling her a service instead of inviting her into the work.** *Tell:* she's asking "what does this cost me" instead of "what does a station cost." She's evaluating a vendor, not sizing an investment. *Recovery:* stop pitching. Return to the Ile-a-Vache disruption -- the cost she already absorbed from a warning that didn't exist yet. The monitoring isn't for sale. It's infrastructure for a coast that's warming whether or not she funds it.
 
@@ -127,6 +127,6 @@ If she doesn't engage, don't push. Close clean and follow up with exactly what s
 
 ---
 
-### ONE LINE
+## One Line
 
 She left the merchant world and can never go back -- show her that the coast she's been watching for nine years is changing, and that her ledger is part of the record.

@@ -21,7 +21,7 @@ export function stripEvidenceMetadata(markdown: string): string {
   // Step 1: Convert Format B metadata blocks (on separate lines after headings)
   // into Format A heading style so the h2 badge renderer works uniformly.
   markdown = markdown.replace(
-    /(#{2,3}\s*\d+\.\s*[^\n]*)\n+\[CONFIDENCE:\s*(\d+)\/10[^\]]*\]\s*\n?(?:\[EVIDENCE BASIS:[^\]]*\]\s*\n?)?(?:\[INFERRED:[^\]]*\]\s*\n?)?(?:\[EVIDENCE CEILINGS:[^\]]*\]\s*\n?)?/g,
+    /(#{2,3}\s*(?:\d+\.\s*)?[^\n]*)\n+\[CONFIDENCE:\s*(\d+)\/10[^\]]*\]\s*\n?(?:\[EVIDENCE BASIS:[^\]]*\]\s*\n?)?(?:\[INFERRED:[^\]]*\]\s*\n?)?(?:\[EVIDENCE CEILINGS:[^\]]*\]\s*\n?)?/g,
     (_, header, score) => {
       const s = parseInt(score, 10);
       return `${header} ${'■'.repeat(s)}${'□'.repeat(10 - s)}  ${s}/10\n\n`;

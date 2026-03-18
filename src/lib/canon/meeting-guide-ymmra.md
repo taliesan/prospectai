@@ -4,7 +4,7 @@
 
 ---
 
-### SETUP
+## Setup
 
 **Who They Are.**
 - Her body is the routing system -- nutrients, mineral signals, atmospheric data move through her hyphae. When a gallery receives its allocation, the resource traveled through her tissue. Every routing decision has physical consequences she experiences in her own body, and she routes based on data anyway. That's the sentence that explains everything else about this meeting.
@@ -29,7 +29,7 @@
 
 ---
 
-### THE ARC
+## The Arc
 
 **Beat 1: Get Them Talking**
 
@@ -120,7 +120,7 @@ If she doesn't engage, the cross-layer evidence hasn't been sufficient. Close wi
 
 ---
 
-### TRIPWIRES
+## Tripwires
 
 **Submitting unverified climate projections.** *Tell:* next signal is more formal, processing time extends, response references verification standards rather than your data. *Recovery:* resubmit with tighter uncertainty bounds and independently verifiable readings. She processes better data, not better arguments about what the data means.
 
@@ -130,6 +130,6 @@ If she doesn't engage, the cross-layer evidence hasn't been sufficient. Close wi
 
 ---
 
-### ONE LINE
+## One Line
 
 She's been tracking the warming from inside the rock longer than Tidebreak has existed and she wants new capacity on this coast -- come as a fellow practitioner, show her what the monitoring catches and where it's blind, and let her figure out where the work fits.

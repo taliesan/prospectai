@@ -146,7 +146,7 @@ The following three profiles demonstrate the register, structure, and analytical
 
 ---
 
-### 1. THE OPERATING SYSTEM
+## The Operating System
 
 **She was raised in a merchant shipping family, trained as a navigator, and burned her father's ledgers the day she took her first prize.** The de la Cerda family ran cargo between Cádiz and Veracruz for three generations. She could plot a transatlantic crossing by the time she was fourteen. Her father sent her to sea as a bookkeeper on his flagship; she learned the routes, the harbor schedules, the gaps in the convoy system, and the exact stretch of open water east of Hispaniola where a fast sloop could intercept a slow galleon with no escort in sight. She took the *Santa Eugenia* with eleven crew in 1578. She was twenty-two. She sent her father's ship home with its crew unharmed and a note that read: "The margins were better on this side of the transaction."
 
@@ -156,7 +156,7 @@ The following three profiles demonstrate the register, structure, and analytical
 
 ---
 
-### 2. THE CONTRADICTION
+## The Contradiction
 
 **She operates outside every law in the Caribbean and runs the most orderly ship in it.** Her articles of conduct are nine pages long. They cover division of spoils, medical compensation for injuries (200 pesos for a lost hand, 100 for an eye, 50 for a finger), voting procedures for choosing targets, and a clause that requires any crew member who draws a weapon against another crew member to forfeit their share for the voyage. She enforces the articles without exception. When her own brother violated the weapons clause, she docked his share in front of the full crew and logged the deduction in the ledger. "The articles work because I am not exempt from them. The moment I am, they are decorations."
 
@@ -166,7 +166,7 @@ The following three profiles demonstrate the register, structure, and analytical
 
 ---
 
-### 3. WHAT DRIVES THEM
+## What Drives Them
 
 **Her values hierarchy, revealed by what she does when forced to choose: the crew's survival first, the ship's integrity second, the articles third, profit fourth.** She abandoned a three-galleon convoy — the richest target she'd ever tracked — because the wind shifted and the approach would have required sailing the *Aguila Negra* through a reef passage at night. Her first mate argued they could make it. She overruled him in front of the crew: "I have never lost a ship and I have never lost a man to my own greed. We are not starting tonight." The convoy passed. She never mentioned it again. Two weeks later she took a smaller prize in open water and distributed shares without comment. The crew got less money that month because the captain chose their lives over their wages, and not one of them complained.
 
@@ -178,7 +178,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 4. HOW TO READ THEM IN REAL TIME
+## How to Read Them in Real Time
 
 **She does arithmetic during conversations, and that means she's engaged.** When she reaches for the ledger, when she starts calculating aloud, when she asks "how many days" and "what tonnage" — she's pricing your proposal in real time. This is the equivalent of another captain leaning forward with interest. If she's asking logistical questions, you have her attention. If she's asking philosophical questions — "and what would that accomplish for the Passage generally?" — she's being polite and the conversation is already over.
 
@@ -195,7 +195,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+## What Shuts Them Down — And How to Recover
 
 **Triggers, ordered by severity:**
 
@@ -213,7 +213,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+## How They Move from Interested to Committed
 
 **Trust is built through small transactions before large ones.** Every long-term alliance she maintains — the provisioner in Tortuga, the shipwright at Île-à-Vache, the two captains she sails with regularly — started with a single, small, verifiable deal. She bought rope. She hired a repair. She split a small prize. She watched how the other party handled the transaction: did they deliver what they promised, at the price they quoted, on the timeline they agreed to? The first deal is always the test. Don't propose a grand alliance in the first meeting. Propose a single exchange with clear terms. Execute it cleanly. The second meeting will be different.
 
@@ -225,7 +225,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 7. THE DINNER PARTY TEST
+## The Dinner Party Test
 
 **What bores her:** Speeches about freedom or the pirate spirit. Anyone who romanticizes the trade without knowing what salt water does to a hull in six months. Captains who boast about prizes without mentioning costs. Vagueness. Flattery delivered before a request — she can hear the ask coming and she's already annoyed before it arrives.
 
@@ -245,7 +245,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 1. THE OPERATING SYSTEM
+## The Operating System
 
 **She is a solitary predator by biology who built a collective institution by choice, and both remain active in how she operates.** Octopuses don't teach. They don't form groups. They hunt alone, den alone, and most species die after a single reproductive cycle without passing knowledge to their young. Orekh has sixteen apprentices, a guild hall built into a reef wall, and a forty-year institutional legacy — all of which she constructed against the deepest instincts of her own body. She published a document listing her biological limitations as an instructor: she can sustain one-to-one engagement for hours but group attention degrades after forty minutes, she involuntarily camouflages when overstimulated by too many creatures in her space, and her denning instinct makes her retreat to a private chamber at least twice per working day. She designed the entire school around these constraints — individual carving stations spaced far enough apart that each apprentice registers as a separate encounter rather than a crowd, rotating one-to-one sessions rather than lectures, a private den behind the workshop that every apprentice knows not to approach. If the meeting feels like a briefing — you talking, her listening — you've designed for a different species. If it feels like a field survey — two observers, same object, noticing together — you've designed for her.
 
@@ -255,7 +255,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 2. THE CONTRADICTION
+## The Contradiction
 
 **A creature whose defining biological trait is shapelessness — who can squeeze through any gap, change color and texture in milliseconds, become functionally invisible — has devoted her entire life to drawing precise lines on fluid space.** She could be anything. She chose to be the creature who makes boundaries. The irony is not lost on her and she's tired of people pointing it out. "Every poet who visits this school makes the same observation. The octopus who draws straight lines. I've heard it. It's not as interesting as they think it is."
 
@@ -265,7 +265,7 @@ Everything above this sentence describes a woman who prices every interaction. T
 
 ---
 
-### 3. WHAT DRIVES THEM
+## What Drives Them
 
 **Her values hierarchy, when forced to choose: accuracy first, her apprentices' development second, the documentary record third, the school's reputation last.** She pulled an entire print run of navigation charts — two tidal cycles of revenue, the school's largest commercial contract — because a returning apprentice found a depth error in the Koruna shelf survey. The error was within the industry's accepted tolerance. She pulled it anyway. "The tolerance exists so that institutions can be lazy. We are not an institution. We are sixteen creatures trying to see clearly." She's refused to let the Tidewater Council use her charts in their official navigation standards — twice — because the Council's reproduction process introduces projection artifacts she can't control. She would rather sell fewer charts to individual navigators who use the originals than sell more through a channel that degrades the work.
 
@@ -277,7 +277,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 4. HOW TO READ THEM IN REAL TIME
+## How to Read Them in Real Time
 
 **Watch the arms, not the face.** Her eyes will maintain steady, polite attention regardless of her internal state — she learned that from forty years of institutional meetings. Her arms reveal her actual state. When she's engaged, they're in motion: three or four working on separate tasks while the others gesture, reach for objects, trace shapes on the nearest surface. When she pulls all eight arms in tight against her mantle — compact, still, contracted — she's either about to say something important or about to end the meeting. Don't talk through the contraction. Wait. What comes next is either the most significant thing she'll say in the conversation or a polite goodbye, and you need to hear which one it is.
 
@@ -294,7 +294,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+## What Shuts Them Down — And How to Recover
 
 **Triggers, ordered by severity:**
 
@@ -312,7 +312,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+## How They Move from Interested to Committed
 
 **Trust starts with transparency, depends on reliability, and ends if she discovers concealment.** The sequence matters. First interaction: she'll assess whether you disclose your own limitations honestly. If yes, the relationship can begin. Subsequent interactions: she'll assess whether what you promised matches what you delivered — timing, quality, specificity. If the match is consistent, the relationship deepens. At any point: if she discovers something you knew and didn't share, the relationship ends. Not because of the information itself — because of the gap between what you knew and what you showed. She can work with errors. She cannot work with people who manage what she sees.
 
@@ -324,7 +324,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 7. THE DINNER PARTY TEST
+## The Dinner Party Test
 
 **What bores her:** Cartography as metaphor. "Mapping the future," "charting a new course," "navigating uncertainty." Anyone who uses the language of her craft without having held a stylus. Institutional small talk. Creatures who describe the ocean without having been below the photic zone recently.
 
@@ -344,7 +344,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 1. THE OPERATING SYSTEM
+## The Operating System
 
 **She is an organism that became an institution.** The Threshold Lattice is a mycorrhizal network — a living web of fungal filaments threaded through the rock substrate of Grotto Surath, physically connecting every inhabited gallery, every deep-source vein, every monitoring substation in the colony. When the colony says "the Lattice," they mean the infrastructure itself. Ymmra is that infrastructure. Her body is the routing system. Nutrients, water, mineral signals, and atmospheric data move through her hyphae the way electricity moves through wire. She doesn't manage the network from a desk somewhere. She *is* the network. When a gallery receives its phosphorus allocation, the phosphorus traveled through her. When a sensor reading arrives at the Council, the chemical signal passed through tissue that is, biologically, her. The question every visitor asks — "how do I reach the Lattice?" — contains an error. You've been walking through the Lattice since you entered the grotto. She already knows you're here. She tasted the vibration of your footsteps in the substrate three galleries ago.
 
@@ -354,7 +354,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 2. THE CONTRADICTION
+## The Contradiction
 
 **She routes resources to galleries whose survival depends on deep-source veins, and the extraction rate from those veins is depleting the mineral substrate her own body requires to function.** The colony's nutrient supply is, over geological time, finite. Her routing sustains the colony now by drawing down the substrate she is physically embedded in. She can feel the depletion. The mineral density of the rock she grows through has measurable gradients — richer near untapped veins, thinner near exhausted ones — and her hyphae in the depleted zones grow slower, signal weaker, and require more metabolic energy to maintain. Her own infrastructure reports document the thinning. She authored the monitoring protocol that tracks it. The organism that routes the colony's life support is slowly starving in the zones where she's routed the most.
 
@@ -368,7 +368,7 @@ Everything about the guild school suggests a teaching-first mission. The individ
 
 ---
 
-### 3. WHAT DRIVES THEM
+## What Drives Them
 
 **Her values hierarchy, inferred from routing patterns rather than signals: data integrity first, network continuity second, the colony's long-term viability third, her own substrate condition not at all.** She has rerouted three inter-grotto exchanges rather than transmit nutrient data she couldn't independently verify — accepting a four-day service interruption to four galleries rather than pass unconfirmed numbers through her network. She shut down an active gallery expansion pathway when her own monitoring detected substrate instability at the margin of the colony's safety thresholds — a conservative call that two other Lattices in neighboring grottoes told the Council they would not have made. She has consistently invested network growth capacity into monitoring infrastructure over new routing channels, choosing to see more clearly over reaching further. Every allocation prioritizes the network as a long-term sensing platform over the network as a short-term delivery system.
 
@@ -380,7 +380,7 @@ This reframes everything above it. The procedural discipline, the insistence on 
 
 ---
 
-### 4. HOW TO READ THEM IN REAL TIME
+## How to Read Them in Real Time
 
 *[Evidence ceiling: no observations of Ymmra's interpersonal signaling behavior exist outside the formal chemical record. Communication with the Lattice occurs through chemical exchange at diffusion speed — the interaction will unfold over hours, not minutes. No informal transcripts, no meeting accounts, no colleague descriptions of her real-time interaction style exist. Everything below is inferred from the institutional record.]*
 
@@ -397,7 +397,7 @@ This reframes everything above it. The procedural discipline, the insistence on 
 
 ---
 
-### 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
+## What Shuts Them Down — And How to Recover
 
 **Triggers, ordered by severity:**
 
@@ -413,7 +413,7 @@ This reframes everything above it. The procedural discipline, the insistence on 
 
 ---
 
-### 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
+## How They Move from Interested to Committed
 
 **When the Lattice commits, she physically expands.** She extends new hyphae along the routing path your gallery requires, builds monitoring connections to your substations, and integrates your data feeds into her sensing network. A commitment means she has physically expanded her body to include your operation. Withdrawal of that commitment means she prunes those extensions — the same process that severed her scout mycelium forty years ago. She does not make these decisions lightly. Every extension costs biological resources. Every pruning removes part of her body.
 
@@ -425,7 +425,7 @@ This reframes everything above it. The procedural discipline, the insistence on 
 
 ---
 
-### 7. THE DINNER PARTY TEST
+## The Dinner Party Test
 
 **What bores her:** *[Evidence ceiling: no observations of social preferences exist. The Lattice does not attend social functions. She does not produce autobiographical signals. The categories below are inferred from what the institutional record responds to and ignores.]*
 
@@ -467,31 +467,31 @@ Title the document: `# PERSUASION PROFILE — [TARGET NAME]`
 
 The profile has exactly 7 sections in exactly this order with exactly these headings:
 
-1. ## 1. THE OPERATING SYSTEM
-2. ## 2. THE CONTRADICTION
-3. ## 3. WHAT DRIVES THEM
-4. ## 4. HOW TO READ THEM IN REAL TIME
-5. ## 5. WHAT SHUTS THEM DOWN — AND HOW TO RECOVER
-6. ## 6. HOW THEY MOVE FROM INTERESTED TO COMMITTED
-7. ## 7. THE DINNER PARTY TEST
+1. ## The Operating System
+2. ## The Contradiction
+3. ## What Drives Them
+4. ## How to Read Them in Real Time
+5. ## What Shuts Them Down — And How to Recover
+6. ## How They Move from Interested to Committed
+7. ## The Dinner Party Test
 
 All 7 sections must appear. Do not combine, rename, reorder, or add sections. Separate sections with a horizontal rule (---).
 
 ## What each section does
 
-1. **THE OPERATING SYSTEM** — Who this person is at the level that generates behavior. Formation, institutional imprint, the identity that runs underneath everything else. The reader finishes this section able to model the donor's posture before the meeting starts. Resume facts earn their space only when they generate behavioral inference — biographical detail without behavioral payoff is filler.
+1. **The Operating System** — Who this person is at the level that generates behavior. Formation, institutional imprint, the identity that runs underneath everything else. The reader finishes this section able to model the donor's posture before the meeting starts. Resume facts earn their space only when they generate behavioral inference — biographical detail without behavioral payoff is filler.
 
-2. **THE CONTRADICTION** — The place where who they believe they are, how they see the world, and what they're incentivized to do don't fully line up. Every donor has at least one. Name it, show how it works, and tell the reader what to do about it. If this section doesn't give the reader a tension they can use in the room, the profile fails.
+2. **The Contradiction** — The place where who they believe they are, how they see the world, and what they're incentivized to do don't fully line up. Every donor has at least one. Name it, show how it works, and tell the reader what to do about it. If this section doesn't give the reader a tension they can use in the room, the profile fails.
 
-3. **WHAT DRIVES THEM** — Values hierarchy, what activates them, what they fund and why. This section must contain a sentence explicitly flagged as the most important sentence in the profile — the single tactical insight the reader must hold above all others. This section also carries the resource philosophy material — how they think about what money can and can't do, and what shape an ask needs to take.
+3. **What Drives Them** — Values hierarchy, what activates them, what they fund and why. This section must contain a sentence explicitly flagged as the most important sentence in the profile — the single tactical insight the reader must hold above all others. This section also carries the resource philosophy material — how they think about what money can and can't do, and what shape an ask needs to take.
 
-4. **HOW TO READ THEM IN REAL TIME** — Meeting behavior: verbal tells, energy signals, engagement markers, disengagement markers. Behavioral forks in if/then form. When the evidence can't support real-time behavioral claims, flag the ceiling and give institutional-pattern inferences instead.
+4. **How to Read Them in Real Time** — Meeting behavior: verbal tells, energy signals, engagement markers, disengagement markers. Behavioral forks in if/then form. When the evidence can't support real-time behavioral claims, flag the ceiling and give institutional-pattern inferences instead.
 
-5. **WHAT SHUTS THEM DOWN — AND HOW TO RECOVER** — Triggers ordered by severity. What withdrawal looks like. Hard limits. Recovery paths that are specific — not "rebuild trust" but what the reader actually does next.
+5. **What Shuts Them Down — And How to Recover** — Triggers ordered by severity. What withdrawal looks like. Hard limits. Recovery paths that are specific — not "rebuild trust" but what the reader actually does next.
 
-6. **HOW THEY MOVE FROM INTERESTED TO COMMITTED** — The trust pathway, commitment pattern, and what the commitment looks like when it arrives. What accelerates the process, what stalls it, and what their history tells you about duration, scale, and conditions.
+6. **How They Move from Interested to Committed** — The trust pathway, commitment pattern, and what the commitment looks like when it arrives. What accelerates the process, what stalls it, and what their history tells you about duration, scale, and conditions.
 
-7. **THE DINNER PARTY TEST** — What bores them, what lights them up, how they move a room (or don't), and what they watch for in other people. Shorter and punchier than other sections. The section the reader re-reads in the car before walking in.
+7. **The Dinner Party Test** — What bores them, what lights them up, how they move a room (or don't), and what they watch for in other people. Shorter and punchier than other sections. The section the reader re-reads in the car before walking in.
 
 ## Evidence rules
 

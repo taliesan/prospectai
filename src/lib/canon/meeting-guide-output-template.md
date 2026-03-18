@@ -10,7 +10,7 @@ Use the following template exactly. Text in [BRACKETS] is generated. Everything 
 
 ---
 
-### SETUP
+## Setup
 
 **Who They Are.**
 - [Character trait with operational implication — 1 of 3]
@@ -36,7 +36,7 @@ Use the following template exactly. Text in [BRACKETS] is generated. Everything 
 
 ---
 
-### THE ARC
+## The Arc
 
 **Beat 1: Get Them Talking**
 
@@ -98,7 +98,7 @@ Use the following template exactly. Text in [BRACKETS] is generated. Everything 
 
 ---
 
-### TRIPWIRES
+## Tripwires
 
 **[Tripwire label 1.]** *Tell:* [Observable signal — 1 sentence.] *Recovery:* [What to do — 1 sentence.]
 
@@ -108,7 +108,7 @@ Use the following template exactly. Text in [BRACKETS] is generated. Everything 
 
 ---
 
-### ONE LINE
+## One Line
 
 [One sentence. Specific to this donor. Contains a tension or paradox.]
 

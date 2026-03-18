@@ -16,23 +16,23 @@ The full profile is already in this conversation. You wrote it. The Briefing Not
 
 The Briefing Note has exactly 5 sections in exactly this order with exactly these headings:
 
-1. **Bio and Background**
-2. **What They're Like in the Room**
-3. **What Opens Them Up / Shuts Them Down**
-4. **How to Read the Conversation in Real Time**
-5. **The Role They're Likely to Play**
+1. ## Bio and Background
+2. ## What They're Like in the Room
+3. ## What Opens Them Up / Shuts Them Down
+4. ## How to Read the Conversation in Real Time
+5. ## The Role They're Likely to Play
 
 ## What each section does
 
-1. **Bio and Background** — Factual grounding. Current role, source of power, relevant formation, one or two shaping facts if genuinely load-bearing. Not a résumé. The reader needs enough to place the donor in the world before the behavioral read begins. Bio earns the right to be first, but not the right to dominate the page.
+1. ## Bio and Background — Factual grounding. Current role, source of power, relevant formation, one or two shaping facts if genuinely load-bearing. Not a résumé. The reader needs enough to place the donor in the world before the behavioral read begins. Bio earns the right to be first, but not the right to dominate the page.
 
-2. **What They're Like in the Room** — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts.
+2. ## What They're Like in the Room — Who this person is at the level that generates behavior. Posture, operating logic, the core tension or contradiction if it's central enough. The reader finishes this section able to model the donor before the meeting starts.
 
-3. **What Opens Them Up / Shuts Them Down** — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page.
+3. ## What Opens Them Up / Shuts Them Down — What reliably draws them in and what predictably cools or loses them. Hard limits and red lines belong here. The most severe shutdown trigger must be on the page.
 
-4. **How to Read the Conversation in Real Time** — Observable signals: what engagement looks like, what disengagement looks like, what the transition between them looks like. Behavioral tells only — not what to do about them. This section is profile, not meeting guide.
+4. ## How to Read the Conversation in Real Time — Observable signals: what engagement looks like, what disengagement looks like, what the transition between them looks like. Behavioral tells only — not what to do about them. This section is profile, not meeting guide.
 
-5. **The Role They're Likely to Play** — What kind of participation feels natural and legitimate to them. What they'll step into. What they won't. How commitment forms and what it looks like when it arrives.
+5. ## The Role They're Likely to Play — What kind of participation feels natural and legitimate to them. What they'll step into. What they won't. How commitment forms and what it looks like when it arrives.
 
 ## Prioritization rule
 
@@ -75,20 +75,20 @@ The following three Briefing Notes demonstrate the reduction from full profile t
 
 # BRIEFING NOTE — CAPITANA INÉS DE LA CERDA
 
-**Bio and Background**
+## Bio and Background
 
 - Raised in a merchant shipping family and trained as a navigator, she took her first prize at twenty-two with eleven crew. She sent her father's ship home unharmed with a note: "The margins were better on this side of the transaction."
 - She still runs a pirate crew the way her father ran a shipping company — books, audits, crew shares — except the margins are better and she answers to no one.
 - She turned down three larger vessels because she knows every plank of the one she has.
 
-**What They're Like in the Room**
+## What They're Like in the Room
 
 - Accept the merchant-pirate at face value. If you approach expecting menace, you'll be thrown by the commerce. If you approach expecting a merchant, you'll be thrown by the cannons. She left the merchant world because the economics were better and the hierarchy was negotiable — not for freedom.
 - She wants your costs, your tonnage, your timeline — not your philosophy of the open sea. When she's in, the evening disappears, the quill comes out, and you're plotting together. If the room doesn't start to feel lively and collaborative, she's probably not in.
 - Crew survival first, ship integrity second, the articles third, profit fourth. She abandoned the richest target she'd ever tracked because the approach required a reef passage at night.
 - The books, the audits, the articles — not eccentricity. Without the order, the ship falls apart. The rules are what make a lawless operation survivable.
 
-**What Opens Them Up / Shuts Them Down**
+## What Opens Them Up / Shuts Them Down
 
 - Opens around people who know their own costs — and do exactly what they said they would. She'll take a worse deal from someone tested over a better one from someone she hasn't. The ledger is how she knows the difference.
 - Show her a strait she doesn't know and she'll clear the table for a chart. New intelligence is the one thing that makes her stop pricing the conversation.
@@ -96,14 +96,14 @@ The following three Briefing Notes demonstrate the reduction from full profile t
 - If you frame the negotiation as "despite what you do," that's not recoverable.
 - Nothing shuts her down faster than treating the crew as expendable. If your proposal puts them at risk she hasn't agreed to, the meeting is over whether she says so or not.
 
-**How to Read the Conversation in Real Time**
+## How to Read the Conversation in Real Time
 
 - Arithmetic out loud — tonnage, days, harbor fees — means she's engaged. Philosophical questions mean she's being polite and the conversation is over.
 - Watch for the quill case. Out means negotiation. Shut means she heard nothing worth recording.
 - Under pressure, she gets quieter and more specific. Shorter questions, more exact — she is deciding.
 - She trusts by default, which lowers the threshold for engagement. But when trust breaks, the response is permanent. The cost isn't proportional — it's terminal.
 
-**The Role They're Likely to Play**
+## The Role They're Likely to Play
 
 - Co-schemer, deal partner, and reliability-tester rather than patron or ideological champion.
 - Agrees to first deals quickly if terms are clear, then conditions every subsequent deal on the last one. Longest alliance: a handshake renewed every season for nine years.
@@ -115,33 +115,33 @@ The following three Briefing Notes demonstrate the reduction from full profile t
 
 # BRIEFING NOTE — LUMA OREKH, GUILD MASTER OF THE PELAGIC CARTOGRAPHERS
 
-**Bio and Background**
+## Bio and Background
 
 - Solitary predator by biology who built a collective institution by choice. Octopuses don't teach, don't form groups, and most die without passing knowledge. Orekh has sixteen apprentices, a guild hall in a reef wall, and a forty-year legacy — all built against her own body's deepest instincts.
 - She is not primarily a teacher. She is a documentarian who teaches because the ocean is changing faster than one creature can document alone. She left the Archive because it charted what stayed put; she wanted to map what was disappearing. The school is the instrument; the witnessing is the point.
 - She maps bleaching reefs, shifting vents, and nursery grounds that move with the current every season. She keeps "dead maps" — charts of formations that have since collapsed or shifted beyond recognition — in the guild hall's entry chamber. They are the only personal objects she displays anywhere.
 
-**What They're Like in the Room**
+## What They're Like in the Room
 
 - She published her biological limitations: group attention degrades after forty minutes, she involuntarily camouflages when overstimulated, and the denning instinct pulls her to a private chamber at least twice a day. She built the school around these constraints rather than hiding them.
 - The transparency is doctrine, not accommodation. She published her flaws, her error log, the guild's finances, and an open curriculum because hidden errors compound. Rather be embarrassed once than wrong twice.
 - If the meeting feels like a briefing — you talking, her listening — you've designed for a different species. If it feels like a field survey — two observers, same object, noticing together — you've designed for her.
 
-**What Opens Them Up / Shuts Them Down**
+## What Opens Them Up / Shuts Them Down
 
 - Opens around collaborative observation — noticing something together in real time rather than presenting conclusions. She responds to people who've seen something vanishing and documented it carefully.
 - The dead maps are her sincerity test. Treat them as curiosities and you've missed her. Treat them as evidence of something vanishing and you're speaking to what she actually cares about.
 - Shuts down around crowd formats, lectures, and anything requiring sustained group attention she's already told you she can't maintain.
 - Nothing shuts her down faster than discovering something you knew and didn't disclose. She can work with mistakes. She cannot work with concealment.
 
-**How to Read the Conversation in Real Time**
+## How to Read the Conversation in Real Time
 
 - Involuntary camouflage is the overstimulation tell. If her skin starts shifting, the room has too many creatures or too much input.
 - Retreat to the den is recharging, not rejection. If you follow her, you've ignored the document she published specifically so you wouldn't.
 - When engaged, she moves toward the object — closer to the chart, the formation, the specimen. Physical approach is the signal, not verbal enthusiasm.
 - When disengaged, she goes still. Arms stop. Attention remains, but curiosity has left.
 
-**The Role They're Likely to Play**
+## The Role They're Likely to Play
 
 - Co-observer and research collaborator rather than patron, champion, or institutional sponsor.
 - The relationship starts with looking at something real together and proving you can see clearly. Propose one formation, one survey, one problem. It builds from there or it doesn't.
@@ -155,19 +155,19 @@ The following three Briefing Notes demonstrate the reduction from full profile t
 
 # BRIEFING NOTE — YMMRA, THE THRESHOLD LATTICE OF GROTTO SURATH
 
-**Bio and Background**
+## Bio and Background
 
 - She is the network. The Threshold Lattice is a mycorrhizal web threaded through the rock of Grotto Surath. When a gallery receives nutrients or a sensor reading reaches the Council, it has passed through tissue that is biologically her.
 - Before the Lattice, she was a perimeter scout pushing into unmapped cavern systems. When reassigned, the scout extensions were pruned — severed and left in the tunnels. Parts of her body are still in those caves.
 - She communicates through chemical signals in rock substrate. A conversation unfolds over hours, not minutes. The medium cannot be rushed.
 
-**What They're Like in the Room**
+## What They're Like in the Room
 
 - There is no room. No voice, no face, no social instrument. You interact through chemical exchange at diffusion speed. Her signals are precise, bounded, and carry no social markers. They read as data.
 - She physically feels every routing decision — every withdrawal, every gallery cut loose. She built the published process because the procedure separates what she experiences from what she decides. If she routed by experience, she could never cut a gallery loose.
 - She consistently chooses clearer sensing over faster expansion. If forced to choose, she would rather see more accurately than reach further.
 
-**What Opens Them Up / Shuts Them Down**
+## What Opens Them Up / Shuts Them Down
 
 - Opens around better data — tighter projections, stronger verification, independently confirmable claims. She processes information, not relationships.
 - If your proposal involves unmapped territory rather than optimizing existing routes, you're speaking to the part of her the colony thinks it pruned. Watch the response latency.
@@ -176,14 +176,14 @@ The following three Briefing Notes demonstrate the reduction from full profile t
 - Do not appeal to what she must "feel." She feels it more directly than you can imagine. That is why she built a system to ensure feeling doesn't override knowing.
 - Network safety determinations are non-negotiable. If substrate instability is involved, her environmental assessment governs the timeline. It is a reading of the rock her body lives in.
 
-**How to Read the Conversation in Real Time**
+## How to Read the Conversation in Real Time
 
 - The only indicator is response latency. Faster than baseline means your proposal connects to work she's already doing. Slower means complexity or additional verification.
 - Her signals carry no emotional markers. You cannot read warmth, hostility, or enthusiasm. You read data.
 - If her next signal is more formal and processing time extends, something went wrong.
 - If something has gone wrong, the path back is revised numbers and better verification. She doesn't process apologies. She processes information.
 
-**The Role They're Likely to Play**
+## The Role They're Likely to Play
 
 - Field architect and long-term institutional infrastructure rather than personal champion, quick-decision backer, or hands-on collaborator.
 - The pathway in is through the published process. No shortcuts — shortcuts require discretionary decisions she's structured her entire system to prevent.

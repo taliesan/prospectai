@@ -407,7 +407,7 @@ export default function ProfilePage() {
                       const text = String(children);
                       const scoreMatch = text.match(/^(.+?)\s*[■□]+\s+(\d+)\/10\s*$/);
                       if (scoreMatch) {
-                        const heading = scoreMatch[1].trim();
+                        const heading = scoreMatch[1].trim().replace(/^\d+\.\s*/, '');
                         const score = parseInt(scoreMatch[2], 10);
                         const badgeBg = score <= 3 ? '#ef4444' : score <= 5 ? '#f59e0b' : score <= 7 ? '#fbbf24' : '#22c55e';
                         return (
@@ -444,6 +444,7 @@ export default function ProfilePage() {
                           </div>
                         );
                       }
+                      const plainHeading = text.replace(/^\d+\.\s*/, '');
                       return (
                         <div className="mt-10 first:mt-0">
                           <div className="border-t border-gray-200 pt-10" />
@@ -451,7 +452,7 @@ export default function ProfilePage() {
                             className="text-[13px] font-semibold uppercase mb-4"
                             style={{ letterSpacing: '1.5px', color: '#6b7280' }}
                           >
-                            {children}
+                            {plainHeading}
                           </h2>
                         </div>
                       );

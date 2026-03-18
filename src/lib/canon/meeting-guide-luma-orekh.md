@@ -4,7 +4,7 @@
 
 ---
 
-### SETUP
+## Setup
 
 **Who They Are.**
 - A solitary predator who built a collective institution against every instinct of her own body. The meeting you're walking into was designed around her biological constraints -- individual stations, rotating sessions, a private den she retreats to twice daily. Respect the design.
@@ -29,7 +29,7 @@
 
 ---
 
-### THE ARC
+## The Arc
 
 **Beat 1: Get Them Talking**
 
@@ -117,7 +117,7 @@ If she doesn't engage, she may not trust your methodology enough yet. Close with
 
 ---
 
-### TRIPWIRES
+## Tripwires
 
 **Talking about cartography as metaphor.** *Tell:* arms pull in, colors flatten, she starts correcting your language in real time. *Recovery:* switch to technical specifics immediately -- a depth tolerance, a measurement error. Break the frame hard. She responds to abrupt correction better than graceful recovery.
 
@@ -127,6 +127,6 @@ If she doesn't engage, she may not trust your methodology enough yet. Close with
 
 ---
 
-### ONE LINE
+## One Line
 
 She's been watching the reefs die for forty years from one layer of the system -- put your records next to hers so she can see what was driving the collapses she documented, and let her decide what her archive is for.

@@ -76,7 +76,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
   // ── Parse SETUP ──
   // Find ### SETUP
   for (; i < lines.length; i++) {
-    if (lines[i].trim().match(/^###\s+SETUP$/i)) {
+    if (lines[i].trim().match(/^#{2,3}\s+SETUP$/i)) {
       i++;
       break;
     }
@@ -88,8 +88,8 @@ export function parseMarkdown(markdown: string): ParsedGuide {
     if (i >= lines.length) break;
     const trimmed = lines[i].trim();
 
-    // Stop at next ### section
-    if (trimmed.startsWith('### ')) break;
+    // Stop at next ## or ### section
+    if (trimmed.match(/^#{2,3}\s+/)) break;
     // Skip horizontal rules
     if (trimmed === '---') { i++; continue; }
 
@@ -129,7 +129,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
   // ── Parse THE ARC ──
   // Find ### THE ARC
   for (; i < lines.length; i++) {
-    if (lines[i].trim().match(/^###\s+THE ARC$/i)) {
+    if (lines[i].trim().match(/^#{2,3}\s+THE ARC$/i)) {
       i++;
       break;
     }
@@ -141,8 +141,8 @@ export function parseMarkdown(markdown: string): ParsedGuide {
     if (i >= lines.length) break;
     const trimmed = lines[i].trim();
 
-    // Stop at next ### section
-    if (trimmed.startsWith('### ') && !trimmed.match(/^###\s+THE ARC/i)) break;
+    // Stop at next ## or ### section
+    if (trimmed.match(/^#{2,3}\s+/) && !trimmed.match(/^#{2,3}\s+THE ARC/i)) break;
     if (trimmed === '---') { i++; continue; }
 
     // Beat header
@@ -178,7 +178,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
         const pLine = lines[i].trim();
 
         // Next beat or section
-        if (pLine.match(/^\*\*Beat\s+\d+/i) || pLine.startsWith('### ') || pLine === '---') break;
+        if (pLine.match(/^\*\*Beat\s+\d+/i) || pLine.match(/^#{2,3}\s+/) || pLine === '---') break;
 
         // START
         if (pLine.startsWith('**START.**')) {
@@ -188,7 +188,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
           while (i < lines.length) {
             const sLine = lines[i].trim();
             if (sLine.startsWith('**STAY.**') || sLine.startsWith('**CONTINUE.**') ||
-                sLine.match(/^\*\*Beat\s+\d+/i) || sLine.startsWith('### ') || sLine === '---') break;
+                sLine.match(/^\*\*Beat\s+\d+/i) || sLine.match(/^#{2,3}\s+/) || sLine === '---') break;
             if (sLine) startLines.push(sLine);
             i++;
           }
@@ -207,7 +207,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
           while (i < lines.length) {
             const sLine = lines[i].trim();
             if (sLine.startsWith('**CONTINUE.**') || sLine.match(/^\*\*Beat\s+\d+/i) ||
-                sLine.startsWith('### ') || sLine === '---') break;
+                sLine.match(/^#{2,3}\s+/) || sLine === '---') break;
             stayContent.push(lines[i]);
             i++;
           }
@@ -224,7 +224,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
           i++;
           while (i < lines.length) {
             const cLine = lines[i].trim();
-            if (cLine.match(/^\*\*Beat\s+\d+/i) || cLine.startsWith('### ') ||
+            if (cLine.match(/^\*\*Beat\s+\d+/i) || cLine.match(/^#{2,3}\s+/) ||
                 cLine === '---' || cLine.startsWith('**START.**') || cLine.startsWith('**STAY.**')) break;
             if (cLine) contLines.push(cLine);
             i++;
@@ -245,7 +245,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
 
   // ── Parse TRIPWIRES ──
   for (; i < lines.length; i++) {
-    if (lines[i].trim().match(/^###\s+TRIPWIRES$/i)) {
+    if (lines[i].trim().match(/^#{2,3}\s+TRIPWIRES$/i)) {
       i++;
       break;
     }
@@ -255,7 +255,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
     skipBlanks();
     if (i >= lines.length) break;
     const trimmed = lines[i].trim();
-    if (trimmed.startsWith('### ') || trimmed === '---') {
+    if (trimmed.match(/^#{2,3}\s+/) || trimmed === '---') {
       if (trimmed === '---') { i++; continue; }
       break;
     }
@@ -283,7 +283,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
       // Look for Tell and Recovery (tolerate blank lines between them)
       while (i < lines.length) {
         const tLine = lines[i].trim();
-        if (tLine.startsWith('**') || tLine.startsWith('### ') || tLine === '---') break;
+        if (tLine.startsWith('**') || tLine.match(/^#{2,3}\s+/) || tLine === '---') break;
         if (tLine === '') { i++; continue; }
         const tellMatch = tLine.match(/^\*Tell:\*\s*(.+)$/);
         if (tellMatch) {
@@ -311,7 +311,7 @@ export function parseMarkdown(markdown: string): ParsedGuide {
 
   // ── Parse ONE LINE ──
   for (; i < lines.length; i++) {
-    if (lines[i].trim().match(/^###\s+ONE LINE$/i)) {
+    if (lines[i].trim().match(/^#{2,3}\s+ONE LINE$/i)) {
       i++;
       break;
     }
