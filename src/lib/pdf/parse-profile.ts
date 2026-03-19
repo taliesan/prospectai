@@ -272,6 +272,23 @@ function isV3MeetingGuide(markdown: string): boolean {
 /**
  * Parse v3 meeting guide markdown (Setup/Arc/Tripwires/One Line) into structured data.
  */
+function parsePhaseContentHelper(raw: string): { prose: string; bullets: string[] } {
+  if (!raw) return { prose: '', bullets: [] };
+  const lines = raw.trim().split('\n');
+  const prose: string[] = [];
+  const bullets: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('- ')) {
+      const bt = t.slice(2).replace(/^[\u2014\u2013\u2012-]\s*/, '');
+      bullets.push(bt);
+    } else if (t) {
+      prose.push(t);
+    }
+  }
+  return { prose: prose.join(' '), bullets };
+}
+
 function parseMeetingGuideV3(markdown: string): MeetingGuideData {
   const result: MeetingGuideData = {
     format: 'v3',
@@ -349,26 +366,8 @@ function parseMeetingGuideV3(markdown: string): MeetingGuideData {
         const stayMatch = beatContent.match(/\*\*STAY\.\*\*\s*([\s\S]*?)(?=\*\*CONTINUE\.\*\*|$)/);
         const continueMatch = beatContent.match(/\*\*CONTINUE\.\*\*\s*([\s\S]*?)(?=\*\*Beat\s+\d|---\s*$|$)/);
 
-        // Parse phase content into prose + bullets
-        function parsePhaseContent(raw: string): { prose: string; bullets: string[] } {
-          if (!raw) return { prose: '', bullets: [] };
-          const lines = raw.trim().split('\n');
-          const prose: string[] = [];
-          const bullets: string[] = [];
-          for (const line of lines) {
-            const t = line.trim();
-            if (t.startsWith('- ')) {
-              let bt = t.slice(2).replace(/^[\u2014\u2013\u2012-]\s*/, '');
-              bullets.push(bt);
-            } else if (t) {
-              prose.push(t);
-            }
-          }
-          return { prose: prose.join(' '), bullets };
-        }
-
-        const startParsed = parsePhaseContent(startMatch ? startMatch[1] : '');
-        const continueParsed = parsePhaseContent(continueMatch ? continueMatch[1] : '');
+        const startParsed = parsePhaseContentHelper(startMatch ? startMatch[1] : '');
+        const continueParsed = parsePhaseContentHelper(continueMatch ? continueMatch[1] : '');
 
         // Parse STAY — separate bullets, stalling, and prose
         const stayRaw = stayMatch ? stayMatch[1].trim() : '';
