@@ -290,17 +290,7 @@ export default function MeetingGuideRenderer({ markdown }: { markdown: string })
         </div>
       )}
 
-      {/* One Line */}
-      {guide.oneLine && (
-        <div>
-          <SectionLabel>One Line</SectionLabel>
-          <div className="bg-stone-900 text-stone-50 px-8 py-7 rounded-lg text-center">
-            <p className="text-lg font-semibold leading-relaxed italic tracking-tight" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>
-              {guide.oneLine}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* One Line removed — now displayed in the dark header */}
     </div>
   );
 }

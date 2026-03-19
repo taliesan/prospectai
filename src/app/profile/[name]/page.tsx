@@ -34,6 +34,13 @@ interface ProfileData {
   meetingGuideHtml?: string;
 }
 
+/** Extract the ONE LINE from meeting guide markdown. */
+function extractOneLine(mgMarkdown?: string): string {
+  if (!mgMarkdown) return '';
+  const match = mgMarkdown.match(/#{2,3}\s+ONE LINE\s*\n+([^\n#]+)/i);
+  return match ? match[1].trim().replace(/^[""\u201C\u201D]+|[""\u201C\u201D]+$/g, '') : '';
+}
+
 type Tab = 'briefing-note' | 'persuasion-profile' | 'meeting-guide' | 'sources';
 
 // Per-tab accent colors
@@ -696,9 +703,21 @@ export default function ProfilePage() {
           {/* Donor name */}
           <h1 className="text-[56px] leading-[1.1] text-white mb-2" style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif" }}>{donorName}</h1>
 
-          {/* Date + action buttons row */}
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-[15px] text-white/40" style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}>{date}</p>
+          {/* Date */}
+          <p className="text-[15px] text-white/40 mb-0" style={{ fontFamily: "'Instrument Sans', 'DM Sans', sans-serif" }}>{date}</p>
+
+          {/* One Line */}
+          {extractOneLine(data.meetingGuide) && (
+            <p
+              className="text-[17px] leading-[1.5] max-w-[600px] mt-4 mb-0"
+              style={{ fontFamily: "'Source Serif 4', 'Instrument Serif', Georgia, serif", color: 'rgba(255,255,255,0.7)' }}
+            >
+              {extractOneLine(data.meetingGuide)}
+            </p>
+          )}
+
+          {/* Action buttons row */}
+          <div className="flex items-center justify-end mt-6 mb-6">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleDownloadPDF}

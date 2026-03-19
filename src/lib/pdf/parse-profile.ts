@@ -78,6 +78,7 @@ export interface PDFProfileData {
   confidenceScores: Record<string, number>;
   meetingGuide: MeetingGuideData | null;
   sources: Source[];
+  oneLine: string;
 }
 
 /**
@@ -109,6 +110,10 @@ export function parseProfileForPDF(
     }
   }
 
+  // Extract One Line from meeting guide for cover page
+  const mgData = meetingGuideMarkdown ? parseMeetingGuide(meetingGuideMarkdown) : null;
+  const oneLine = mgData?.oneLine || '';
+
   return {
     donorName,
     preparedFor,
@@ -119,8 +124,9 @@ export function parseProfileForPDF(
       sections: parsePersuasionProfile(cleanedProfile),
     },
     confidenceScores,
-    meetingGuide: meetingGuideMarkdown ? parseMeetingGuide(meetingGuideMarkdown) : null,
+    meetingGuide: mgData,
     sources,
+    oneLine,
   };
 }
 
